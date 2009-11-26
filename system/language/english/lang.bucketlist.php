@@ -2,7 +2,7 @@
 
 $L = array(
 
-'site_settings_heading' => 'SL S3 Settings',
+'site_settings_heading' => 'BucketList Settings',
 'access_key_id'         => 'Access Key ID',
 'secret_access_key'     => 'Secret Access Key',
 'custom_url'            => 'Custom URL',
@@ -26,7 +26,7 @@ $L = array(
 '360_min'               => '6 hours',
 '480_min'               => '8 hours',
 
-'field_settings_heading'  => 'SL S3 Field Settings',
+'field_settings_heading'  => 'BucketList Field Settings',
 'buckets_heading'         => 'Select "Buckets"',
 'buckets_info'            => 'Select the Amazon S3 buckets that you wish to make available for this field',
 'buckets_label'           => 'Buckets',
