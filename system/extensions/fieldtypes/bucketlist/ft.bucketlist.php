@@ -1,13 +1,13 @@
 <?php
 
 /**
- * Fieldtype extension enabling selection of files stored on Amazon S3.
+ * Fieldtype extension enabling effortless selection of your Amazon S3 files.
  *
- * @package   BucketList
- * @version   0.6.0
- * @author    Stephen Lewis <addons@experienceinternet.co.uk>
- * @copyright Copyright (c) 2009, Stephen Lewis
- * @link      http://experienceinternet.co.uk/bucketlist/
+ * @package   	BucketList
+ * @version   	0.6.0
+ * @author    	Stephen Lewis <addons@experienceinternet.co.uk>
+ * @copyright 	Copyright (c) 2009, Stephen Lewis
+ * @link      	http://experienceinternet.co.uk/bucketlist/
  */
 
 require_once 'resources/S3.php';
@@ -23,7 +23,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	public $info = array(
 	  'name'      => 'BucketList',
 	  'version'   => '0.6.0',
-	  'desc'      => 'Enables selection of files stored on Amazon S3.',
+	  'desc'      => 'Effortlessly select your Amazon S3 files.',
 	  'docs_url'  => 'http://experienceinternet.co.uk/bucketlist/',
 	  'versions_xml_url' => 'http://experienceinternet.co.uk/addon-versions.xml'
 	  );
