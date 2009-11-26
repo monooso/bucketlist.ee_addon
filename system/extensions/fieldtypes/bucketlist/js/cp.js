@@ -7,7 +7,7 @@ function load_files($bucket_list) {
 	
 	// Initialise some variables.
 	bucket_id 			= $bucket_list.val();
-	$field_wrapper	= $bucket_list.parents('.sl-s3');
+	$field_wrapper	= $bucket_list.parents('#eepro-co-uk');
 	$files_wrapper 	= $('.files', $field_wrapper);
 	$files_list			= $('select', $files_wrapper);
 	
@@ -70,7 +70,7 @@ function handle_remove_click(e) {
 		.parents('.saved-file')
 		.fadeOut(function() {
 			$(this)
-				.parents('.sl-s3')
+				.parents('#eepro-co-uk')
 				.find('table')
 				.fadeIn();
 		})

@@ -479,14 +479,14 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		// Check the AWS credentials.
 		if ( ! $this->check_amazon_credentials())
 		{
-			$ret .= '<div class="eepro-co-uk"><p class="error">' .$LANG->line('missing_credentials'). '</p></div>';
+			$ret .= '<div id="eepro-co-uk"><p class="error">' .$LANG->line('missing_credentials'). '</p></div>';
 			return $ret;
 		}
 		
 		// Load the buckets.
 		if ( ! $buckets = $this->load_buckets())
 		{
-			$ret .= '<div class="eepro-co-uk"><p class="error">' .$LANG->line('no_available_buckets'). '</p></div>';
+			$ret .= '<div id="eepro-co-uk"><p class="error">' .$LANG->line('no_available_buckets'). '</p></div>';
 			return $ret;
 		}
 		
@@ -516,7 +516,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		// Are there any buckets available?
 		if (count($available_buckets) == 0)
 		{
-			$ret .= '<div class="eepro-co-uk"><p class="error">' .$LANG->line('no_available_buckets'). '</p></div>';
+			$ret .= '<div id="eepro-co-uk"><p class="error">' .$LANG->line('no_available_buckets'). '</p></div>';
 			return $ret;
 		}
 		
@@ -527,7 +527,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		}
 		
 		// Build the UI.
-		$ret .= '<div class="eepro-co-uk">';
+		$ret .= '<div id="eepro-co-uk">';
 		
 		// Current file.
 		if ($saved_bucket != '' && $saved_file != '')
