@@ -1,0 +1,62 @@
+/**
+ * CSS styles for the SL S3 FieldFrame field type.
+ *
+ * @package			SL S3
+ * @author 			Stephen Lewis (http://www.experienceinternet.co.uk/)
+ * @copyright 	Copyright (c) 2009, Stephen Lewis
+ * @license 		Commercial license, URL here.
+ * @link 				http://www.experienceinternet.co.uk/resources/details/sl-s3/
+ */
+
+.sl-s3 {margin-bottom : 1em;}
+
+.sl-s3 label {
+display : block;
+font-size : 1em;
+padding : 0 3px 3px;
+}
+
+.sl-s3 select {width : 400px;}
+
+.sl-s3 option {padding-right : 25px;}
+
+.sl-s3 .multiple {height : 10.5em;}
+
+.sl-s3 .hidden {display : none;}
+
+.sl-s3 p {
+color : rgba(0, 0, 0, 0.55);
+font-size : 11px;
+font-weight : bold;
+text-shadow : 0 1px 0 rgba(255, 255, 255, 1.0);
+padding : 3px 0;
+}
+
+.sl-s3 .info {
+background : transparent url('../img/info.png') no-repeat 0 50%;
+padding-left : 22px;
+}
+
+.sl-s3 .loading {
+background : transparent url('../img/loading.gif') no-repeat 0 50%;
+padding-left : 22px;
+}
+
+.sl-s3 .error {
+background : transparent url('../img/error.gif') no-repeat 0 50%;
+padding-left : 22px;
+}
+
+.saved-file p {
+background : transparent url('../img/file_generic.png') no-repeat 0 50%;
+padding-left : 22px;
+}
+
+.sl-s3 .action {
+color : #1D7FC6;
+cursor : pointer;
+font-size : 10px;
+font-weight : normal;
+text-decoration : underline;
+text-shadow : none;
+}
