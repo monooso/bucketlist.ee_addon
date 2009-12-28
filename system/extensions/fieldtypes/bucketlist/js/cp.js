@@ -31,8 +31,17 @@ $(document).ready(function() {
 	$.fn.bucketlist.defaults.ajaxScriptURL 		= ajaxScriptURL;
 	$.fn.bucketlist.defaults.callbackHandler	= handleFileClick;
 	
-	$('.bucketlist-ui').each(function() {
-		// Initialise the file tree.
+	// Initialise non-matrix file trees.
+	$('.ff-ft > .eepro-co-uk > .bucketlist-ui').each(function() {
 		$(this).bucketlist({initialFile : $(this).parents('.eepro-co-uk').find('input:hidden').val()});
 	});
+	
+	if (typeof $.fn.ffMatrix != 'undefined') {
+		// Initialise matrix file trees. Also handles new table cells as they are created.
+		$.fn.ffMatrix.onDisplayCell.bucketlist = function($td, $ffm) {
+			$('.bucketlist-ui', $td).each(function() {
+				$(this).bucketlist({initialFile : $(this).parents('.eepro-co-uk').find('input:hidden').val()});
+			});
+		}
+	}
 });
