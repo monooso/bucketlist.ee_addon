@@ -2,29 +2,179 @@
  * CSS styles for the BucketList FieldFrame field type.
  *
  * @package			BucketList
- * @author 			Stephen Lewis (http://www.experienceinternet.co.uk/)
+ * @author 			Stephen Lewis (http://eepro.co.uk/)
  * @copyright 	Copyright (c) 2009, Stephen Lewis
  * @license 		Commercial license, URL here.
- * @link 				http://www.experienceinternet.co.uk/resources/details/sl-s3/
+ * @link 				http://eepro.co.uk/bucketlist/
  */
 
-#eepro-co-uk {margin-bottom : 1em;}
+.eepro-co-uk .hidden {display : none;}
 
-#eepro-co-uk label {
+.eepro-co-uk {
+background : #FFF url(../img/finder-bg.gif) repeat 0 0;
+border : 1px solid #CAD0D5;
+color : #333;
+font : normal 11px/20px "Lucida Grande", Tahoma, Verdana, sans-serif;
+margin-bottom : 1em;
+min-height : 20px;
+position : relative;
+}
+
+.eepro-co-uk .error,
+.bucketlist-ui .empty {
+background : transparent url(../img/icons/exclamation-soft.png) no-repeat 6px 1px;
+color : #666;
+padding-left : 28px;
+}
+
+.bucketlist-ui .initial-load {
+background : transparent url(../img/icons/spinner.gif) no-repeat 6px 1px;
+left : 0;
+line-height : 20px;
+margin : 0;
+padding-left : 28px;
+position : absolute;
+top : 0;
+}
+
+.bucketlist-ui .bucketlist-tree {
+list-style : none;
+margin : 0;
+padding : 0;
+}
+
+.bucketlist-ui .bucketlist-tree ul {margin-left : 15px;}
+
+.bucketlist-ui .bucketlist-tree a {
+background-position : 6px 1px;
+background-repeat : no-repeat;
+color : #333;
+display : block;
+padding-left : 28px;
+text-decoration : none;
+}
+
+.bucketlist-ui .bucketlist-tree .selected > a {
+background-color : #3875D7;
+color : #FFF;
+text-shadow : 0 1px 0 rgba(0, 0, 0, 0.35);
+}
+
+/* FF Matrix styles. */
+td.bucketlist {
+padding-left : 0 !important;
+padding-right : 0 !important;
+width : 400px;
+}
+
+.bucketlist .eepro-co-uk {
+border : none;
+margin-bottom : 0;
+width : 100%;
+}
+
+.bucketlist .bucketlist-ui a {
+font-size : 11px;
+line-height : 20px;
+}
+
+/* jqueryFileTree icons */
+.bucketlist-ui .bucketlist-tree .directory > a {background-image : url(../img/icons/folder-closed.png);}
+
+.bucketlist-ui .bucketlist-tree .expanded > a {background-image : url(../img/icons/folder-open.png);}
+
+.bucketlist-ui .bucketlist-tree .file > a {background-image : url(../img/icons/file-generic.png);}
+
+.bucketlist-ui .bucketlist-tree .wait > a {background-image : url(../img/icons/spinner.gif);}
+
+.bucketlist-ui .bucketlist-tree .ext_3gp > a,
+.bucketlist-ui .bucketlist-tree .ext_avi > a,
+.bucketlist-ui .bucketlist-tree .ext_mov > a,
+.bucketlist-ui .bucketlist-tree .ext_mp4 > a,
+.bucketlist-ui .bucketlist-tree .ext_mpg > a,
+.bucketlist-ui .bucketlist-tree .ext_mpeg > a,
+.bucketlist-ui .bucketlist-tree .ext_wmv > a {background-image : url(../img/icons/file-film.png);}
+
+.bucketlist-ui .bucketlist-tree .ext_afp > a,
+.bucketlist-ui .bucketlist-tree .ext_afpa > a,
+.bucketlist-ui .bucketlist-tree .ext_asp > a,
+.bucketlist-ui .bucketlist-tree .ext_aspx > a,
+.bucketlist-ui .bucketlist-tree .ext_c > a,
+.bucketlist-ui .bucketlist-tree .ext_cfm > a,
+.bucketlist-ui .bucketlist-tree .ext_cgi > a,
+.bucketlist-ui .bucketlist-tree .ext_cpp > a,
+.bucketlist-ui .bucketlist-tree .ext_css > a,
+.bucketlist-ui .bucketlist-tree .ext_h > a,
+.bucketlist-ui .bucketlist-tree .ext_htm > a,
+.bucketlist-ui .bucketlist-tree .ext_html > a,
+.bucketlist-ui .bucketlist-tree .ext_jar > a,
+.bucketlist-ui .bucketlist-tree .ext_lasso > a,
+.bucketlist-ui .bucketlist-tree .ext_php > a,
+.bucketlist-ui .bucketlist-tree .ext_rb > a,
+.bucketlist-ui .bucketlist-tree .ext_rbx > a,
+.bucketlist-ui .bucketlist-tree .ext_rhtml > a,
+.bucketlist-ui .bucketlist-tree .ext_ruby > a,
+.bucketlist-ui .bucketlist-tree .ext_shtml > a,
+.bucketlist-ui .bucketlist-tree .ext_vb > a,
+.bucketlist-ui .bucketlist-tree .ext_xml > a {background-image : url(../img/icons/file-code.png);}
+
+.bucketlist-ui .bucketlist-tree .ext_bmp > a,
+.bucketlist-ui .bucketlist-tree .ext_gif > a,
+.bucketlist-ui .bucketlist-tree .ext_jpg > a,
+.bucketlist-ui .bucketlist-tree .ext_jpeg > a,
+.bucketlist-ui .bucketlist-tree .ext_pcx > a,
+.bucketlist-ui .bucketlist-tree .ext_png > a,
+.bucketlist-ui .bucketlist-tree .ext_tif > a,
+.bucketlist-ui .bucketlist-tree .ext_tiff {background-image : url(../img/icons/file-image.png);}
+
+.bucketlist-ui .bucketlist-tree .ext_m4p > a,
+.bucketlist-ui .bucketlist-tree .ext_mp3 > a,
+.bucketlist-ui .bucketlist-tree .ext_ogg > a,
+.bucketlist-ui .bucketlist-tree .ext_wav > a {background-image : url(../img/icons/file-music.png);}
+
+.bucketlist-ui .bucketlist-tree .ext_bat > a,
+.bucketlist-ui .bucketlist-tree .ext_com > a,
+.bucketlist-ui .bucketlist-tree .ext_exe > a {background-image : url(../img/icons/file-application.png);}
+
+.bucketlist-ui .bucketlist-tree .ext_fla > a,
+.bucketlist-ui .bucketlist-tree .ext_swf > a {background-image : url(../img/icons/file-flash.png);}
+
+.bucketlist-ui .bucketlist-tree .ext_js > a,
+.bucketlist-ui .bucketlist-tree .ext_pl > a,
+.bucketlist-ui .bucketlist-tree .ext_py > a,
+.bucketlist-ui .bucketlist-tree .ext_sql > a {background-image : url(../img/icons/file-script.png);}
+
+.bucketlist-ui .bucketlist-tree .ext_log > a,
+.bucketlist-ui .bucketlist-tree .ext_txt > a {background-image : url(../img/icons/file-text.png);}
+
+.bucketlist-ui .bucketlist-tree .ext_pdf > a {background-image : url(../img/icons/file-pdf.png);}
+
+.bucketlist-ui .bucketlist-tree .ext_ppt > a {background-image : url(../img/icons/file-ppt.png);}
+
+.bucketlist-ui .bucketlist-tree .ext_psd > a {background-image : url(../img/icons/file-psd.png);}
+
+.bucketlist-ui .bucketlist-tree .ext_doc > a {background-image : url(../img/icons/file-doc.png);}
+
+.bucketlist-ui .bucketlist-tree .ext_xls > a {background-image : url(../img/icons/file-xls.png);}
+
+.bucketlist-ui .bucketlist-tree .ext_zip > a {background-image : url(../img/icons/file-zip.png);}
+
+/*
+.eepro-co-uk label {
 display : block;
 font-size : 1em;
 padding : 0 3px 3px;
 }
 
-#eepro-co-uk select {width : 400px;}
+.eepro-co-uk select {width : 400px;}
 
-#eepro-co-uk option {padding-right : 25px;}
+.eepro-co-uk option {padding-right : 25px;}
 
-#eepro-co-uk .multiple {height : 10.5em;}
+.eepro-co-uk .multiple {height : 10.5em;}
 
-#eepro-co-uk .hidden {display : none;}
+.eepro-co-uk .hidden {display : none;}
 
-#eepro-co-uk p {
+.eepro-co-uk p {
 color : rgba(0, 0, 0, 0.55);
 font-size : 11px;
 font-weight : bold;
@@ -32,27 +182,27 @@ text-shadow : 0 1px 0 rgba(255, 255, 255, 1.0);
 padding : 3px 0;
 }
 
-#eepro-co-uk .info {
+.eepro-co-uk .info {
 background : transparent url('../img/info.png') no-repeat 0 50%;
 padding-left : 22px;
 }
 
-#eepro-co-uk .loading {
+.eepro-co-uk .loading {
 background : transparent url('../img/loading.gif') no-repeat 0 50%;
 padding-left : 22px;
 }
 
-#eepro-co-uk .error {
+.eepro-co-uk .error {
 background : transparent url('../img/error.gif') no-repeat 0 50%;
 padding-left : 22px;
 }
 
-#eepro-co-uk .saved-file p {
+.eepro-co-uk .saved-file p {
 background : transparent url('../img/file_generic.png') no-repeat 0 50%;
 padding-left : 22px;
 }
 
-#eepro-co-uk .action {
+.eepro-co-uk .action {
 color : #1D7FC6;
 cursor : pointer;
 font-size : 10px;
@@ -60,3 +210,4 @@ font-weight : normal;
 text-decoration : underline;
 text-shadow : none;
 }
+*/
