@@ -681,7 +681,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		if ( ! $this->check_amazon_credentials())
 		{
 			$ret .= '<div class="eepro-co-uk">';
-			$ret .= '<p class="error">' .$LANG->line('missing_credentials'). '</p>';
+			$ret .= '<p class="alert">' .$LANG->line('missing_credentials'). '</p>';
 			$ret .= '</div>';
 			return $ret;
 		}
