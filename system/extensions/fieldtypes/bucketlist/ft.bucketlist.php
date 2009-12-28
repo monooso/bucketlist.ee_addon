@@ -4,7 +4,7 @@
  * Fieldtype extension enabling integration of Amazon S3 with your ExpressionEngine website.
  *
  * @package   	BucketList
- * @version   	1.0.0b1
+ * @version   	1.0.0b2
  * @author    	Stephen Lewis <addons@eepro.co.uk>
  * @copyright 	Copyright (c) 2009, Stephen Lewis
  * @link      	http://eepro.co.uk/bucketlist/
@@ -22,7 +22,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 */
 	public $info = array(
 		'name'				=> 'BucketList',
-		'version'			=> '1.0.0b1',
+		'version'			=> '1.0.0b2',
 		'desc'				=> 'Effortlessly integrate Amazon S3 storage with your ExpressionEngine site.',
 		'docs_url'			=> 'http://experienceinternet.co.uk/bucketlist/',
 		'versions_xml_url'	=> 'http://experienceinternet.co.uk/addon-versions.xml'
