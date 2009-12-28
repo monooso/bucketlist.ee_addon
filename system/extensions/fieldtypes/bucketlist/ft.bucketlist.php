@@ -57,7 +57,8 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		'access_key_id'		=> '',
 		'secret_access_key'	=> '',
 		'cache_duration' 	=> '3600',		// 60 minutes
-		'use_ssl' 			=> 'n'
+		'use_ssl' 			=> 'n',
+		'custom_url'		=> 'y'
 	);
 	
 	/**
@@ -797,12 +798,15 @@ class Bucketlist extends Fieldframe_Fieldtype {
 			$sd->select('cache_duration', $settings['cache_duration'], $options)
 			));
 		
-		/*
+		$options = array(
+			'y' => 'yes',
+			'n' => 'no'
+			);
+			
 		$ret .= $sd->row(array(
 			$sd->label('custom_url', 'custom_url_hint'),
-			$sd->text('custom_url', $custom_url)
+			$sd->select('custom_url', $settings['custom_url'], $options)
 			));
-		*/
 			
 		// Close the settings block.
 		$ret .= $sd->block_c();
@@ -877,7 +881,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 			$file	= substr($field_data, strlen($bucket) + 1);
 			
 			$out .= $this->site_settings['use_ssl'] == 'y' ? 'https://' : 'http://';
-			$out .= urlencode($bucket) .'.s3.amazonaws.com/' .urlencode($file);
+			$out .= urlencode($bucket) .($this->site_settings['custom_url'] == 'y' ? '/' : '.s3.amazonaws.com/') .urlencode($file);
 		}
 		
 		return $out;

@@ -5,8 +5,8 @@ $L = array(
 'site_settings_heading'	=> 'BucketList Settings',
 'access_key_id'			=> 'Access Key ID',
 'secret_access_key'		=> 'Secret Access Key',
-'custom_url'			=> 'Custom URL',
-'custom_url_hint'		=> "If you've configured a sub-domain to point at your Amazon S3 account, you can enter the URL here.",
+'custom_url'			=> 'Use Custom URL?',
+'custom_url_hint'		=> 'Be sure to <a href="http://www.wrichards.com/blog/2009/02/customize-your-amazon-s3-url/">configure your CNAME records</a> before setting this to yes.',
 
 'use_ssl'				=> 'Use SSL?',
 'yes'					=> 'Yes',
