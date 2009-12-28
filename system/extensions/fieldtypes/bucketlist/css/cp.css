@@ -1,11 +1,10 @@
 /**
  * CSS styles for the BucketList FieldFrame field type.
  *
- * @package			BucketList
- * @author 			Stephen Lewis (http://eepro.co.uk/)
+ * @package		BucketList
+ * @author 		Stephen Lewis (http://eepro.co.uk/)
  * @copyright 	Copyright (c) 2009, Stephen Lewis
- * @license 		Commercial license, URL here.
- * @link 				http://eepro.co.uk/bucketlist/
+ * @link 		http://eepro.co.uk/bucketlist/
  */
 
 .eepro-co-uk .hidden {display : none;}
@@ -182,56 +181,3 @@ line-height : 20px;
 .bucketlist-ui .bucketlist-tree .ext_xls > a {background-image : url(../img/icons/file-xls.png);}
 
 .bucketlist-ui .bucketlist-tree .ext_zip > a {background-image : url(../img/icons/file-zip.png);}
-
-/*
-.eepro-co-uk label {
-display : block;
-font-size : 1em;
-padding : 0 3px 3px;
-}
-
-.eepro-co-uk select {width : 400px;}
-
-.eepro-co-uk option {padding-right : 25px;}
-
-.eepro-co-uk .multiple {height : 10.5em;}
-
-.eepro-co-uk .hidden {display : none;}
-
-.eepro-co-uk p {
-color : rgba(0, 0, 0, 0.55);
-font-size : 11px;
-font-weight : bold;
-text-shadow : 0 1px 0 rgba(255, 255, 255, 1.0);
-padding : 3px 0;
-}
-
-.eepro-co-uk .info {
-background : transparent url('../img/info.png') no-repeat 0 50%;
-padding-left : 22px;
-}
-
-.eepro-co-uk .loading {
-background : transparent url('../img/loading.gif') no-repeat 0 50%;
-padding-left : 22px;
-}
-
-.eepro-co-uk .error {
-background : transparent url('../img/error.gif') no-repeat 0 50%;
-padding-left : 22px;
-}
-
-.eepro-co-uk .saved-file p {
-background : transparent url('../img/file_generic.png') no-repeat 0 50%;
-padding-left : 22px;
-}
-
-.eepro-co-uk .action {
-color : #1D7FC6;
-cursor : pointer;
-font-size : 10px;
-font-weight : normal;
-text-decoration : underline;
-text-shadow : none;
-}
-*/

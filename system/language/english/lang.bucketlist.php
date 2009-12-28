@@ -43,4 +43,5 @@ $L = array(
 
 );
 
-?>
+/* End of file	: lang.bucketlist.php */
+/* Location		: /system/language/english/lang.bucketlist.php */

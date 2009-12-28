@@ -1,3 +1,14 @@
+/**
+ * BucketList JavaScript. Borrowed heavily from the jQuery File Tree plugin, by
+ * Cory S.N. LaViska (http://abeautifulsite.net).
+ *
+ * @package		BucketList
+ * @author 		Stephen Lewis (http://eepro.co.uk/)
+ * @copyright 	Copyright (c) 2009, Stephen Lewis
+ * @link 		http://eepro.co.uk/bucketlist/
+ * @see 		http://abeautifulsite.net/
+ */
+
 (function($) {
 
 $.fn.bucketlist = function(options) {

@@ -4,7 +4,6 @@
  * @package		BucketList
  * @author 		Stephen Lewis (http://eepro.co.uk/)
  * @copyright 	Copyright (c) 2009, Stephen Lewis
- * @license 	Commercial license, URL here.
  * @link 		http://eepro.co.uk/bucketlist/
  */
 
