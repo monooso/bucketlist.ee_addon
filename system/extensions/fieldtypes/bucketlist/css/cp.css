@@ -11,7 +11,7 @@
 .eepro-co-uk .hidden {display : none;}
 
 .eepro-co-uk {
-background : #FFF url(../img/finder-bg.gif) repeat 0 0;
+background : #EEF4F9 url(../img/finder-bg.gif) repeat 0 0;
 border : 1px solid #CAD0D5;
 color : #333;
 font : normal 11px/20px "Lucida Grande", Tahoma, Verdana, sans-serif;
@@ -21,8 +21,25 @@ position : relative;
 }
 
 .eepro-co-uk .error,
+.eepro-co-uk .alert {
+background-color : #EEF4F9;
+background-position : 6px 4px;
+background-repeat : no-repeat;
+margin : 0;
+padding : 2px 5px 2px 28px;
+}
+
+.eepro-co-uk .alert {background-image : url(../img/icons/exclamation-hard.png);}
+
 .bucketlist-ui .empty {
-background : transparent url(../img/icons/exclamation-soft.png) no-repeat 6px 1px;
+background-color : #EEF4F9;
+background-position : 6px 1px;
+background-repeat : no-repeat;
+}
+
+.eepro-co-uk .error,
+.bucketlist-ui .empty {
+background-image : url(../img/icons/exclamation-soft.png);
 color : #666;
 padding-left : 28px;
 }
@@ -62,6 +79,7 @@ text-shadow : 0 1px 0 rgba(0, 0, 0, 0.35);
 
 /* FF Matrix styles. */
 td.bucketlist {
+padding-bottom : 0 !important;
 padding-left : 0 !important;
 padding-right : 0 !important;
 width : 400px;
@@ -72,6 +90,12 @@ border : none;
 margin-bottom : 0;
 width : 100%;
 }
+
+.bucketlist.tableCellTwo .eepro-co-uk {background : #FFF url(../img/finder-bg-alt.gif) repeat 0 0;}
+
+.bucketlist.tableCellTwo .eepro-co-uk .alert,
+.bucketlist.tableCellTwo .eepro-co-uk .error,
+.bucketlist.tableCellTwo .eepro-co-uk .empty {background-color : #FFF;}
 
 .bucketlist .bucketlist-ui a {
 font-size : 11px;

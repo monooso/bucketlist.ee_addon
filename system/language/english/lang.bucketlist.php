@@ -31,7 +31,7 @@ $L = array(
 'buckets_info'				=> 'Select the Amazon S3 buckets that you wish to make available for this field',
 'buckets_label'				=> 'Buckets',
 
-'missing_credentials'	=> 'Please enter your Amazon S3 Access Key ID and Secret Access Key on the extension settings screen',
+'missing_credentials'	=> 'Please enter your Amazon S3 account details on the extension settings screen.',
 'no_buckets'			=> 'There are no available buckets for this account.',
 'no_available_buckets'	=> 'There are no available folders for this field.',
 
