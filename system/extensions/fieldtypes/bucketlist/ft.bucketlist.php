@@ -227,7 +227,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 			// Request the bucket content from Amazon.
 			$s3_items = @$s3->getBucket($bucket_name);
 			
-			if (is_array($s3_items))
+			if (is_array($s3_items) && count($s3_items) > 0)
 			{
 				// Write the items to the database.
 				$cache_date = time();
