@@ -26,8 +26,24 @@ function handleFileClick(filename, $target) {
  * Gets the ball rolling.
  */
 $(document).ready(function() {
-	// Set the bucketlist defaults.
-	$.fn.bucketlist.defaults.ajaxScriptURL 		= ajaxScriptURL;
+	
+	/**
+	 * We post any AJAX requests back to the current URL, to be handled by
+	 * the sessions_start hook.
+	 * 
+	 * The advantages of doing it this way, are two-fold:
+	 * 1. We know for certain that the FieldFrame extension will be instantiated
+	 * for this page, so all the FF-dependent gumpf in the BucketList fieldtype
+	 * will work as expected.
+	 *
+	 * 2. Everything will work in the CP, and in a SAEF. Spiffing.
+	 */
+	
+	currentURL 	= document.location.href;
+	ajaxURL		= currentURL + (currentURL.indexOf('?') === false) ? '?' : '';
+	ajaxURL		+= 'ajax=y&addon_id=bucketlist';
+	
+	$.fn.bucketlist.defaults.ajaxScriptURL 		= ajaxURL;
 	$.fn.bucketlist.defaults.callbackHandler	= handleFileClick;
 	
 	// Initialise non-matrix file trees.

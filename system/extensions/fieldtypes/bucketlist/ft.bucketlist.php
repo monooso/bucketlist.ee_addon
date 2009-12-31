@@ -4,7 +4,7 @@
  * Fieldtype extension enabling integration of Amazon S3 with your ExpressionEngine website.
  *
  * @package   	BucketList
- * @version   	1.0.0b3
+ * @version   	1.0.0b4
  * @author    	Stephen Lewis <addons@eepro.co.uk>
  * @copyright 	Copyright (c) 2009, Stephen Lewis
  * @link      	http://eepro.co.uk/bucketlist/
@@ -22,7 +22,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 */
 	public $info = array(
 		'name'				=> 'BucketList',
-		'version'			=> '1.0.0b3',
+		'version'			=> '1.0.0b4',
 		'desc'				=> 'Effortlessly integrate Amazon S3 storage with your ExpressionEngine site.',
 		'docs_url'			=> 'http://experienceinternet.co.uk/bucketlist/',
 		'versions_xml_url'	=> 'http://experienceinternet.co.uk/addon-versions.xml'
@@ -45,7 +45,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 * @access	public
 	 * @var 	array
 	 */
-	public $hooks = array('show_full_control_panel_end');
+	public $hooks = array('sessions_start');
   
 	/**
 	 * Default site settings.
@@ -410,6 +410,20 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	{	
 		global $LANG;
 		
+		/**
+		 * This method is called from sessions_start, which runs before
+		 * the global $LANG variable is set.
+		 *
+		 * Just in case we ever need to run it at another point, we check
+		 * if the Language class exists, before manually instantiating it.
+		 */
+		
+		if ( ! isset($LANG))
+		{
+			require PATH_CORE .'core.language' .EXT;
+			$LANG = new Language();
+		}
+		
 		$LANG->fetch_language_file($this->lower_class);
 		
 		$buckets = $this->get_available_buckets();
@@ -456,9 +470,6 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		
 		return preg_replace($find, $replace, $subject);
 	}
-
-
-	
 	
 	
 	/**
@@ -475,6 +486,20 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		if ( ! $parent_dir)
 		{
 			return $this->build_buckets_ui();
+		}
+		
+		/**
+		 * This method is called from sessions_start, which runs before
+		 * the global $LANG variable is set.
+		 *
+		 * Just in case we ever need to run it at another point, we check
+		 * if the Language class exists, before manually instantiating it.
+		 */
+		
+		if ( ! isset($LANG))
+		{
+			require PATH_CORE .'core.language' .EXT;
+			$LANG = new Language();
 		}
 		
 		$LANG->fetch_language_file($this->lower_class);
@@ -619,25 +644,35 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	
   
 	/**
-	 * Handles AJAX requests. Called from the show_full_control_panel_start hook.
+	 * Handles AJAX requests.
 	 *
 	 * @access		public
-	 * @param		string		$out		The HTML content of the page.
-	 * @return		string
+	 * @param 		object		$session	The current Session class.
+	 * @return		void
 	 */
-	public function show_full_control_panel_end($out)
+	public function sessions_start($session)
 	{
-		global $IN, $OUT;
-		
-		$out = $this->get_last_call($out);
+		global $IN, $PREFS;
 		
 		if ($IN->GBL('ajax', 'GET') == 'y' && $IN->GBL('addon_id', 'GET') == $this->lower_class)
 		{
-			$OUT->out_type = 'html';
-			$out = $this->build_items_ui(urldecode($IN->GBL('dir', 'GET')));
+			if ($_SERVER['SERVER_PROTOCOL'] == 'HTTP/1.1' OR $_SERVER['SERVER_PROTOCOL'] == 'HTTP/1.0')
+			{
+				header($_SERVER['SERVER_PROTOCOL'] .' 200 OK', TRUE, 200);
+			}
+			else
+			{
+				header('HTTP/1.1 200 OK', TRUE, 200);
+			}
+			
+			header('Expires: Mon, 26 Jul 1997 05:00:00 GMT');
+			header('Last-Modified: ' .gmdate('D, d M Y H:i:s') .' GMT');
+			header('Pragma: no-cache');
+			header('Cache-Control: no-cache, must-revalidate');
+			header('Content-Type: text/html; charset=' .$PREFS->ini('charset'));
+			
+			exit($this->build_items_ui(urldecode($IN->GBL('dir', 'GET'))));
 		}
-		
-		return $out;
 	}
   
   
@@ -652,7 +687,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 */
 	public function display_field($field_name, $field_data, $field_settings)
 	{
-		global $FNS, $IN, $LANG, $REGX;
+		global $FNS, $IN, $LANG, $PREFS, $REGX;
 		
 		// Check that this isn't an AJAX request.
 		if ($IN->GBL('ajax', 'GET') == 'y')
@@ -670,12 +705,6 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		$this->include_js('js/cp.js');
 		$this->include_js('js/jquery.bucketlist.js');
 		$this->include_css('css/cp.css');
-		
-		// Include some inline JS, so we can write out the callback URL.
-		$ajax_script_url = $REGX->prep_query_string(BASE .'&ajax=y&addon_id=' .$this->lower_class);
-
-		$inline_js = "ajaxScriptURL = '{$ajax_script_url}';";
-		$this->insert_js($inline_js);
 		
 		// Check the AWS credentials.
 		if ( ! $this->check_amazon_credentials())
@@ -826,11 +855,14 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	{
 		global $DB;
 		
-		if ($from !== FALSE && $from < '0.8.0')
-		{
-			$sql[] = "DROP TABLE IF EXISTS exp_bucketlist_buckets";
-			$sql[] = "DROP TABLE IF EXISTS exp_bucketlist_files";
-		}
+		/**
+		 * No messing about. Just blat the lot, and start again with
+		 * a clean database cache.
+		 */
+		
+		$sql[] = 'DROP TABLE IF EXISTS exp_bucketlist_buckets';
+		$sql[] = 'DROP TABLE IF EXISTS exp_bucketlist_files';		// Pre-0.8.0 hangover.
+		$sql[] = 'DROP TABLE IF EXISTS exp_bucketlist_items';
 			
 		$sql[] = "CREATE TABLE IF NOT EXISTS exp_bucketlist_buckets (
 			bucket_id int(10) unsigned NOT NULL auto_increment,
