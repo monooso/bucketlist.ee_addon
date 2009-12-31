@@ -620,6 +620,19 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	}
 	
 	
+	/**
+	 * Custom cell settings for FF Matrix.
+	 *
+	 * @access	public
+	 * @param	array	$cell_settings	Previously-saved cell settings.
+	 * @return	string
+	 */
+	public function display_cell_settings($cell_settings = array())
+	{
+		return '';		// Don't display anything.
+	}
+	
+	
 	
 	/**
 	 * ----------------------------------------------------------------
