@@ -64,6 +64,14 @@ $.fn.bucketload = function(options) {
 			var status		= $iframe.contents().find('#status').text();
 			var message		= $iframe.contents().find('#message').text();
 			var uploadId	= $iframe.contents().find('#uploadId').text();
+			var listItem	= $iframe.contents().find('#listItem').html();
+			
+			var params = {
+				listItem	: listItem,
+				message		: message,
+				status		: status,
+				uploadId	: uploadId
+			}
 			
 			// Do we have the expected information?
 			if (status == 'undefined' || message == 'undefined' || uploadId == 'undefined') {
@@ -73,13 +81,18 @@ $.fn.bucketload = function(options) {
 				 * have to hard-code the language string here.
 				 */
 				
-				localOptions.onFailure('failure', '', uploadId);
+				params['listItem']	= '';
+				params['message']	= '';
+				params['status']	= 'failure';
+				
+				localOptions.onFailure(params);
 				
 			} else {
+				
 				// Summon the handlers.
 				(status == 'success')
-					? localOptions.onSuccess(status, message, uploadId)
-					: localOptions.onFailure(status, message, uploadId);
+					? localOptions.onSuccess(params)
+					: localOptions.onFailure(params);
 			}
 			
 			/**
@@ -152,7 +165,7 @@ $.fn.bucketload = function(options) {
 				createFile($parent);
 				
 				// Call the onStart handler.
-				localOptions.onStart($file.val(), uploadId);
+				localOptions.onStart({fileName : $file.val(), uploadId : uploadId});
 				
 			}, 1);
 			
@@ -232,10 +245,10 @@ $.fn.bucketload = function(options) {
 $.fn.bucketload.defaults = {
 	bucket		: '',
 	filePath	: '',
-	onFailure	: function(status, message, uploadId) {},
+	onFailure	: function(params) {},
 	formAction 	: '',
-	onStart		: function(fileName, uploadId) {},
-	onSuccess	: function(status, message, uploadId) {}
+	onStart		: function(params) {},
+	onSuccess	: function(params) {}
 };
 	
 })(jQuery);

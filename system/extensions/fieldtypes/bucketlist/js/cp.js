@@ -67,17 +67,15 @@ function removeUpload(uploadId) {
  * Notifies the user of a successful upload.
  *
  * @access	private
- * @param 	string 		status		The status (always 'success').
- * @param	string 		message		The success message to display.
- * @param 	string 		uploadId	The ID of the uploaded item.
+ * @param 	object		params		listItem, message, status, uploadId.
  */
-function uploadSuccess(status, message, uploadId) {
-	$('li#bucketload-status-' + uploadId)
+function uploadSuccess(params) {
+	$('li#bucketload-status-' + params.uploadId)
 		.removeClass('active')
 		.addClass('complete')
-		.html(message);
+		.html(params.message);
 		
-	setTimeout('removeUpload("' + uploadId + '")', 1500);
+	setTimeout('removeUpload("' + params.uploadId + '")', 1500);
 }
 
 
@@ -85,20 +83,18 @@ function uploadSuccess(status, message, uploadId) {
  * Notifies the user of a failed upload.
  *
  * @access	private
- * @param	string		status		The status (always 'failure').
- * @param 	string		message 	The failure message to diplay.
- * @param 	string 		uploadId	The ID of the failed item.
+ * @param	object		params		listItem, message, status, uploadId.
  */
-function uploadFailure(status, message, uploadId) {
+function uploadFailure(params) {
 	
 	if (message == '') {
-		message = languageStrings['uploadFailureGeneric'];
+		message = languageStrings.uploadFailureGeneric;
 	}
 	
-	$('#bucketload-status li#bucketload-status-' + uploadId)
+	$('#bucketload-status li#bucketload-status-' + params.uploadId)
 		.removeClass('active')
 		.addClass('error')
-		.html(message);
+		.html(params.message);
 }
 
 
@@ -107,16 +103,15 @@ function uploadFailure(status, message, uploadId) {
  * to the upload list.
  *
  * @access	private
- * @param 	string 		fileName	The name of the file being uploaded.
- * @param 	string 		uploadId	The upload ID of the item.
+ * @param	object		params		fileName, uploadId.
  */
-function uploadStart(fileName, uploadId) {
+function uploadStart(params) {
 	
 	// Stupid IE has to be different, and include some nonsense path with the file name.
-	fileName = fileName.replace(/.*(\/|\\)/, '');
+	fileName = params.fileName.replace(/.*(\/|\\)/, '');
 	
 	// Create the new item, append it to the list, and fade it in.
-	$li = $('<li class="active" id="bucketload-status-' + uploadId + '">' + fileName + '</li>');
+	$li = $('<li class="active" id="bucketload-status-' + params.uploadId + '">' + fileName + '</li>');
 	$li.appendTo('#bucketload-status ul').hide().fadeIn('fast');
 	
 	// If the status bar is currently hidden, show it.

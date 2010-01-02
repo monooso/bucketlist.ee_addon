@@ -601,7 +601,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 */
 	private function upload_file()
 	{
-		global $IN, $LANG;
+		global $DB, $IN, $LANG;
 		
 		// Paranoia.
 		if ($this->site_settings['allow_upload'] != 'y')
@@ -661,6 +661,57 @@ class Bucketlist extends Fieldframe_Fieldtype {
 			{
 				$status = 'success';
 				$message = $LANG->line('upload_success') .$file['name'];
+				
+				/**
+				 * Add the newly-uploaded file to the database. No point doing
+				 * bothering Amazon with this, especially as the bucket could
+				 * potentially contain thousands of files.
+				 */
+				
+				$now = time();
+				$item_name = $file['name'];
+				$item_path = $bucket .'/' .$path .$item_name;
+				$item_size = $file['size'];
+				$item_extension = pathinfo($item_name, PATHINFO_EXTENSION);
+				
+				$db_bucket = $DB->query("SELECT bucket_id
+					FROM exp_bucketlist_buckets
+					WHERE bucket_name = '{$bucket}'");
+					
+				/**
+				 * Quite how this could ever not be 1 is unclear,
+				 * but it doesn't hurt to check.
+				 */
+				
+				if ($db_bucket->num_rows != 1)
+				{
+					$list_item = '';
+				}
+				else
+				{
+					// Create the HTML for the new list item.
+					$list_item = "<li class='file ext_{$item_extension}'><a href='#' rel='{$item_path}'>{$item_name}</a></li>";
+					
+					$DB->query("INSERT INTO exp_bucketlist_items (
+							bucket_id,
+							item_is_folder,
+							item_last_updated,
+							item_name,
+							item_path,
+							item_size,
+							item_extension,
+							site_id
+						) VALUES (
+							'{$db_bucket->row['bucket_id']}',
+							'n',
+							'{$now}',
+							'{$item_name}',
+							'{$item_path}',
+							'{$item_size}',
+							'{$item_extension}',
+							'{$this->site_id}'
+						)");
+				}
 			}
 			else
 			{
@@ -691,6 +742,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 <p id="status">{$status}</p>
 <p id="message">{$message}</p>
 <p id="uploadId">{$upload_id}</p>
+<p id="listItem">{$list_item}</p>
 </body>
 </html>
 _HTML_;
