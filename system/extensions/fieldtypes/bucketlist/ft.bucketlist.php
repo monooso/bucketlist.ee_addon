@@ -899,7 +899,7 @@ _HTML_;
 		// Include external JS and CSS.
 		$this->include_js('js/cp.js');
 		$this->include_js('js/jquery.bucketlist.js');
-		$this->include_js('js/jquery.bucketload.js');
+		// $this->include_js('js/jquery.bucketload.js');
 		$this->include_css('css/cp.css');
 		
 		// Language strings, for use in the JS.

@@ -121,26 +121,6 @@ function uploadStart(params) {
 }
 
 
-/**
- * Called when a tree branch is loaded. Initialises the file upload for the
- * specified branch.
- *
- * @access	public
- * @param 	object 		$target		A jQuery object containing the branch parent.
- * @param 	string		filePath	The filePath for this branch (bucket/folder/subFolder/).
- */
-function handleBranchLoad($target, filePath) {
-	// Extract the bucket and path.
-	bucketName 	= filePath.substring(0, filePath.indexOf('/'));
-	filePath	= filePath.substring(bucketName.length + 1);
-	
-	$target.find('.upload a').bucketload({
-		bucket		: bucketName,
-		filePath	: filePath
-	});
-}
-
-
 
 /**
  * ------------------------------------------------------------------
@@ -152,14 +132,13 @@ function handleBranchLoad($target, filePath) {
  * Called when a file is selected in the file browser.
  *
  * @access	public
- * @param	object 		$target		A jQuery object containing the target anchor element.
- * @param 	string		filename	The filename (including full path).
+ * @param	object		params		$target, fileName.
  */
-function handleFileClick($target, filename) {
+function handleFileClick(params) {
 	// Make a note of the selected filename.
-	$target.parents('.eepro-co-uk').find(':hidden').val(filename);
-	$target.parents('.eepro-co-uk').find('.selected').removeClass('selected');
-	$target.parent().addClass('selected');
+	params.$target.parents('.eepro-co-uk').find(':hidden').val(params.fileName);
+	params.$target.parents('.eepro-co-uk').find('.selected').removeClass('selected');
+	params.$target.parent().addClass('selected');
 }
 
 
@@ -200,12 +179,6 @@ $(document).ready(function() {
 	
 	// Hide the status bar, in case it isn't already.
 	displayStatusBar(false);
-
-	// Set the defaults, so we don't have to do it for each instance.
-	$.fn.bucketload.defaults.formAction	= baseAjaxURL + 'upload';
-	$.fn.bucketload.defaults.onFailure 	= uploadFailure;
-	$.fn.bucketload.defaults.onStart	= uploadStart;
-	$.fn.bucketload.defaults.onSuccess	= uploadSuccess;
 	
 	
 	/**
@@ -214,9 +187,13 @@ $(document).ready(function() {
 	 * ------------------------------------------------------------------
 	 */
 	
-	$.fn.bucketlist.defaults.ajaxScriptURL 	= baseAjaxURL + 'tree';
-	$.fn.bucketlist.defaults.onFileClick	= handleFileClick;
-	$.fn.bucketlist.defaults.onBranchLoad	= handleBranchLoad;
+	$.fn.bucketlist.defaults.ajaxScriptURL 		= baseAjaxURL + 'tree';
+	$.fn.bucketlist.defaults.languageStrings 	= languageStrings;
+	$.fn.bucketlist.defaults.onFileClick		= handleFileClick;
+	$.fn.bucketlist.defaults.uploadFormAction	= baseAjaxURL + 'upload';
+	$.fn.bucketlist.defaults.onUploadFailure 	= uploadFailure;
+	$.fn.bucketlist.defaults.onUploadStart		= uploadStart;
+	$.fn.bucketlist.defaults.onUploadSuccess	= uploadSuccess;
 	
 	// Initialise non-matrix file trees.
 	$('.ff-ft > .eepro-co-uk > .bucketlist-ui').each(function() {
