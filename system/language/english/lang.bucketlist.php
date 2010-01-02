@@ -4,6 +4,8 @@ $L = array(
 
 'site_settings_heading'	=> 'BucketList Settings',
 'access_key_id'			=> 'Access Key ID',
+'allow_upload'			=> 'Allow Users to Upload Files?',
+'allow_upload_hint'		=> 'Any uploaded files will have their permission set to "Public Read".',
 'secret_access_key'		=> 'Secret Access Key',
 'custom_url'			=> 'Use Custom URL?',
 'custom_url_hint'		=> 'Be sure to <a href="http://www.wrichards.com/blog/2009/02/customize-your-amazon-s3-url/">configure your CNAME records</a> before setting this to yes.',
@@ -37,6 +39,13 @@ $L = array(
 
 'loading' 				=> 'Loading&hellip;',
 'no_items'				=> 'No available items.',
+
+// Uploading.
+'upload_failure_missing_info'	=> 'Upload failed due to missing information.',
+'upload_failure_generic'		=> 'Unable to upload ',
+'upload_failure_unknown'		=> 'Upload failed.',
+'upload_here'					=> 'Upload a file to this location',
+'upload_success'				=> 'Uploaded ',
 
 // All done.
 '' => ''

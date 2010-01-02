@@ -69,7 +69,7 @@ $.fn.bucketlist = function(options) {
 				} // if (collapsed)
 
 			} else {
-				localOptions.callbackHandler($target.attr('rel'), $target);
+				localOptions.onFileClick($target, $target.attr('rel'));
 			} // if (directory)
 		};
 
@@ -102,8 +102,14 @@ $.fn.bucketlist = function(options) {
 					// Remove the loading animation.
 					$li.find('start').html('');
 					$li.removeClass('wait').append(htmlFragment);
-
-					path == '' ? $li.find('ul:hidden').show() : $li.find('ul:hidden').slideDown({duration : 500});
+					
+					// If the path is empty, we're loading the root 'buckets'.
+					if (path == '') {
+						$li.find('ul:hidden').show();
+					} else {
+						$li.find('ul:hidden').slideDown({duration : 500});
+						localOptions.onBranchLoad($li, path);
+					}
 					
 					// Are we auto-displaying an initial file?
 					if ($.isArray(initialFilePath)
@@ -161,9 +167,10 @@ function log(message) {
  * Plugin defaults.
  */
 $.fn.bucketlist.defaults = {
-	ajaxScriptURL			: '',
-	callbackHandler	: null,
-	initialFile		: ''
+	ajaxScriptURL	: '',
+	initialFile		: '',
+	onBranchLoad	: function($target, filePath) {},
+	onFileClick		: function($target, filename) {}
 };
 	
 })(jQuery);

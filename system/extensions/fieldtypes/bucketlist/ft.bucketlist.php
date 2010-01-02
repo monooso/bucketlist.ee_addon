@@ -4,7 +4,7 @@
  * Fieldtype extension enabling integration of Amazon S3 with your ExpressionEngine website.
  *
  * @package   	BucketList
- * @version   	1.0.0b4
+ * @version   	1.1.0b1
  * @author    	Stephen Lewis <addons@eepro.co.uk>
  * @copyright 	Copyright (c) 2009, Stephen Lewis
  * @link      	http://eepro.co.uk/bucketlist/
@@ -22,7 +22,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 */
 	public $info = array(
 		'name'				=> 'BucketList',
-		'version'			=> '1.0.0b4',
+		'version'			=> '1.1.0b1',
 		'desc'				=> 'Effortlessly integrate Amazon S3 storage with your ExpressionEngine site.',
 		'docs_url'			=> 'http://experienceinternet.co.uk/bucketlist/',
 		'versions_xml_url'	=> 'http://experienceinternet.co.uk/addon-versions.xml'
@@ -55,6 +55,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 */
 	public $default_site_settings = array(
 		'access_key_id'		=> '',
+		'allow_upload'		=> 'y',
 		'secret_access_key'	=> '',
 		'cache_duration' 	=> '3600',		// 60 minutes
 		'use_ssl' 			=> 'n',
@@ -531,11 +532,16 @@ class Bucketlist extends Fieldframe_Fieldtype {
 			}
 		}
 		
+		// Open the list of files and folders.
+		$ret = "<ul class='bucketlist-tree' style='display : none;'>";
+		
+		if ($this->site_settings['allow_upload'] == 'y')
+		{
+			$ret .= '<li class="upload"><a href="#">' .$LANG->line('upload_here') .'</a></li>';
+		}
+		
 		if ($folders OR $files)
 		{
-			// Open the list of files and folders.
-			$ret = "<ul class='bucketlist-tree' style='display : none;'>";
-			
 			// Add the folders to the list.
 			foreach ($folders AS $f)
 			{
@@ -547,15 +553,151 @@ class Bucketlist extends Fieldframe_Fieldtype {
 			{
 				$ret .= "<li class='file ext_{$f['item_extension']}'><a href='#' rel='{$f['item_path']}'>{$f['item_name']}</a></li>";
 			}
+		}
 		
-			// Close the list of files and folders.
-			$ret .= '</ul>';
+		// Close the list of files and folders.
+		$ret .= '</ul>';
+		
+		return $ret;
+	}
+	
+	
+	/**
+	 * Retrieves the requests file tree fragment, and returns it.
+	 *
+	 * @access	private
+	 * @param 	string		$parent_directory		The root of this file tree branch.
+	 * @return	void
+	 */
+	private function output_branch($parent_directory = '')
+	{
+		global $PREFS;
+		
+		if ($_SERVER['SERVER_PROTOCOL'] == 'HTTP/1.1' OR $_SERVER['SERVER_PROTOCOL'] == 'HTTP/1.0')
+		{
+			header($_SERVER['SERVER_PROTOCOL'] .' 200 OK', TRUE, 200);
 		}
 		else
 		{
-			$ret = '<ul class="bucketlist-tree" style="display : none;"><li class="empty">' .$LANG->line('no_items') .'</li></ul>';
+			header('HTTP/1.1 200 OK', TRUE, 200);
 		}
-		return $ret;
+		
+		header('Expires: Mon, 26 Jul 1997 05:00:00 GMT');
+		header('Last-Modified: ' .gmdate('D, d M Y H:i:s') .' GMT');
+		header('Pragma: no-cache');
+		header('Cache-Control: no-cache, must-revalidate');
+		header('Content-Type: text/html; charset=' .$PREFS->ini('charset'));
+		
+		exit($this->build_items_ui($parent_directory));
+	}
+	
+	
+	/**
+	 * Forwards the just-uploaded file to Amazon S3, and writes out a
+	 * response document based on the success or failure of the operation.
+	 *
+	 * @access	private
+	 * @return	void
+	 */
+	private function upload_file()
+	{
+		global $IN, $LANG;
+		
+		// Paranoia.
+		if ($this->site_settings['allow_upload'] != 'y')
+		{
+			return false;
+		}
+		
+		/**
+		 * This is being called from the sessions_start method, so the
+		 * $LANG global variable probably hasn't been instantiated yet.
+		 */
+		
+		if ( ! isset($LANG))
+		{
+			require PATH_CORE .'core.language' .EXT;
+			$LANG = new Language();
+		}
+		
+		$LANG->fetch_language_file($this->lower_class);
+
+		/**
+		 * Retrieve the submitted file from the field entitled "file".
+		 */
+
+		$file = isset($_FILES['file']) ? $_FILES['file'] : array();
+
+		// Retrieve the bucket, file path, and upload ID.
+		$bucket 	= $IN->GBL('bucket', 'POST');
+		$path 		= $IN->GBL('path', 'POST');
+		$upload_id	= $IN->GBL('upload_id', 'POST');
+
+		if ( ! $file OR ! $bucket OR ! $upload_id OR $path === FALSE)
+		{
+			$status = 'failure';
+			$message = $LANG->line('upload_failure_missing_info');
+		}
+		else
+		{
+			// Tidy up the path.
+			$path = ($path != '' ? rtrim($path, '/') .'/' : '');
+
+			// Determine the full filename, with path.
+			$uri = $path .$file['name'];
+
+			// Retrieve the Amazon account credentials.
+			$access_key = $this->site_settings['access_key_id'];
+			$secret_key = $this->site_settings['secret_access_key'];
+
+			// Create the S3 instance.
+			$s3 = new S3($access_key, $secret_key, FALSE);
+
+			// Generate the input array for our file.
+			$input = $s3->inputFile($file['tmp_name']);
+
+			// Upload the file.
+			if ($s3->putObject($input, $bucket, $uri, S3::ACL_PUBLIC_READ))
+			{
+				$status = 'success';
+				$message = $LANG->line('upload_success') .$file['name'];
+			}
+			else
+			{
+				$status = 'failure';
+				$message = $LANG->line('upload_failure_generic') .$file['name'];
+			}
+		}
+
+		// Ensure the message is SFW.
+		$message = htmlentities($message);
+
+		/**
+		 * Create the HTML document. Why, you may ask, do we not
+		 * respond with XML, or perhaps even JSON?
+		 *
+		 * Simple, Internet Explorer, and can't handle XML. JSON
+		 * is even more problematic.
+		 */
+
+		$return = <<<_HTML_
+<!doctype html>
+<html>
+<head>
+	<meta charset="utf=8">
+	<title>Amazon S3 Response</title>
+</head>
+<body>
+<p id="status">{$status}</p>
+<p id="message">{$message}</p>
+<p id="uploadId">{$upload_id}</p>
+</body>
+</html>
+_HTML_;
+
+		// Output the return document.
+		header('Content-Type: text/html');
+		exit($return);
 	}
 	
 	
@@ -620,19 +762,6 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	}
 	
 	
-	/**
-	 * Custom cell settings for FF Matrix.
-	 *
-	 * @access	public
-	 * @param	array	$cell_settings	Previously-saved cell settings.
-	 * @return	string
-	 */
-	public function display_cell_settings($cell_settings = array())
-	{
-		return '';		// Don't display anything.
-	}
-	
-	
 	
 	/**
 	 * ----------------------------------------------------------------
@@ -655,7 +784,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		$this->namespace	= 'sl';
 	}
 	
-  
+	
 	/**
 	 * Handles AJAX requests.
 	 *
@@ -665,26 +794,27 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 */
 	public function sessions_start($session)
 	{
-		global $IN, $PREFS;
+		global $IN;
 		
 		if ($IN->GBL('ajax', 'GET') == 'y' && $IN->GBL('addon_id', 'GET') == $this->lower_class)
 		{
-			if ($_SERVER['SERVER_PROTOCOL'] == 'HTTP/1.1' OR $_SERVER['SERVER_PROTOCOL'] == 'HTTP/1.0')
-			{
-				header($_SERVER['SERVER_PROTOCOL'] .' 200 OK', TRUE, 200);
-			}
-			else
-			{
-				header('HTTP/1.1 200 OK', TRUE, 200);
-			}
+			// We're either being summoned by the file tree, or the uploader. Which is it?
+			$request = $IN->GBL('request', 'GET');
 			
-			header('Expires: Mon, 26 Jul 1997 05:00:00 GMT');
-			header('Last-Modified: ' .gmdate('D, d M Y H:i:s') .' GMT');
-			header('Pragma: no-cache');
-			header('Cache-Control: no-cache, must-revalidate');
-			header('Content-Type: text/html; charset=' .$PREFS->ini('charset'));
-			
-			exit($this->build_items_ui(urldecode($IN->GBL('dir', 'GET'))));
+			switch ($request)
+			{
+				case 'tree':
+					$this->output_branch(urldecode($IN->GBL('dir', 'GET')));
+					break;
+					
+				case 'upload':
+					$this->upload_file();
+					break;
+					
+				default:
+					// No idea.
+					break;
+			}
 		}
 	}
   
@@ -717,7 +847,14 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		// Include external JS and CSS.
 		$this->include_js('js/cp.js');
 		$this->include_js('js/jquery.bucketlist.js');
+		$this->include_js('js/jquery.bucketload.js');
 		$this->include_css('css/cp.css');
+		
+		// Language strings, for use in the JS.
+		$upload_failure = str_replace(array('"', '"'), '', $LANG->line('upload_failure_unknown'));
+		$js_language = "var languageStrings = {uploadFailureGeneric : '{$upload_failure}'};";
+		
+		$this->insert_js($js_language);
 		
 		// Check the AWS credentials.
 		if ( ! $this->check_amazon_credentials())
@@ -846,6 +983,11 @@ class Bucketlist extends Fieldframe_Fieldtype {
 			);
 			
 		$ret .= $sd->row(array(
+			$sd->label('allow_upload', 'allow_upload_hint'),
+			$sd->select('allow_upload', $settings['allow_upload'], $options)
+			));
+			
+		$ret .= $sd->row(array(
 			$sd->label('custom_url', 'custom_url_hint'),
 			$sd->select('custom_url', $settings['custom_url'], $options)
 			));
@@ -855,6 +997,19 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		
 		// Return the settings block.
 		return $ret;
+	}
+	
+	
+	/**
+	 * Custom cell settings for FF Matrix.
+	 *
+	 * @access	public
+	 * @param	array	$cell_settings	Previously-saved cell settings.
+	 * @return	string
+	 */
+	public function display_cell_settings($cell_settings = array())
+	{
+		return '';		// Don't display anything.
 	}
 	
 	

@@ -59,7 +59,7 @@ margin : 0;
 padding : 0;
 }
 
-.bucketlist-ui .bucketlist-tree ul {margin-left : 15px;}
+.bucketlist-ui .bucketlist-tree ul {margin-left : 18px;}
 
 .bucketlist-ui .bucketlist-tree a {
 background-position : 6px 1px;
@@ -101,7 +101,102 @@ font-size : 11px;
 line-height : 20px;
 }
 
-/* jqueryFileTree icons */
+/* Upload styles. */
+.bucketlist-ui .bucketlist-tree .upload {
+border-bottom : 1px dotted #B1B6D2;
+margin-right : 5px;
+position : relative;
+}
+
+.bucketlist-ui .bucketlist-tree .upload:last-child {border-bottom : none;}
+
+.bucketlist-ui .bucketload {
+cursor : pointer;
+display : block;
+height : 20px;
+overflow : hidden;
+width : 100%;
+}
+
+.bucketlist-ui .bucketload input[type='file'] {
+cursor : pointer;
+filter : alpha(opacity='0');		/* God I hate you IE */
+height : 100%;
+opacity : 0;
+position : relative;
+width : auto;
+z-index : 2;
+}
+
+.bucketlist-ui .bucketload a {
+left : 0;
+position : absolute;
+top : 0;
+z-index : 1;
+}
+
+#bucketload-status {
+background : #F4F4F4 url(../img/uploads-bg.jpg) repeat-x 0 100%;
+border-top : 1px solid #CCC;
+bottom : -150px;
+box-shadow : 0 -1px 3px rgba(0, 0, 0, 0.15);
+left : 0%;
+-moz-box-shadow : 0 -1px 3px rgba(0, 0, 0, 0.15);
+position : fixed;
+-webkit-box-shadow : 0 -1px 3px rgba(0, 0, 0, 0.15);
+width : 100%;
+z-index : 2147483583;		/* Maximum z-index supported by Opera. */
+}
+
+#bucketload-status ul {
+border-top : 1px solid #FFF;
+list-style : none;
+margin : 0;
+min-height : 42px;
+padding : 10px 0 10px 10px;
+}
+
+#bucketload-status ul:after {
+clear : both;
+display : block;
+height : 0;
+visibility : hidden;
+content : ".";
+}
+
+#bucketload-status li {
+background-color : #F2F2F2;
+background-color : rgba(255, 255, 255, 0.5);
+background-image : url(../img/icons/spinner.gif);
+background-position : 10px 50%;
+background-repeat : no-repeat;
+border-top : 1px solid #CCC;
+border-top-color : rgba(0, 0, 0, 0.25);
+border-bottom : 1px solid #F4F4F4;
+border-bottom-color : rgba(255, 255, 255, 0.9);
+float : left;
+font : normal 11px/20px "Lucida Grande", Tahoma, Verdana, sans-serif;
+height : 20px;
+margin : 0 10px 0 0;
+-moz-border-radius : 3px;
+overflow : hidden;
+padding : 10px 10px 10px 30px;
+text-shadow : 0 1px 0 rgba(255, 255, 255, 0.5);
+white-space : nowrap;
+-webkit-border-radius : 3px;
+}
+
+#bucketload-status .complete {background-image : url(../img/icons/tick.png);}
+
+#bucketload-status .error {
+background-color : #FFF;
+color : #900;
+background-image : url(../img/icons/exclamation-hard.png);
+font-weight : bold;
+}
+
+
+/* File tree icons. */
 .bucketlist-ui .bucketlist-tree .directory > a {background-image : url(../img/icons/folder-closed.png);}
 
 .bucketlist-ui .bucketlist-tree .expanded > a {background-image : url(../img/icons/folder-open.png);}
@@ -109,6 +204,11 @@ line-height : 20px;
 .bucketlist-ui .bucketlist-tree .file > a {background-image : url(../img/icons/file-generic.png);}
 
 .bucketlist-ui .bucketlist-tree .wait > a {background-image : url(../img/icons/spinner.gif);}
+
+.bucketlist-ui .bucketlist-tree .upload a {
+background-image : url(../img/icons/file-upload.png);
+color : #666;
+}
 
 .bucketlist-ui .bucketlist-tree .ext_3gp > a,
 .bucketlist-ui .bucketlist-tree .ext_avi > a,
