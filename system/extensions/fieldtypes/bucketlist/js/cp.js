@@ -7,12 +7,6 @@
  * @link 		http://eepro.co.uk/bucketlist/
  */
 
-/**
- * ------------------------------------------------------------------
- * BucketLoad JavaScript (the uploading stuff).
- * ------------------------------------------------------------------
- */
-
 // Is the downloads status bar visible?
 statusActive = false;
 
@@ -121,13 +115,6 @@ function uploadStart(params) {
 }
 
 
-
-/**
- * ------------------------------------------------------------------
- * BucketList JavaScript (the file tree stuff).
- * ------------------------------------------------------------------
- */
-
 /**
  * Called when a file is selected in the file browser.
  *
@@ -163,32 +150,18 @@ $(document).ready(function() {
 	 * 2. Everything will work in the CP, and in a SAEF. Spiffing.
 	 */
 	
-	baseAjaxURL	= document.location.href;
-	baseAjaxURL	+= (baseAjaxURL.indexOf('?') === false) ? '?' : '&';
-	baseAjaxURL	+= 'ajax=y&addon_id=bucketlist&request=';
-	
-	
-	/**
-	 * ------------------------------------------------------------------
-	 * BucketLoad.
-	 * ------------------------------------------------------------------
-	 */
-	
 	// Create the upload status bar.
 	$('body').append('<div id="bucketload-status"><ul></ul></div>');
 	
 	// Hide the status bar, in case it isn't already.
 	displayStatusBar(false);
 	
-	
-	/**
-	 * ------------------------------------------------------------------
-	 * BucketList.
-	 * ------------------------------------------------------------------
-	 */
+	baseAjaxURL	= document.location.href;
+	baseAjaxURL	+= (baseAjaxURL.indexOf('?') === false) ? '?' : '&';
+	baseAjaxURL	+= 'ajax=y&addon_id=bucketlist&request=';
 	
 	$.fn.bucketlist.defaults.ajaxScriptURL 		= baseAjaxURL + 'tree';
-	$.fn.bucketlist.defaults.languageStrings 	= languageStrings;
+	/* $.fn.bucketlist.defaults.languageStrings 	= languageStrings;		/* Not used at present. */
 	$.fn.bucketlist.defaults.onFileClick		= handleFileClick;
 	$.fn.bucketlist.defaults.uploadFormAction	= baseAjaxURL + 'upload';
 	$.fn.bucketlist.defaults.onUploadFailure 	= uploadFailure;
@@ -200,12 +173,35 @@ $(document).ready(function() {
 		$(this).bucketlist({initialFile : $(this).parents('.eepro-co-uk').find('input:hidden').val()});
 	});
 	
+	// Initialise matrix file trees.
 	if (typeof $.fn.ffMatrix != 'undefined') {
-		// Initialise matrix file trees. Also handles new table cells as they are created.
-		$.fn.ffMatrix.onDisplayCell.bucketlist = function($td, $ffm) {
-			$('.bucketlist-ui', $td).each(function() {
-				$(this).bucketlist({initialFile : $(this).parents('.eepro-co-uk').find('input:hidden').val()});
-			});
+		
+		/**
+		 * Initialise matrix file trees. Also handles new table cells as
+		 * they are created.
+		 *
+		 * This is the only way of doing this at present, but by Brandon's
+		 * own admission is a trifle flakey, and has a habit of running
+		 * twice.
+		 *
+		 * I tried checking for the presence of the BucketList file tree,
+		 * but that wasn't working. Setting a class 'flag' on the td
+		 * works fine though.
+		 *
+		 * Of course, we're screwed if FF Matrix ever fails to trigger
+		 * this method.
+		 */
+		
+		$.fn.ffMatrix.onDisplayCell.bucketlist = function(td, matrix) {
+			$td = $(td);
+			
+			if ($td.hasClass('.bucketlist-ready') == false) {
+				$td.addClass('bucketlist-ready').find('.bucketlist-ui').each(function() {
+					$(this).bucketlist({
+						initialFile : $(this).parents('.eepro-co-uk').find('input:hidden').val()
+					});
+				});
+			}
 		}
 	}
 });

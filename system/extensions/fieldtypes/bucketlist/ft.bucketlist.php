@@ -563,7 +563,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	
 	
 	/**
-	 * Retrieves the requests file tree fragment, and returns it.
+	 * Retrieves the requested file tree fragment, and returns it.
 	 *
 	 * @access	private
 	 * @param 	string		$parent_directory		The root of this file tree branch.
@@ -690,7 +690,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 				else
 				{
 					// Create the HTML for the new list item.
-					$list_item = "<li class='file ext_{$item_extension}'><a href='#' rel='{$item_path}'>{$item_name}</a></li>";
+					$list_item = '<li class="file ext_' .$item_extension .'"><a href="#" rel="' .$item_path .'">' .$item_name .'</a></li>';
 					
 					$DB->query("INSERT INTO exp_bucketlist_items (
 							bucket_id,
@@ -727,7 +727,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		 * Create the HTML document. Why, you may ask, do we not
 		 * respond with XML, or perhaps even JSON?
 		 *
-		 * Simple, Internet Explorer, and can't handle XML. JSON
+		 * Simple, Internet Explorer and can't handle XML. JSON
 		 * is even more problematic.
 		 */
 
@@ -742,7 +742,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 <p id="status">{$status}</p>
 <p id="message">{$message}</p>
 <p id="uploadId">{$upload_id}</p>
-<p id="listItem">{$list_item}</p>
+<ul id="listItem">{$list_item}</ul>
 </body>
 </html>
 _HTML_;
@@ -755,9 +755,8 @@ _HTML_;
 	
 	/**
 	 * Temporarily retired method to display the fieldtype field settings form.
-	 * Refer to the get_available_buckets method for more details on why there
-	 * are no longer any field settings.
 	 *
+	 * @see		get_available_buckets
 	 * @access	private
 	 * @param	array		$field_settings		Any previously saved field settings.
 	 * @return	array
@@ -899,7 +898,6 @@ _HTML_;
 		// Include external JS and CSS.
 		$this->include_js('js/cp.js');
 		$this->include_js('js/jquery.bucketlist.js');
-		// $this->include_js('js/jquery.bucketload.js');
 		$this->include_css('css/cp.css');
 		
 		// Language strings, for use in the JS.

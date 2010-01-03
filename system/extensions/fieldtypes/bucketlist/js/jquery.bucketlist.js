@@ -25,6 +25,9 @@ $.fn.bucketlist = function(options) {
 		// Element-specific options.
 		var localOptions = $.meta ? $.extend({}, globalOptions, $this.data()) : globalOptions;
 		
+		// In-progress uploads.
+		var uploads = {};
+		
 		// Flag to hide the initial loading message.
 		var initialLoad = true;
 		
@@ -194,20 +197,55 @@ $.fn.bucketlist = function(options) {
 				(status == 'success')
 					? localOptions.onUploadSuccess(params)
 					: localOptions.onUploadFailure(params);
+				
+				// Locate the correct bucket and folder.
+				if (uploads[uploadId] != 'undefined') {
+					
+					// Get the branch root.
+					var $branchRoot = uploads[uploadId];
+					
+					// Create the (orphan) list item.
+					var $listItem = $(listItem).hide();
+					
+					// What is the list item's file name?
+					var listItemFileName = $listItem.find('a').text().toLowerCase();
+					
+					/**
+					 * Determine the point at which to insert the new item (alphabetically).
+					 * Admitted defeat after trying to achieve this with $.map. May return
+					 * to it, due to unhealthy stubborness.
+					 */
+					
+					// Does the branch have any files at all?
+					if ($branchRoot.children('.file').length == 0) {
+						$listItem.appendTo($branchRoot);
+						
+					} else {
+						
+						var $successor = false;
+						
+						$branchRoot.find('> .file a').each(function(index) {
+							if ($(this).text().toLowerCase() > listItemFileName) {
+								$successor = $(this);
+								return false;		// Stop the loop.
+							}
+						});
+
+						if ($successor != false) {
+							$listItem.insertBefore($successor);
+						} else {
+							$listItem.appendTo($branchRoot);
+						}
+					}
+					
+					// Insert the item, and animate its arrival.
+					$listItem.slideDown(350);
+						
+					// Remove the item from the uploads object.
+					delete uploads.uploadId;
+				}
 			}
 			
-			/**
-			 * Add the new item to the target list.
-			 */
-			
-			// Locate the correct bucket and folder.
-			
-			// Determine the point at which to insert the new item (alphabetically).
-			
-			// Insert the item, hidden and with a height of 0.
-			
-			// Fade in and slide down the item.
-
 			/**
 			 * Originally we were setting this to "javascript: '<html></html>';"
 			 * but that crashes Safari when the Web Inspector is open. Seriously.
@@ -275,10 +313,13 @@ $.fn.bucketlist = function(options) {
 
 				// Submit the form.
 				$iframe.contents().find('form').submit();
-
+				
 				// Add a callback handler to the iframe.
 				$iframe.bind('load', amazonResponse);
-
+				
+				// Make a note of the uploadId, and its location.
+				uploads[uploadId] = $parent.closest('ul.bucketlist-tree');
+				
 				// Create a new file field.
 				createFile($parent);
 
