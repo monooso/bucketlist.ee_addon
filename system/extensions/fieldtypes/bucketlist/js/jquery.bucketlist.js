@@ -1,12 +1,14 @@
 /**
- * BucketList JavaScript. Borrowed heavily from the jQuery File Tree plugin, by
- * Cory S.N. LaViska (http://abeautifulsite.net).
+ * BucketList JavaScript. Handles the creation and display of the file
+ * tree, and uploading.
+ *
+ * Original inspiration for the file tree code came from a jQuery plugin
+ * by Cory S.N. LaViska (http://abeautifulsite.net).
  *
  * @package		BucketList
  * @author 		Stephen Lewis (http://eepro.co.uk/)
  * @copyright 	Copyright (c) 2009, Stephen Lewis
  * @link 		http://eepro.co.uk/bucketlist/
- * @see 		http://abeautifulsite.net/
  */
 
 (function($) {
@@ -301,11 +303,12 @@ $.fn.bucketlist = function(options) {
 
 			// Create and hide the iframe.
 			var iframeId = 'bucketload-iframe-' + uploadId;
-
+			
+			// Create iframe using document
 			var $iframe = $('<iframe id="' + iframeId + '" name="' + iframeId + '"></iframe>')
 				.appendTo('body')
 				.hide();
-
+				
 			// Wait a moment for the iframe to be added to the document.
 			setTimeout(function() {
 				// Populate the iframe.
