@@ -119,6 +119,8 @@ overflow : hidden;
 width : 100%;
 }
 
+html > body .bucketlist-ui .bucketload {*position : relative;}	/* IE7 overflow fix */
+
 .bucketlist-ui .bucketload input[type='file'] {
 cursor : pointer;
 filter : alpha(opacity='0');		/* God I hate you IE */
@@ -164,6 +166,8 @@ height : 0;
 visibility : hidden;
 content : ".";
 }
+
+html > body #bucketload-status ul {*zoom : 1;}	/* IE7 :after fix */
 
 #bucketload-status li {
 background-color : #F2F2F2;
