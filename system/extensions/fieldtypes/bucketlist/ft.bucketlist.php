@@ -153,9 +153,11 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	
 	
 	/**
-	 * Returns a list of items contained within the specified bucket. The
-	 * session cache is checked, followed by the database cache, before
-	 * Amazon S3 is queried.
+	 * Returns an associative array containing two arrays, one of all
+	 * the folders in the specified bucket, the other of all the files.
+	 *
+	 * The session cache is checked, followed by the database cache,
+	 * before Amazon S3 is queried.
 	 *
 	 * @access	private
 	 * @param 	string		$bucket		The parent bucket.
@@ -199,21 +201,51 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		// Check the database cache.
 		if ( ! $items)
 		{
-			$db_items = $DB->query("SELECT
+			$db_folders = $DB->query("SELECT
 					items.item_extension,
 					items.item_name,
 					items.item_path
 				FROM exp_bucketlist_items AS items
 				WHERE items.site_id = '{$this->site_id}'
 				AND items.bucket_id = '{$bucket_id}'
+				AND items.item_is_folder = 'y'
+				ORDER BY items.item_name ASC");
+			
+			$db_files = $DB->query("SELECT
+					items.item_extension,
+					items.item_name,
+					items.item_path
+				FROM exp_bucketlist_items AS items
+				WHERE items.site_id = '{$this->site_id}'
+				AND items.bucket_id = '{$bucket_id}'
+				AND items.item_is_folder = 'n'
 				ORDER BY items.item_name ASC");
 				
-			foreach ($db_items->result AS $db_item)
+			if ($db_folders->num_rows > 0 OR $db_files->num_rows > 0)
 			{
-				$items[] = array(
-					'item_extension' => $db_item['item_extension'],
-					'item_name' => $db_item['item_name'],
-					'item_path' => $db_item['item_path']);
+				$items = array('folders' => array(), 'files' => array());
+				
+				// Folders.
+				foreach ($db_folders->result AS $db_folder)
+				{
+					$items['folders'][] = array(
+						'item_extension' 	=> $db_folder['item_extension'],
+						'item_name' 		=> $db_folder['item_name'],
+						'item_path' 		=> $db_folder['item_path'],
+						'item_is_folder'	=> 'y'
+					);
+				}
+				
+				// Files.
+				foreach ($db_files->result AS $db_file)
+				{
+					$items['files'][] = array(
+						'item_extension' 	=> $db_file['item_extension'],
+						'item_name' 		=> $db_file['item_name'],
+						'item_path' 		=> $db_file['item_path'],
+						'item_is_folder'	=> 'n'
+					);
+				}
 			}
 		}
 
@@ -245,12 +277,12 @@ class Bucketlist extends Fieldframe_Fieldtype {
 				foreach ($s3_items AS $s3_item)
 				{
 					$item_is_folder 	= (substr($s3_item['name'], -1) == '/') ? 'y' : 'n';
-					$item_last_updated 	= $s3_item['time'];
-					$item_extension		= pathinfo($s3_item['name'], PATHINFO_EXTENSION);
+					$item_last_updated 	= $DB->escape_str($s3_item['time']);
+					$item_extension		= $DB->escape_str(pathinfo($s3_item['name'], PATHINFO_EXTENSION));
 					
-					$item_name = pathinfo($s3_item['name'], PATHINFO_BASENAME);
-					$item_path = $bucket_name .'/' .$s3_item['name'];
-					$item_size = $s3_item['size'];
+					$item_name = $DB->escape_str(pathinfo($s3_item['name'], PATHINFO_BASENAME));
+					$item_path = $DB->escape_str($bucket_name .'/' .$s3_item['name']);
+					$item_size = $DB->escape_str($s3_item['size']);
 					
 					$sql .= "('{$bucket_id}',
 						'{$item_is_folder}',
@@ -355,7 +387,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 				
 				foreach ($s3_buckets AS $s3_bucket)
 				{
-					$sql .= "('{$this->site_id}', '{$s3_bucket}', '{$cache_date}'), ";
+					$sql .= "('{$this->site_id}', '" .$DB->escape_str($s3_bucket) ."', '{$cache_date}'), ";
 				}
 				
 				$sql = rtrim($sql, ', ');
@@ -477,14 +509,14 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 * Builds the UL used to display the items within a bucket or directory.
 	 *
 	 * @access		private
-	 * @param 		string		$parent_dir		The parent directory path.
+	 * @param 		string		$file_path		The file path.
 	 * @return 		string
 	 */
-	private function build_items_ui($parent_dir = '')
+	private function build_items_ui($file_path = '')
 	{
 		global $LANG;
 		
-		if ( ! $parent_dir)
+		if ( ! $file_path)
 		{
 			return $this->build_buckets_ui();
 		}
@@ -506,31 +538,10 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		$LANG->fetch_language_file($this->lower_class);
 		
 		// Extract the bucket name.
-		$bucket_name = substr($parent_dir, 0, strpos($parent_dir, '/'));
+		$bucket_name = substr($file_path, 0, strpos($file_path, '/'));
 		
 		// Retrieve the items residing in the bucket.
 		$items = $this->get_items($bucket_name);
-		
-		// Separate into files and folders.
-		$folders 			= array();
-		$files 				= array();
-		$parent_dir_pattern	= $this->clean_string_for_regexp($parent_dir);
-		
-		$folder_pattern	= '/^' .$parent_dir_pattern .'[^\.]{1}[^\/\.]*?\/{1}$/';
-		$file_pattern	= '/^' .$parent_dir_pattern .'[^\.]{1}[^\/]*?\.{1}.*$/';
-		
-		foreach ($items AS $item)
-		{
-			if (preg_match($folder_pattern, $item['item_path']))
-			{
-				$folders[] = $item;
-			}
-			
-			if (preg_match($file_pattern, $item['item_path']))
-			{
-				$files[] = $item;
-			}
-		}
 		
 		// Open the list of files and folders.
 		$ret = "<ul class='bucketlist-tree' style='display : none;'>";
@@ -540,19 +551,50 @@ class Bucketlist extends Fieldframe_Fieldtype {
 			$ret .= '<li class="upload"><a href="#">' .$LANG->line('upload_here') .'</a></li>';
 		}
 		
-		if ($folders OR $files)
+		if (array_key_exists('folders', $items)
+			&& array_key_exists('files', $items)
+			&& (count($items['folders']) > 0 OR count($items['files']) > 0))
 		{
-			// Add the folders to the list.
-			foreach ($folders AS $f)
+			$files_and_folders = array_merge($items['folders'], $items['files']);
+			$ret_files = $ret_folders = '';
+			
+			/**
+			 * Filter the array of folders and files to match only those under
+			 * the current file path.
+			 */
+			
+			$file_path_pattern = '/^' .preg_quote($file_path, '/') .'$/';
+			
+			// Add the folders and files to the list.
+			foreach ($files_and_folders AS $f)
 			{
-				$ret .= "<li class='directory collapsed'><a href='#' rel='{$f['item_path']}'>{$f['item_name']}</a></li>";
+				/**
+				 * The item path contains the item name. We need to
+				 * remove that.
+				 */
+				
+				$f_path = substr($f['item_path'], 0, (strlen($f['item_path']) - strlen($f['item_name']) - 1));
+				
+				if (preg_match($file_path_pattern, $f_path))
+				{
+					// URL encode the path, in case it contains quotes and the like.
+					$f['item_path'] = urlencode($f['item_path']);
+					
+					// Add items to our folders or files lists.
+					if ($f['item_is_folder'] == 'y')
+					{
+						$ret_folders .= "<li class='directory collapsed'>
+							<a href='#' rel='{$f['item_path']}'>{$f['item_name']}</a></li>";
+					}
+					else
+					{
+						$ret_files .= "<li class='file ext_{$f['item_extension']}'>
+							<a href='#' rel='{$f['item_path']}'>{$f['item_name']}</a></li>";
+					}
+				}
 			}
-		
-			// Add the files to the list.
-			foreach ($files AS $f)
-			{
-				$ret .= "<li class='file ext_{$f['item_extension']}'><a href='#' rel='{$f['item_path']}'>{$f['item_name']}</a></li>";
-			}
+			
+			$ret .= $ret_folders .$ret_files;
 		}
 		
 		// Close the list of files and folders.
@@ -601,7 +643,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 */
 	private function upload_file()
 	{
-		global $DB, $IN, $LANG;
+		global $DB, $FNS, $IN, $LANG, $PREFS;
 		
 		// Paranoia.
 		if ($this->site_settings['allow_upload'] != 'y')
@@ -640,12 +682,13 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		}
 		else
 		{
-			// Tidy up the path.
-			$path = ($path != '' ? rtrim($path, '/') .'/' : '');
-
+			// Tidy up the path and filename.
+			$path = urldecode($path);
+			$file['name'] = trim($file['name'], '/');
+			
 			// Determine the full filename, with path.
-			$uri = $path .$file['name'];
-
+			$uri = ($path == '') ? $file['name'] : $FNS->remove_double_slashes($path .'/' .$file['name']);
+			
 			// Retrieve the Amazon account credentials.
 			$access_key = $this->site_settings['access_key_id'];
 			$secret_key = $this->site_settings['secret_access_key'];
@@ -655,62 +698,79 @@ class Bucketlist extends Fieldframe_Fieldtype {
 
 			// Generate the input array for our file.
 			$input = $s3->inputFile($file['tmp_name']);
-
+			
 			// Upload the file.
 			if ($s3->putObject($input, $bucket, $uri, S3::ACL_PUBLIC_READ))
 			{
 				$status = 'success';
 				$message = $LANG->line('upload_success') .$file['name'];
 				
-				/**
-				 * Add the newly-uploaded file to the database. No point doing
-				 * bothering Amazon with this, especially as the bucket could
-				 * potentially contain thousands of files.
-				 */
-				
+				// Prepare ourselves for the upcoming database action.
 				$now = time();
 				$item_name = $file['name'];
-				$item_path = $bucket .'/' .$path .$item_name;
+				$item_path = $FNS->remove_double_slashes($bucket .$path .$item_name);
 				$item_size = $file['size'];
 				$item_extension = pathinfo($item_name, PATHINFO_EXTENSION);
 				
-				$db_bucket = $DB->query("SELECT bucket_id
-					FROM exp_bucketlist_buckets
-					WHERE bucket_name = '{$bucket}'");
-					
 				/**
-				 * Quite how this could ever not be 1 is unclear,
-				 * but it doesn't hurt to check.
+				 * Does this item already exist in the database? If so, we're
+				 * overwriting it on the S3 server, so we just need to update
+				 * the item_last_updated time in the database.
+				 *
+				 * If it's a brand-spanking new item, add it to the DB, and
+				 * return a new list item for the file tree.
+				 *
+				 * @todo Return information about an overwritten file, so
+				 * the user can at least get some visual feedback.
 				 */
 				
-				if ($db_bucket->num_rows != 1)
+				$db_existing_item = $DB->query("SELECT item_id
+					FROM exp_bucketlist_items
+					INNER JOIN exp_bucketlist_buckets
+					USING (bucket_id)
+					WHERE item_name = '{$item_name}'
+					AND item_path = '{$item_path}'
+					AND bucket_name = '{$bucket}'");
+					
+				if ($db_existing_item->num_rows == 1)
 				{
 					$list_item = '';
 				}
 				else
 				{
-					// Create the HTML for the new list item.
-					$list_item = '<li class="file ext_' .$item_extension .'"><a href="#" rel="' .$item_path .'">' .$item_name .'</a></li>';
-					
-					$DB->query("INSERT INTO exp_bucketlist_items (
-							bucket_id,
-							item_is_folder,
-							item_last_updated,
-							item_name,
-							item_path,
-							item_size,
-							item_extension,
-							site_id
-						) VALUES (
-							'{$db_bucket->row['bucket_id']}',
-							'n',
-							'{$now}',
-							'{$item_name}',
-							'{$item_path}',
-							'{$item_size}',
-							'{$item_extension}',
-							'{$this->site_id}'
-						)");
+					$db_bucket = $DB->query("SELECT bucket_id
+						FROM exp_bucketlist_buckets
+						WHERE bucket_name = '{$bucket}'");
+
+					/**
+					 * Quite how this could ever not be 1 is unclear,
+					 * but it doesn't hurt to check.
+					 */
+
+					if ($db_bucket->num_rows != 1)
+					{
+						$list_item = '';
+					}
+					else
+					{
+						// Create the HTML for the new list item.
+						$list_item = '<li class="file ext_' .$item_extension .'">
+							<a href="#" rel="' .$item_path .'">' .$item_name .'</a></li>';
+
+						$DB->query($DB->insert_string(
+							'exp_bucketlist_items',
+							array(
+								'bucket_id'				=> $db_bucket->row['bucket_id'],
+								'item_is_folder'		=> 'n',
+								'item_last_updated'		=> $now,
+								'item_name'				=> $item_name,
+								'item_path'				=> $item_path,
+								'item_size'				=> $item_size,
+								'item_extension'		=> $item_extension,
+								'site_id'				=> $this->site_id
+							)
+						));
+					}
 				}
 			}
 			else
@@ -721,7 +781,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		}
 
 		// Ensure the message is SFW.
-		$message = htmlentities($message);
+		$message = htmlspecialchars($message, ENT_COMPAT, 'UTF-8');
 
 		/**
 		 * Create the HTML document. Why, you may ask, do we not
@@ -732,10 +792,8 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		 */
 
 		$return = <<<_HTML_
-<!doctype html>
 <html>
 <head>
-	<meta charset="utf=8">
 	<title>Amazon S3 Response</title>
 </head>
 <body>
@@ -748,7 +806,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 _HTML_;
 
 		// Output the return document.
-		header('Content-Type: text/html');
+		header('Content-type: text/html; charset=' .$PREFS->ini('charset'));
 		exit($return);
 	}
 	

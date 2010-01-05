@@ -64,7 +64,9 @@ function removeUpload(uploadId) {
  * @param 	object		params		listItem, message, status, uploadId.
  */
 function uploadSuccess(params) {
-	$('li#bucketload-status-' + params.uploadId)
+	console.log('Upload success');
+	
+	$('li#bucketload-status-' + params['uploadId'])
 		.removeClass('active')
 		.addClass('complete')
 		.html(params.message);
@@ -80,9 +82,10 @@ function uploadSuccess(params) {
  * @param	object		params		listItem, message, status, uploadId.
  */
 function uploadFailure(params) {
+	console.log('Upload failure');
 	
-	if (message == '') {
-		message = languageStrings.uploadFailureGeneric;
+	if (params.message == '' || params.message == 'undefined') {
+		params.message = languageStrings.uploadFailureGeneric;
 	}
 	
 	$('#bucketload-status li#bucketload-status-' + params.uploadId)
@@ -181,7 +184,7 @@ $(document).ready(function() {
 		 * they are created.
 		 *
 		 * This is the only way of doing this at present, but by Brandon's
-		 * own admission is a trifle flakey, and has a habit of running
+		 * own admission it's a trifle flakey, and has a habit of running
 		 * twice.
 		 *
 		 * I tried checking for the presence of the BucketList file tree,

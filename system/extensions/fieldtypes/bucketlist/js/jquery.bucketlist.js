@@ -134,7 +134,7 @@ $.fn.bucketlist = function(options) {
 		 * @return 	void
 		 */
 		function amazonResponse(e) {
-
+			
 			// Shorthand.
 			var $iframe = $(e.target);
 
@@ -162,11 +162,18 @@ $.fn.bucketlist = function(options) {
 				$iframe.remove();
 				return;
 			}
+			
+			log('amazonResponse IFRAME contents: ' + $iframe.contents().find('html').html());
 
-			var status		= $iframe.contents().find('#status').text();
-			var message		= $iframe.contents().find('#message').text();
-			var uploadId	= $iframe.contents().find('#uploadId').text();
-			var listItem	= $iframe.contents().find('#listItem').html();
+			var $status		= $iframe.contents().find('#status');
+			var $message	= $iframe.contents().find('#message');
+			var $uploadId	= $iframe.contents().find('#uploadId');
+			var $listItem	= $iframe.contents().find('#listItem');
+			
+			var status		= $status.length == 1 	? $status.text() 	: '';
+			var message		= $message.length == 1 	? $message.text() 	: '';
+			var uploadId	= $uploadId.length == 1 ? $uploadId.text() 	: '';
+			var listItem	= $listItem.length== 1 	? $listItem.html() 	: '';
 
 			var params = {
 				listItem	: listItem,
@@ -176,15 +183,11 @@ $.fn.bucketlist = function(options) {
 			}
 
 			// Do we have the expected information?
-			if (status == 'undefined' || message == 'undefined' || uploadId == 'undefined') {
+			if (status == '' || message == '' || uploadId == '') {
 
 				/**
-				 * We assume the worse. A blank message is passed, so we don't
+				 * We assume the worst. A blank message is passed, so we don't
 				 * have to hard-code the language string here.
-				 */
-				
-				/**
-				 * @todo Change this to use the language strings.
 				 */
 
 				params['listItem']	= '';
@@ -200,8 +203,14 @@ $.fn.bucketlist = function(options) {
 					? localOptions.onUploadSuccess(params)
 					: localOptions.onUploadFailure(params);
 				
-				// Locate the correct bucket and folder.
-				if (uploads[uploadId] != 'undefined') {
+				/**
+				 * Do we have a list item, and a branch? Some uploaded files will
+				 * be duplicates. At the moment we just ignore those, although a
+				 * visual indication that the file has been 'replaced' would be
+				 * nice.
+				 */
+				
+				if (uploads[uploadId] != 'undefined' && listItem != '') {
 					
 					// Get the branch root.
 					var $branchRoot = uploads[uploadId];
@@ -242,9 +251,16 @@ $.fn.bucketlist = function(options) {
 					
 					// Insert the item, and animate its arrival.
 					$listItem.slideDown(350);
-						
-					// Remove the item from the uploads object.
-					delete uploads.uploadId;
+				}
+				
+				/**
+				 * Even if no list item was passed, still delete the upload item,
+				 * if it exists.
+				 */
+				
+				if (uploads[uploadId] != 'undefined')
+				{
+					delete uploads[uploadId];
 				}
 			}
 			
@@ -253,7 +269,7 @@ $.fn.bucketlist = function(options) {
 			 * but that crashes Safari when the Web Inspector is open. Seriously.
 			 */
 
-			e.target.src = "javascript: false;";
+			// e.target.src = "javascript: false;";
 			
 		}; /* amazonResponse */
 
@@ -269,9 +285,14 @@ $.fn.bucketlist = function(options) {
 
 			var $file = $(e.target);
 			var $parent = $file.parent('.bucketload');
+			
+			log('Running fileChange, uploading ' + e.target.value);
 
 			// Create the form.
-			var $form = $('<form action="' + localOptions.uploadFormAction + '" enctype="multipart/form-data" method="post"></form>');
+			var formDecl = '<form accept-charset="utf-8" action="' + localOptions.uploadFormAction;
+			formDecl += '" enctype="multipart/form-data" method="post"></form>';
+			
+			var $form = $(formDecl);
 
 			// Create a unique ID for this upload.
 			var uploadId = Math.round(Math.random() * new Date().getTime());
@@ -303,8 +324,6 @@ $.fn.bucketlist = function(options) {
 
 			// Create and hide the iframe.
 			var iframeId = 'bucketload-iframe-' + uploadId;
-			
-			// Create iframe using document
 			var $iframe = $('<iframe id="' + iframeId + '" name="' + iframeId + '"></iframe>')
 				.appendTo('body')
 				.hide();
@@ -313,7 +332,9 @@ $.fn.bucketlist = function(options) {
 			setTimeout(function() {
 				// Populate the iframe.
 				$iframe.contents().find('body').html($form);
-
+				
+				log('Created the IFRAME: ' + $iframe.contents().find('html').html());
+				
 				// Submit the form.
 				$iframe.contents().find('form').submit();
 				
@@ -366,12 +387,15 @@ $.fn.bucketlist = function(options) {
 		function initializeTree() {
 			// Bind the click event to all current and future bucketlist links.
 			$('li a', $this).live('click', function(e) {
-				handleTreeClick($(e.target));
+				treeClick($(e.target));
 				return false;
 			});
 
 			// Load the buckets.
-			showTree($this, '');
+			showTree({
+				$root	: $this,
+				path	: ''
+			});
 			
 		}; /* initializeTree */
 		
@@ -383,7 +407,9 @@ $.fn.bucketlist = function(options) {
 		 * @access	private
 		 * @param	jQuery object	$target		The click target.
 		 */
-		function handleTreeClick($target) {
+		function treeClick($target) {
+			log('Running treeClick');
+			
 			if ($target.parent().hasClass('directory')) {
 
 				if ($target.parent().hasClass('collapsed')) {
@@ -396,8 +422,11 @@ $.fn.bucketlist = function(options) {
 					$target.parent().parent().find('ul').slideUp({duration : 500});
 					$target.parent().parent().find('.directory').removeClass('expanded').addClass('collapsed');
 					$target.parent().find('ul').remove();
-
-					showTree($target.parent(), escape($target.attr('rel').match(/.*\//)));
+					
+					showTree({
+						$root 	: $target.parent(),
+						path	: $target.eq(0).attr('rel')
+					});
 
 					$target.parent().removeClass('collapsed').addClass('expanded');
 
@@ -412,17 +441,34 @@ $.fn.bucketlist = function(options) {
 				localOptions.onFileClick({$target : $target, fileName : $target.attr('rel')});
 			}
 			
-		}; /* handleTreeClick */
+		}; /* treeClick */
 
 
 		/**
 		 * Expand the tree when a 'directory' element is clicked.
 		 *
 		 * @access	private
-		 * @param	object		$li		A jQuery object containing the 'parent' list item.
-		 * @param 	string		path	The 'file path' of the selected item.
+		 * @param	params		object		Switched to an associative array, because it's
+		 *									much easier when debugging the calling script.
+		 * 									- $root	: jQuery object containing branch root.
+		 *									- path	: file path string, including bucket.
 		 */
-		function showTree($li, path) {
+		function showTree(params) {
+			
+			var localParams = $.extend({
+				$root	: false,
+				path	: ''
+			}, params);
+			
+			if (localParams.$root == false) {
+				return false;
+			}
+			
+			// Shortcuts.
+			var $li		= localParams.$root;
+			var path	= localParams.path;
+			
+			// Hold up, butt.
 			$li.addClass('wait');
 
 			// Load the bucket contents via AJAX.
@@ -451,8 +497,11 @@ $.fn.bucketlist = function(options) {
 						$li.find('ul:hidden').slideDown({duration : 500});
 						
 						// Initialise the upload link for this branch.
-						var bucketName 	= path.substring(0, path.indexOf('/'));
-						var filePath	= path.substring(bucketName.length + 1);
+						var bucketName	= (path.indexOf('%2F') >= 0)
+							? path.substring(0, path.indexOf('%2F') - 1)
+							: path.substring(0, path.length - 1);
+							
+						var filePath = path.substring(bucketName.length + 1);
 						
 						initializeUpload($li, bucketName, filePath);
 						
@@ -477,10 +526,7 @@ $.fn.bucketlist = function(options) {
 							pathToLoad = pathToLoad.substring(0, pathToLoad.length - 1);
 						}
 						
-						log(pathToLoad);
-						log($li.parents('.eepro-co-uk').find('[rel="' + pathToLoad + '"]').length);
-						
-						handleTreeClick($li.parents('.eepro-co-uk').find('[rel="' + pathToLoad + '"]'));
+						treeClick($li.parents('.eepro-co-uk').find('[rel="' + pathToLoad + '"]'));
 						initialFileStep++;
 					}
 				}); /* $.get */
