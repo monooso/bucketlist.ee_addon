@@ -573,6 +573,11 @@ class Bucketlist extends Fieldframe_Fieldtype {
 				}
 			}
 			
+			if ( ! $ret_folders && ! $ret_files && $this->site_settings['allow_upload'] != 'y')
+			{
+				$ret .= '<li class="empty">' .$LANG->line('no_items') .'</li></ul>';
+			}
+			
 			$ret .= $ret_folders .$ret_files;
 		}
 		
