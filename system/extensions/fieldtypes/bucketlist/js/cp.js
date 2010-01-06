@@ -125,10 +125,14 @@ function uploadStart(params) {
  * @param	object		params		$target, fileName.
  */
 function handleFileClick(params) {
+	console.log('Filename: ' + params['fileName']);
+	
 	// Make a note of the selected filename.
 	params.$target.parents('.eepro-co-uk').find(':hidden').val(params.fileName);
 	params.$target.parents('.eepro-co-uk').find('.selected').removeClass('selected');
 	params.$target.parent().addClass('selected');
+	
+	console.log('Hidden field value: ' + params.$target.parents('.eepro-co-uk').find(':hidden').val());
 }
 
 

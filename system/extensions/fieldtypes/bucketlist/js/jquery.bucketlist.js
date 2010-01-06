@@ -33,9 +33,18 @@ $.fn.bucketlist = function(options) {
 		// Flag to hide the initial loading message.
 		var initialLoad = true;
 		
-		// Retrieve the initialFile, if it has been supplied.
+		// In case this ever changes.
+		var slash = '%2F';
+		
+		/**
+		 * Retrieve the initialFile, if it has been supplied. Note that
+		 * it will be rawurlencoded. We don't decode it (see showTree
+		 * for a rant on this), instead we split it using the encoded
+		 * slash.
+		 */
+		
 		if (localOptions.initialFile) {
-			var initialFilePath = localOptions.initialFile.split('/');
+			var initialFilePath = localOptions.initialFile.split(slash);
 			var initialFileStep = 0;
 		}
 		
@@ -56,7 +65,7 @@ $.fn.bucketlist = function(options) {
 		 */
 		function getLanguageString(id) {
 			return (languageStrings['id'] == 'undefined') ? id : languageString['id'];
-		};
+		}; /* getLanguageString */
 		
 		
 		
@@ -76,7 +85,7 @@ $.fn.bucketlist = function(options) {
 		 * @param	string		filePath		The path to the current folder.
 		 * @return 	void
 		 */
-		function initializeUpload($root, bucketName, filePath) {
+		function initializeUpload($root, path) {
 			
 			var $uploadLink = $root.find('.upload a');
 			
@@ -91,9 +100,10 @@ $.fn.bucketlist = function(options) {
 			// Create the file element.
 			createFile($uploadLink.parent());
 			
-			// Create some hidden fields to hold the bucket and filePath info.
-			$uploadLink.parent().append('<input type="hidden" name="bucket" value="' + bucketName + '">');
-			$uploadLink.parent().append('<input type="hidden" name="path" value="' + filePath + '">');
+			// Create a hidden fields to hold the path information.
+			// $uploadLink.parent().append('<input type="hidden" name="bucket" value="' + bucketName + '">');
+			
+			$uploadLink.parent().append('<input type="hidden" name="path" value="' + path + '">');
 			
 			// If this is an anchor (which it should be), disable the default click event.
 			if ($uploadLink[0].nodeName.toLowerCase() == 'a') {
@@ -269,7 +279,7 @@ $.fn.bucketlist = function(options) {
 			 * but that crashes Safari when the Web Inspector is open. Seriously.
 			 */
 
-			// e.target.src = "javascript: false;";
+			e.target.src = "javascript: false;";
 			
 		}; /* amazonResponse */
 
@@ -286,8 +296,6 @@ $.fn.bucketlist = function(options) {
 			var $file = $(e.target);
 			var $parent = $file.parent('.bucketload');
 			
-			log('Running fileChange, uploading ' + e.target.value);
-
 			// Create the form.
 			var formDecl = '<form accept-charset="utf-8" action="' + localOptions.uploadFormAction;
 			formDecl += '" enctype="multipart/form-data" method="post"></form>';
@@ -298,12 +306,10 @@ $.fn.bucketlist = function(options) {
 			var uploadId = Math.round(Math.random() * new Date().getTime());
 			
 			// Retrieve the bucket and path.
-			var bucketName 	= $parent.find('input[name="bucket"]').val();
-			var filePath	= $parent.find('input[name="path"]').val();
+			var path = $parent.find('input[name="path"]').val();
 
 			// Create the form fields.
-			$form.append('<input type="hidden" name="bucket" value="' + bucketName + '">');
-			$form.append('<input type="hidden" name="path" value="' + filePath + '">');
+			$form.append('<input type="hidden" name="path" value="' + path + '">');
 			$form.append('<input type="hidden" name="upload_id" value="' + uploadId + '">');
 
 			/**
@@ -408,7 +414,6 @@ $.fn.bucketlist = function(options) {
 		 * @param	jQuery object	$target		The click target.
 		 */
 		function treeClick($target) {
-			log('Running treeClick');
 			
 			if ($target.parent().hasClass('directory')) {
 
@@ -464,9 +469,27 @@ $.fn.bucketlist = function(options) {
 				return false;
 			}
 			
+			/**
+			 * We're retrieving information from the rel attribute of the
+			 * parent LI.
+			 *
+			 * This is *always* encoded on the server, using rawurlencode,
+			 * to prevent problems with single and double quotes, angled
+			 * brackets, and so forth.
+			 *
+			 * The showTree method is the only point at which we want this
+			 * string in it's unencoded form, because it makes it easier
+			 * to process.
+			 *
+			 * showTree must NEVER write the unencoded string back to
+			 * the DOM, or pass it outside of this method.
+			 *
+			 * Are we clear on that?
+			 */
+			
 			// Shortcuts.
 			var $li		= localParams.$root;
-			var path	= localParams.path;
+			var path	= decodeURIComponent(localParams.path);
 			
 			// Hold up, butt.
 			$li.addClass('wait');
@@ -496,17 +519,14 @@ $.fn.bucketlist = function(options) {
 					} else {
 						$li.find('ul:hidden').slideDown({duration : 500});
 						
-						// Initialise the upload link for this branch.
-						var bucketName	= (path.indexOf('%2F') >= 0)
-							? path.substring(0, path.indexOf('%2F') - 1)
-							: path.substring(0, path.length - 1);
-							
-						var filePath = path.substring(bucketName.length + 1);
+						/**
+						 * Remember to pass the UNESCAPED path out of the method.
+						 */
 						
-						initializeUpload($li, bucketName, filePath);
+						initializeUpload($li, localParams.path);
 						
 						// Execute the callback.
-						localOptions.onBranchLoad({$root : $li, filePath : path});
+						localOptions.onBranchLoad({$root : $li, path : localParams.path});
 					}
 					
 					// Are we auto-displaying an initial file?
@@ -518,12 +538,12 @@ $.fn.bucketlist = function(options) {
 						
 						// Construct the complete path up to this point.
 						for (var count = 0; count <= initialFileStep; count++) {
-							pathToLoad += initialFilePath[count] + '/';
+							pathToLoad += initialFilePath[count] + slash;
 						}
 						
 						// If this is the final step, remove the forward slash.
 						if (initialFileStep == initialFilePath.length - 1) {
-							pathToLoad = pathToLoad.substring(0, pathToLoad.length - 1);
+							pathToLoad = pathToLoad.substring(0, pathToLoad.length - slash.length);
 						}
 						
 						treeClick($li.parents('.eepro-co-uk').find('[rel="' + pathToLoad + '"]'));

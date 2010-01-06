@@ -4,7 +4,7 @@
  * Fieldtype extension enabling integration of Amazon S3 with your ExpressionEngine website.
  *
  * @package   	BucketList
- * @version   	1.1.0b1
+ * @version   	1.1.0b2
  * @author    	Stephen Lewis <addons@eepro.co.uk>
  * @copyright 	Copyright (c) 2009, Stephen Lewis
  * @link      	http://eepro.co.uk/bucketlist/
@@ -22,7 +22,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 */
 	public $info = array(
 		'name'				=> 'BucketList',
-		'version'			=> '1.1.0b1',
+		'version'			=> '1.1.0b2',
 		'desc'				=> 'Effortlessly integrate Amazon S3 storage with your ExpressionEngine site.',
 		'docs_url'			=> 'http://experienceinternet.co.uk/bucketlist/',
 		'versions_xml_url'	=> 'http://experienceinternet.co.uk/addon-versions.xml'
@@ -100,7 +100,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 * PRIVATE METHODS
 	 * ----------------------------------------------------------------
 	 */
-  
+	
 	/**
 	 * Checks that the AWS credentials have been set.
 	 *
@@ -319,7 +319,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	
 	
 	/**
-	 * Returns a list of available S3 buckets. The session cache is checked,
+	 * Returns a list of S3 buckets. The session cache is checked,
 	 * followed by the database cache, before Amazon S3 is queried.
 	 *
 	 * @access	private
@@ -472,36 +472,21 @@ class Bucketlist extends Fieldframe_Fieldtype {
 			foreach ($buckets AS $bucket)
 			{
 				$ret .= '<li class="directory bucket collapsed">';
-				$ret .= "<a href='#' rel='{$bucket['bucket_name']}/'>{$bucket['bucket_name']}</a></li>";
+				
+				/**
+				 * Note the addition of a forward slash after the bucket name.
+				 * This saves us a lot of hassle, as it now means that we can
+				 * treat paths with and without 'folders' the same way when
+				 * they are returned to us.
+				 */
+				
+				$ret .= '<a href="#" rel="' .rawurlencode($bucket['bucket_name'] .'/') .'">' .$bucket['bucket_name'] .'</a></li>';
 			}
 		
 			$ret .= '</ul>';
 		}
 		
 		return $ret;
-	}
-	
-
-	/**
-	 * Cleans a string for use within a regular expression.
-	 *
-	 * @access	private
-	 * @param	string	$subject	The string to clean.
-	 * @return	string
-	 */
-	private function clean_string_for_regexp($subject = '')
-	{
-		$find = array(
-			'/\//', '/\^/', '/\./', '/\$/', '/\|/',
- 			'/\(/', '/\)/', '/\[/', '/\]/', '/\*/',
-			'/\+/', '/\?/', '/\{/', '/\}/', '/\,/');
-			
-		$replace = array(
-			'\/', '\^', '\.', '\$', '\|',
-			'\(', '\)', '\[', '\]', '\*',
-			'\+', '\?', '\{', '\}', '\,');
-		
-		return preg_replace($find, $replace, $subject);
 	}
 	
 	
@@ -558,38 +543,32 @@ class Bucketlist extends Fieldframe_Fieldtype {
 			$files_and_folders = array_merge($items['folders'], $items['files']);
 			$ret_files = $ret_folders = '';
 			
-			/**
-			 * Filter the array of folders and files to match only those under
-			 * the current file path.
-			 */
-			
-			$file_path_pattern = '/^' .preg_quote($file_path, '/') .'$/';
-			
-			// Add the folders and files to the list.
 			foreach ($files_and_folders AS $f)
 			{
 				/**
-				 * The item path contains the item name. We need to
-				 * remove that.
+				 * Filter the array of folders and files to match only those under
+				 * the current file path.
 				 */
 				
-				$f_path = substr($f['item_path'], 0, (strlen($f['item_path']) - strlen($f['item_name']) - 1));
+				$pattern = '/^' .preg_quote(stripslashes($file_path), '/') .'([^\/]*)\/?$/';
 				
-				if (preg_match($file_path_pattern, $f_path))
+				if (preg_match($pattern, $f['item_path'], $matches))
 				{
 					// URL encode the path, in case it contains quotes and the like.
-					$f['item_path'] = urlencode($f['item_path']);
+					$f['item_path'] = rawurlencode($f['item_path']);
+					
+					$item_name = rtrim($matches[1], '/');
 					
 					// Add items to our folders or files lists.
 					if ($f['item_is_folder'] == 'y')
 					{
 						$ret_folders .= "<li class='directory collapsed'>
-							<a href='#' rel='{$f['item_path']}'>{$f['item_name']}</a></li>";
+							<a href='#' rel='{$f['item_path']}'>{$item_name}</a></li>";
 					}
 					else
 					{
 						$ret_files .= "<li class='file ext_{$f['item_extension']}'>
-							<a href='#' rel='{$f['item_path']}'>{$f['item_name']}</a></li>";
+							<a href='#' rel='{$f['item_path']}'>{$item_name}</a></li>";
 					}
 				}
 			}
@@ -643,7 +622,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 */
 	private function upload_file()
 	{
-		global $DB, $FNS, $IN, $LANG, $PREFS;
+		global $DB, $FNS, $IN, $LANG, $PREFS, $SESS;
 		
 		// Paranoia.
 		if ($this->site_settings['allow_upload'] != 'y')
@@ -669,25 +648,51 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		 */
 
 		$file = isset($_FILES['file']) ? $_FILES['file'] : array();
-
-		// Retrieve the bucket, file path, and upload ID.
-		$bucket 	= $IN->GBL('bucket', 'POST');
-		$path 		= $IN->GBL('path', 'POST');
+		
+		/**
+		 * The path has been on a round trip from this class, contained in
+		 * a rel attribute, and then an input:hidden form element.
+		 *
+		 * During this entire glorious journey, the JS has not meddled with
+		 * the encoding one iota, just so that we can easily decode it here.
+		 */
+		
+		$full_path 	= rawurldecode($IN->GBL('path', 'POST'));
 		$upload_id	= $IN->GBL('upload_id', 'POST');
-
-		if ( ! $file OR ! $bucket OR ! $upload_id OR $path === FALSE)
+		
+		/**
+		 * The $full_path contains the bucket and the folder elements.
+		 * We need them separate.
+		 * 
+		 * The following regular expression also contains a little bit
+		 * of validation for the bucket name. It's not 100% strict
+		 * though, as there's no way we should ever be passed a non-
+		 * existent bucket name, never mind an entirely invalid one.
+		 */
+		
+		if (preg_match('/^([0-9a-z]{1}[0-9a-z\.\_\-]{2,254})\/{1}(.*)$/', $full_path, $matches))
+		{
+			$bucket	= $matches[1];
+			$path 	= $matches[2];
+		}
+		else
+		{
+			$bucket = $path = '';
+		}
+		
+		
+		if ( ! $bucket OR ! $file)
 		{
 			$status = 'failure';
 			$message = $LANG->line('upload_failure_missing_info');
 		}
 		else
 		{
-			// Tidy up the path and filename.
-			$path = urldecode($path);
-			$file['name'] = trim($file['name'], '/');
+			// Remove extraneous slashes from the path.
+			$path = rtrim($path, '/');
 			
-			// Determine the full filename, with path.
-			$uri = ($path == '') ? $file['name'] : $FNS->remove_double_slashes($path .'/' .$file['name']);
+			// The destination.
+			$uri = ($path == '') ? $file['name'] : $path .'/' .$file['name'];
 			
 			// Retrieve the Amazon account credentials.
 			$access_key = $this->site_settings['access_key_id'];
@@ -705,12 +710,12 @@ class Bucketlist extends Fieldframe_Fieldtype {
 				$status = 'success';
 				$message = $LANG->line('upload_success') .$file['name'];
 				
-				// Prepare ourselves for the upcoming database action.
-				$now = time();
-				$item_name = $file['name'];
-				$item_path = $FNS->remove_double_slashes($bucket .$path .$item_name);
-				$item_size = $file['size'];
-				$item_extension = pathinfo($item_name, PATHINFO_EXTENSION);
+				//Prepare ourselves for the upcoming database action.
+				$now 			= time();
+				$item_name 		= $file['name'];
+				$item_path 		= $bucket .'/' .$uri;
+				$item_size 		= $file['size'];
+				$item_extension = pathinfo($file['name'], PATHINFO_EXTENSION);
 				
 				/**
 				 * Does this item already exist in the database? If so, we're
@@ -728,9 +733,9 @@ class Bucketlist extends Fieldframe_Fieldtype {
 					FROM exp_bucketlist_items
 					INNER JOIN exp_bucketlist_buckets
 					USING (bucket_id)
-					WHERE item_name = '{$item_name}'
-					AND item_path = '{$item_path}'
-					AND bucket_name = '{$bucket}'");
+					WHERE item_name = '" .$DB->escape_str($item_name) ."'
+					AND item_path = '" .$DB->escape_str($item_path) ."'
+					AND bucket_name = '" .$DB->escape_str($bucket) ."'");
 					
 				if ($db_existing_item->num_rows == 1)
 				{
@@ -740,7 +745,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 				{
 					$db_bucket = $DB->query("SELECT bucket_id
 						FROM exp_bucketlist_buckets
-						WHERE bucket_name = '{$bucket}'");
+						WHERE bucket_name = '" .$DB->escape_str($bucket) ."'");
 
 					/**
 					 * Quite how this could ever not be 1 is unclear,
@@ -756,7 +761,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 						// Create the HTML for the new list item.
 						$list_item = '<li class="file ext_' .$item_extension .'">
 							<a href="#" rel="' .$item_path .'">' .$item_name .'</a></li>';
-
+						
 						$DB->query($DB->insert_string(
 							'exp_bucketlist_items',
 							array(
@@ -770,6 +775,15 @@ class Bucketlist extends Fieldframe_Fieldtype {
 								'site_id'				=> $this->site_id
 							)
 						));
+						
+						/**
+						 * The cache is now out of date, dagnammit.
+						 * Clear the Session cache for this bucket, and fob everything off onto get_items.
+						 */
+						
+						$this->create_session_cache();
+						$SESS->cache[$this->namespace][$this->lower_class]['items'][$bucket] = array();
+						$this->get_items($bucket);
 					}
 				}
 			}
@@ -1004,7 +1018,8 @@ _HTML_;
 		$ret .= '<div class="bucketlist-ui">';
 		$ret .= '<p class="initial-load">' .$LANG->line('loading') .'</p>';
 		$ret .= '</div>';
-		$ret .= '<input class="hidden" id="' .$field_name .'" name="' .$field_name .'" type="hidden" value="' .$field_data .'" />';
+		$ret .= '<input class="hidden" id="' .$field_name
+			.'" name="' .$field_name .'" type="hidden" value="' .rawurlencode($field_data) .'" />';
 		$ret .= '</div>';
 
 		return $ret;
@@ -1166,6 +1181,36 @@ _HTML_;
 		{
 			$DB->query($query);
 		}
+	}
+	
+	
+	/**
+	 * Modifies the field's POST data before it's saved to the database.
+	 *
+	 * @access	public
+	 * @param	string		$field_data			The POST data.
+	 * @param	array		$field_settings		The field settings.
+	 * @param 	mixed		$entry_id			Not used.
+	 * @return	string
+	 */
+	public function save_field($field_data = '', $field_settings = array(), $entry_id = '')
+	{
+		return rawurldecode($field_data);
+	}
+	
+	
+	/**
+	 * Modifies the cell's POST data before it's saved to the database.
+	 *
+	 * @access	public
+	 * @param	string		$cell_data			The POST data.
+	 * @param	array		$cell_settings		The cell settings.
+	 * @param 	mixed		$entry_id			Not used.
+	 * @return	string
+	 */
+	public function save_cell($cell_data = '', $cell_settings = array(), $entry_id = '')
+	{
+		return $this->save_field($cell_data, $cell_settings, $entry_id);
 	}
 	
 	
