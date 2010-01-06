@@ -77,7 +77,7 @@ $.fn.bucketlist = function(options) {
 		
 		/**
 		 * Initialises the 'upload' link in the specified branch. Wraps it
-		 * in a div, and creates a new "file" input element.
+		 * in a div, and creates a new form.
 		 *
 		 * @access	private
 		 * @param 	object		$root			A jQuery object containing the root of this branch.
@@ -97,13 +97,20 @@ $.fn.bucketlist = function(options) {
 			// Create the element wrapper, and append the file element.
 			$uploadLink.wrap('<div class="bucketload"></div>');
 			
-			// Create the file element.
-			createFile($uploadLink.parent());
+			// Create the form.
+			var formDecl = '<form accept-encoding="utf-8" action="' + localOptions.uploadFormAction + '"\
+				enctype="multipart/form-data" method="post"></form>';
+			var $form = $(formDecl);
 			
-			// Create a hidden fields to hold the path information.
-			// $uploadLink.parent().append('<input type="hidden" name="bucket" value="' + bucketName + '">');
+			// Add the file field.
+			$('<input name="file" type="file">').appendTo($form).bind('change', fileChange);
 			
-			$uploadLink.parent().append('<input type="hidden" name="path" value="' + path + '">');
+			// Add the hidden fields.
+			$form.append('<input id="path" name="path" type="hidden" value="' + path + '">');
+			$form.append('<input id="upload_id" name="upload_id" type="hidden" value="">');
+			
+			// Apend the form to the div.
+			$uploadLink.parent().append($form);
 			
 			// If this is an anchor (which it should be), disable the default click event.
 			if ($uploadLink[0].nodeName.toLowerCase() == 'a') {
@@ -282,8 +289,8 @@ $.fn.bucketlist = function(options) {
 			e.target.src = "javascript: false;";
 			
 		}; /* amazonResponse */
-
-
+		
+		
 		/**
 		 * Handles the file 'change' event. This is where the rubber hits the road.
 		 *
@@ -292,74 +299,37 @@ $.fn.bucketlist = function(options) {
 		 * @return 	void
 		 */
 		function fileChange(e) {
-
+			
+			// Some shortcuts.
 			var $file = $(e.target);
-			var $parent = $file.parent('.bucketload');
+			var $form = $file.parent('form');
 			
-			// Create the form.
-			var formDecl = '<form accept-charset="utf-8" action="' + localOptions.uploadFormAction;
-			formDecl += '" enctype="multipart/form-data" method="post"></form>';
-			
-			var $form = $(formDecl);
-
-			// Create a unique ID for this upload.
+			// Generate a new upload ID.
 			var uploadId = Math.round(Math.random() * new Date().getTime());
 			
-			// Retrieve the bucket and path.
-			var path = $parent.find('input[name="path"]').val();
-
-			// Create the form fields.
-			$form.append('<input type="hidden" name="path" value="' + path + '">');
-			$form.append('<input type="hidden" name="upload_id" value="' + uploadId + '">');
-
-			/**
-			 * Remove the file field listener. Incredibly important.
-			 *
-			 * jQuery doesn't remove the event handler automatically, and on document
-			 * unload attempts to unbind an event on an object that no longer exists,
-			 * in an iframe that no longer exists.
-			 *
-			 * IE then throws all lots of 'the bad man is fiddling with me' permission
-			 * errors.
-			 */
-
-			$file.unbind('change');
-
-			// Append the file field to the new form.
-			$form.append($file);
-
-			// Create and hide the iframe.
+			// Add the upload ID to the hidden form field.
+			$('#upload_id', $form).attr('value', uploadId);
+			
+			// Create a new iframe for the upload.
 			var iframeId = 'bucketload-iframe-' + uploadId;
-			var $iframe = $('<iframe id="' + iframeId + '" name="' + iframeId + '"></iframe>')
-				.appendTo('body')
-				.hide();
-				
-			// Wait a moment for the iframe to be added to the document.
+			var $iframe = $('<iframe id="' + iframeId + '" name="' + iframeId + '"></iframe>').appendTo('body').hide();
+			
+			// Wait a moment for the iframe to be created in FF and IE.
 			setTimeout(function() {
-				// Populate the iframe.
-				$iframe.contents().find('body').html($form);
-				
-				log('Created the IFRAME: ' + $iframe.contents().find('html').html());
-				
-				// Submit the form.
-				$iframe.contents().find('form').submit();
+				// Add the target attribute to the form, and submit it.
+				$form.attr('target', iframeId).submit();
 				
 				// Add a callback handler to the iframe.
 				$iframe.bind('load', amazonResponse);
 				
 				// Make a note of the uploadId, and its location.
-				uploads[uploadId] = $parent.closest('ul.bucketlist-tree');
-				
-				// Create a new file field.
-				createFile($parent);
+				uploads[uploadId] = $form.closest('ul.bucketlist-tree');
 
 				// Call the onStart handler.
 				localOptions.onUploadStart({fileName : $file.val(), uploadId : uploadId});
-
+				
 			}, 1);
-
-			return false;
-
+			
 		}; /* fileChange */
 		
 		
@@ -556,7 +526,6 @@ $.fn.bucketlist = function(options) {
 		
 		// Starts the ball rolling.
 		initializeTree();
-		
 		
 	}); // this.each
 }; // bucketlist

@@ -109,6 +109,8 @@ margin-top : -1px;
 position : relative;
 }
 
+html > body .bucketlist-ui .bucketlist-tree li {*zoom : 1;}		/* IE7 fix */
+
 .bucketlist-ui .bucketlist-tree .upload:last-child {border-bottom : none;}
 
 .bucketlist-ui .bucketload {
@@ -121,9 +123,16 @@ width : 100%;
 
 html > body .bucketlist-ui .bucketload {*position : relative;}	/* IE7 overflow fix */
 
+.bucketlist-ui .bucketload form {
+margin : 0;
+padding : 0;
+height : 100%;
+}
+
 .bucketlist-ui .bucketload input[type='file'] {
+border : none;					/* Otherwise Opera ignore opacity */
 cursor : pointer;
-filter : alpha(opacity='0');		/* God I hate you IE */
+filter : alpha(opacity='0');	/* God I hate you IE */
 height : 100%;
 opacity : 0;
 position : relative;

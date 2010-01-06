@@ -550,7 +550,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 				 * the current file path.
 				 */
 				
-				$pattern = '/^' .preg_quote(stripslashes($file_path), '/') .'([^\/]*)\/?$/';
+				$pattern = '/^' .preg_quote(stripslashes($file_path), '/') .'([^\/]+)\/?$/';
 				
 				if (preg_match($pattern, $f['item_path'], $matches))
 				{
