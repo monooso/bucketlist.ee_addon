@@ -127,7 +127,8 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		global $SESS;
 
 		return (isset($SESS->cache[$this->namespace])
-		  && isset($SESS->cache[$this->namespace][$this->lower_class]));
+			&& isset($SESS->cache[$this->namespace][$this->lower_class])
+			&& isset($SESS->cache[$this->namespace][$this->lower_class]['items']));
 	}
   
   
@@ -148,6 +149,11 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		if ( ! isset($SESS->cache[$this->namespace][$this->lower_class]))
 		{
 			$SESS->cache[$this->namespace][$this->lower_class] = array();
+		}
+		
+		if ( ! isset($SESS->cache[$this->namespace][$this->lower_class]['items']))
+		{
+			$SESS->cache[$this->namespace][$this->lower_class]['items'] = array();
 		}
 	}
 	
@@ -190,10 +196,11 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		// Make a note of the bucket ID.
 		$bucket_id = $db_bucket->row['bucket_id'];
 		
+		// Create the session cache, if it doesn't already exist.
+		$this->create_session_cache();
+		
 		// Check the session cache.
-		if ($this->session_cache_exists()
-			&& is_array($SESS->cache[$this->namespace][$this->lower_class]['items'])
-			&& array_key_exists($SESS->cache[$this->namespace][$this->lower_class]['items'][$bucket_name]))
+		if (array_key_exists($bucket_name, $SESS->cache[$this->namespace][$this->lower_class]['items']))
 		{
 			$items = $SESS->cache[$this->namespace][$this->lower_class]['items'][$bucket_name];
 		}
@@ -958,7 +965,7 @@ _HTML_;
 	 */
 	public function display_field($field_name, $field_data, $field_settings)
 	{
-		global $FNS, $IN, $LANG, $PREFS, $REGX;
+		global $DB, $FNS, $IN, $LANG, $PREFS, $REGX;
 		
 		// Check that this isn't an AJAX request.
 		if ($IN->GBL('ajax', 'GET') == 'y')
@@ -1009,19 +1016,52 @@ _HTML_;
 		}
 		
 		/**
-		 * If we have previously-saved field data, things get quite tricky.
-		 * First up, we need to check that the saved bucket still exists.
-		 * Then, we need automatically 'open' the bucket / folders / sub-folders / etc
-		 * within which the saved file is contained.
+		 * Before we go any further, call get_items for each of the buckets.
+		 * Without this, we can run into problems when running the 'autoload'
+		 * sequence for saved files.
+		 * 
+		 * If there is more than one BucketList on a page, we get hit with
+		 * simultaneous AJAX queries. If the cache is out of date, this results
+		 * in multiple near simultaneous calls to Amazon, and duplicate items
+		 * in the database. Boo.
+		 *
+		 * Calling get_items also makes it possible for us to check whether
+		 * the save item is still valid (more on that in a bit).
 		 */
 		
-		$saved_bucket = $field_data ? substr($field_data, 0, strpos($field_data, '/')) : '';
-		
-		// Check whether the saved bucket is still valid.
-		if ( ! in_array($saved_bucket, array_keys($buckets)))
+		foreach ($buckets AS $key => $val)
 		{
-			$field_data = $saved_bucket = '';
+			$this->get_items($key);
 		}
+		
+		/**
+		 * Do we have saved field data? If so, we need to check
+		 * that the saved file still exists.
+		 */
+		
+		if ($field_data)
+		{
+			$db_field = $DB->query("SELECT item_id
+				FROM exp_bucketlist_items
+				WHERE item_path = '" .$DB->escape_str($field_data) ."'
+				AND site_id = '{$this->site_id}'");
+			
+			$sql = "SELECT item_id
+				FROM exp_bucketlist_items
+				WHERE item_path = '" .$DB->escape_str($field_data) ."'
+				AND site_id = '{$this->site_id}'";
+			
+			if ($db_field->num_rows !== 1)
+			{
+				$field_data = '';
+			}
+		}
+		
+		/**
+		 * If we have previously-saved field data, things get quite tricky.
+		 * We need automatically 'open' the bucket / folders / sub-folders / etc
+		 * within which the saved file is contained.
+		 */
 		
 		// Build the UI.
 		$ret .= '<div class="eepro-co-uk">';

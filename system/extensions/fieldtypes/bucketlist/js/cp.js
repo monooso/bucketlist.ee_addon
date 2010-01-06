@@ -206,7 +206,7 @@ $(document).ready(function() {
 	
 	// Initialise non-matrix file trees.
 	$('.ff-ft > .eepro-co-uk > .bucketlist-ui').each(function() {
-		$(this).bucketlist({initialFile : $(this).parents('.eepro-co-uk').find('input:hidden').val()});
+		$(this).bucketlist({initialFile : $(this).next(':hidden').val()});
 	});
 	
 	// Initialise matrix file trees.

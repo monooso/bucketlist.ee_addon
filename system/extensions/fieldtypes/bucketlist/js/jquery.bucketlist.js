@@ -43,7 +43,8 @@ $.fn.bucketlist = function(options) {
 		 * slash.
 		 */
 		
-		if (localOptions.initialFile) {
+		if (localOptions.initialFile != '') {
+			console.log('Initial File: ' + localOptions.initialFile);
 			var initialFilePath = localOptions.initialFile.split(slash);
 			var initialFileStep = 0;
 		}
