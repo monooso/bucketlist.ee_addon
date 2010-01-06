@@ -64,8 +64,6 @@ function removeUpload(uploadId) {
  * @param 	object		params		listItem, message, status, uploadId.
  */
 function uploadSuccess(params) {
-	console.log('Upload success');
-	
 	$('li#bucketload-status-' + params['uploadId'])
 		.removeClass('active')
 		.addClass('complete')
@@ -82,8 +80,6 @@ function uploadSuccess(params) {
  * @param	object		params		listItem, message, status, uploadId.
  */
 function uploadFailure(params) {
-	console.log('Upload failure');
-	
 	if (params.message == '' || params.message == 'undefined') {
 		params.message = languageStrings.uploadFailureGeneric;
 	}
@@ -103,7 +99,6 @@ function uploadFailure(params) {
  * @param	object		params		fileName, uploadId.
  */
 function uploadStart(params) {
-	
 	// Stupid IE has to be different, and include some nonsense path with the file name.
 	fileName = params.fileName.replace(/.*(\/|\\)/, '');
 	
@@ -125,14 +120,43 @@ function uploadStart(params) {
  * @param	object		params		$target, fileName.
  */
 function handleFileClick(params) {
-	console.log('Filename: ' + params['fileName']);
-	
 	// Make a note of the selected filename.
 	params.$target.parents('.eepro-co-uk').find(':hidden').val(params.fileName);
 	params.$target.parents('.eepro-co-uk').find('.selected').removeClass('selected');
 	params.$target.parent().addClass('selected');
+}
+
+
+/**
+ * Alerts the user to in-progress uploads when he attempts to save, preview, or quick save
+ * the page. If there are no in-progress uploads, we let him proceed without question.
+ *
+ * @access	public
+ * @param 	object		e		jQuery event object.
+ */
+function handleSubmit(e) {
+	pendingUploads = $('#bucketload-status li').length;
 	
-	console.log('Hidden field value: ' + params.$target.parents('.eepro-co-uk').find(':hidden').val());
+	if (typeof(pendingUploads) == 'number' && pendingUploads > 0) {
+		return confirm(languageStrings.confirmExit);
+	}
+}
+
+
+/**
+ * Alerts the user to in-progress uploads when he attempts to navigate away from
+ * the page, or close the window. If there are no in-progress uploads, we let him
+ * proceed without question.
+ *
+ * @access	public
+ * @param 	object		e		Native browser event object (event not bound using jQuery)
+ */
+function handleNavigate(e) {
+	pendingUploads = $('#bucketload-status li').length;
+	
+	if (typeof(pendingUploads) == 'number' && pendingUploads > 0) {
+		return languageStrings.confirmExit;
+	}
 }
 
 
@@ -144,6 +168,11 @@ function handleFileClick(params) {
  */
 
 $(document).ready(function() {
+	
+	selector = 'input[type="submit"][name="preview"], input[type="submit"][name="save"], input[type="submit"][name="submit"]';
+	
+	$(selector).bind('click', handleSubmit);
+	window.onbeforeunload = handleNavigate;		// Do it the old-fashioned way. The jQuery event seems rather flakey.
 	
 	/**
 	 * We post any AJAX requests back to the current URL, to be handled by

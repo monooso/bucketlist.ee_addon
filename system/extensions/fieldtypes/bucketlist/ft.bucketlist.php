@@ -974,7 +974,12 @@ _HTML_;
 		
 		// Language strings, for use in the JS.
 		$upload_failure = str_replace(array('"', '"'), '', $LANG->line('upload_failure_unknown'));
-		$js_language = "var languageStrings = {uploadFailureGeneric : '{$upload_failure}'};";
+		$confirm_exit	= addslashes($LANG->line('confirm_exit'));
+		
+		$js_language = "var languageStrings = {
+			uploadFailureGeneric : '{$upload_failure}',
+			confirmExit : '{$confirm_exit}'
+		};";
 		
 		$this->insert_js($js_language);
 		
