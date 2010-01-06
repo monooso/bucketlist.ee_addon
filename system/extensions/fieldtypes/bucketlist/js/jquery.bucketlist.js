@@ -333,21 +333,6 @@ $.fn.bucketlist = function(options) {
 		}; /* fileChange */
 		
 		
-		/**
-		 * Creates the input file element.
-		 *
-		 * @access	private
-		 * @param 	object		$parent		A jQuery object.
-		 * @return 	void
-		 */
-		function createFile($parent) {
-			$('<input name="file" type="file">')
-				.appendTo($parent)
-				.bind('change', fileChange);
-				
-		}; /* createFile */
-		
-		
 		
 		/**
 		 * ----------------------------------------------------------
