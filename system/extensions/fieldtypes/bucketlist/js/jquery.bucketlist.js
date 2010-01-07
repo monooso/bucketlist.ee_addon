@@ -44,7 +44,6 @@ $.fn.bucketlist = function(options) {
 		 */
 		
 		if (localOptions.initialFile != '') {
-			console.log('Initial File: ' + localOptions.initialFile);
 			var initialFilePath = localOptions.initialFile.split(slash);
 			var initialFileStep = 0;
 		}
@@ -113,8 +112,7 @@ $.fn.bucketlist = function(options) {
 			// Apend the form to the div.
 			$uploadLink.parent().append($form);
 			
-			console.log('In initializeUpload the path is ' + $('#path', $form).val());
-			
+						
 			// If this is an anchor (which it should be), disable the default click event.
 			if ($uploadLink[0].nodeName.toLowerCase() == 'a') {
 				$uploadLink.bind('click', function(e) {
@@ -160,8 +158,7 @@ $.fn.bucketlist = function(options) {
 
 			/**
 			 * There is much sneakiness afoot. I've heard talk around t'interwebs
-			 * of dynamically generated iframe forms being re-submitted on page
-			 * reload.
+			 * of dynamically generated iframes being re-submitted on page reload.
 			 *
 			 * Quite how or why this would happen is beyond me, and I've been unable
 			 * to reproduce this fabled condition. However, the fix is simple enough,
@@ -179,11 +176,14 @@ $.fn.bucketlist = function(options) {
 			// This is round 2.
 			if (e.target.src.indexOf('javascript:') == 0) {
 				$iframe.unbind('load');
-				$iframe.remove();
+				
+				// Fix "busy" state in FF.
+				setTimeout(function() {
+					$iframe.remove();
+				}, 0);
+
 				return;
 			}
-			
-			log('amazonResponse IFRAME contents: ' + $iframe.contents().find('html').html());
 
 			var $status		= $iframe.contents().find('#status');
 			var $message	= $iframe.contents().find('#message');
@@ -317,8 +317,7 @@ $.fn.bucketlist = function(options) {
 			var iframeId = 'bucketload-iframe-' + uploadId;
 			var $iframe = $('<iframe id="' + iframeId + '" name="' + iframeId + '"></iframe>').appendTo('body').hide();
 			
-			console.log('Before upload path is: ' + $('input[id="path"]', $form).val());
-			
+						
 			// Wait a moment for the iframe to be created in FF and IE.
 			setTimeout(function() {
 				// Add the target attribute to the form, and submit it.
