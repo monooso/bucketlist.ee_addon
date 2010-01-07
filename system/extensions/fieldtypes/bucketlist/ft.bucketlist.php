@@ -130,37 +130,15 @@ class Bucketlist extends Fieldframe_Fieldtype {
 			&& isset($SESS->cache[$this->namespace][$this->lower_class])
 			&& isset($SESS->cache[$this->namespace][$this->lower_class]['items']));
 	}
-  
-  
+	
+	
 	/**
-	 * Creates the Session cache, if it doesn't exist.
+	 * Loads all the items for the specified bucket into the Session
+	 * cache, and returns the results, for convenience.
 	 *
-	 * @access  private
-	 */
-	private function create_session_cache()
-	{
-		global $SESS;
-
-		if ( ! isset($SESS->cache[$this->namespace]))
-		{
-			$SESS->cache[$this->namespace] = array();
-		}
-
-		if ( ! isset($SESS->cache[$this->namespace][$this->lower_class]))
-		{
-			$SESS->cache[$this->namespace][$this->lower_class] = array();
-		}
-		
-		if ( ! isset($SESS->cache[$this->namespace][$this->lower_class]['items']))
-		{
-			$SESS->cache[$this->namespace][$this->lower_class]['items'] = array();
-		}
-	}
-	
-	
-	/**
-	 * Returns an associative array containing two arrays, one of all
-	 * the folders in the specified bucket, the other of all the files.
+	 * The results take the form of an associative array containing
+	 * two arrays, one of all the folders in the specified bucket,
+	 * the other of all the files.
 	 *
 	 * The session cache is checked, followed by the database cache,
 	 * before Amazon S3 is queried.
@@ -169,7 +147,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 * @param 	string		$bucket		The parent bucket.
 	 * @return 	array
 	 */
-	private function get_items($bucket_name = '')
+	private function load_items($bucket_name = '')
 	{
 		global $DB, $SESS;
 		
@@ -195,9 +173,6 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		
 		// Make a note of the bucket ID.
 		$bucket_id = $db_bucket->row['bucket_id'];
-		
-		// Create the session cache, if it doesn't already exist.
-		$this->create_session_cache();
 		
 		// Check the session cache.
 		if (array_key_exists($bucket_name, $SESS->cache[$this->namespace][$this->lower_class]['items']))
@@ -305,12 +280,9 @@ class Bucketlist extends Fieldframe_Fieldtype {
 				$DB->query($sql);
 				
 				// Call this method again to load the items from the database, in name order.
-				return $this->get_items($bucket_name);
+				return $this->load_items($bucket_name);
 			}
 		}
-
-		// Cache the results.
-		$this->create_session_cache();
 		
 		if ( ! isset($SESS->cache[$this->namespace][$this->lower_class]['items'])
 			OR ! is_array($SESS->cache[$this->namespace][$this->lower_class]['items']))
@@ -326,22 +298,24 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	
 	
 	/**
-	 * Returns a list of S3 buckets. The session cache is checked,
-	 * followed by the database cache, before Amazon S3 is queried.
+	 * Loads a list of S3 buckets into the Session cache, and returns
+	 * them, for convenience. The session cache is checked, followed
+	 * by the database cache, before Amazon S3 is queried.
 	 *
 	 * @access	private
 	 * @return 	array
 	 */
-	private function get_buckets()
+	private function load_buckets()
 	{
 		global $DB, $SESS;
 		
 		$buckets = array();
+		$cache =& $SESS->cache[$this->namespace][$this->lower_class];
 		
 		// Does a Session cache exist? If yes, use it.
-		if ($this->session_cache_exists() && is_array($SESS->cache[$this->namespace][$this->lower_class]['buckets']))
+		if (is_array($cache['buckets']))
 		{
-			$buckets = $SESS->cache[$this->namespace][$this->lower_class]['buckets'];
+			$buckets = $cache['buckets'];
 		}
 		
 		// If we have no buckets, load them from the database.
@@ -401,42 +375,15 @@ class Bucketlist extends Fieldframe_Fieldtype {
 				$DB->query($sql);
 				
 				// Call this method again to load the buckets from the database, in name order.
-				return $this->get_buckets();
+				return $this->load_buckets();
 			}
 		}
 		
 		// Cache the results.
-		$this->create_session_cache();
-		$SESS->cache[$this->namespace][$this->lower_class]['buckets'] = $buckets;
+		$cache['buckets'] = $buckets;
 		
 		// Return the buckets.
 		return $buckets;
-	}
-	
-	
-	/**
-	 * Returns an array of the available buckets. That is, the buckets that have
-	 * been selected as being available for the current field.
-	 *
-	 * @access	private
-	 * @return	array
-	 */
-	private function get_available_buckets()
-	{
-		/**
-		 * STUB METHOD.
-		 * This functionality has been removed, whilst I figure out how best to
-		 * implement it.
-		 *
-		 * It turns out that retrieving field and cell settings
-		 * from within an AJAX call isn't particularly straightforward, and I
-		 * didn't want this to hold everything up.
-		 *
-		 * So, for now there's no option to specify which buckets are available
-		 * for each field.
-		 */
-		
-		return $this->get_buckets();
 	}
 	
 	
@@ -466,7 +413,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		
 		$LANG->fetch_language_file($this->lower_class);
 		
-		$buckets = $this->get_available_buckets();
+		$buckets = $this->load_buckets();
 		
 		if ( ! $buckets)
 		{
@@ -499,6 +446,17 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	
 	/**
 	 * Builds the UL used to display the items within a bucket or directory.
+	 *
+	 * IMPORTANT NOTE:
+	 * A potential bug lurks within.
+	 *
+	 * In theory, if two separate users on the same EE install were to make
+	 * two near-simultaneous AJAX requests, AND if the database cache was out
+	 * of date, AND if the second of those two calls was to overlap with the
+	 * Amazon call->response instigated by the first AJAX request, THEN we
+	 * could end up with duplicate items in the database.
+	 *
+	 * Surprisingly, I let this one slide for 1.0.0.
 	 *
 	 * @access		private
 	 * @param 		string		$file_path		The file path.
@@ -533,7 +491,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		$bucket_name = substr($file_path, 0, strpos($file_path, '/'));
 		
 		// Retrieve the items residing in the bucket.
-		$items = $this->get_items($bucket_name);
+		$items = $this->load_items($bucket_name);
 		
 		// Open the list of files and folders.
 		$ret = "<ul class='bucketlist-tree' style='display : none;'>";
@@ -790,12 +748,11 @@ class Bucketlist extends Fieldframe_Fieldtype {
 						
 						/**
 						 * The cache is now out of date, dagnammit.
-						 * Clear the Session cache for this bucket, and fob everything off onto get_items.
+						 * Clear the Session cache for this bucket, and fob everything off onto load_items.
 						 */
 						
-						$this->create_session_cache();
 						$SESS->cache[$this->namespace][$this->lower_class]['items'][$bucket] = array();
-						$this->get_items($bucket);
+						$this->load_items($bucket);
 					}
 				}
 			}
@@ -838,62 +795,34 @@ _HTML_;
 	
 	
 	/**
-	 * Temporarily retired method to display the fieldtype field settings form.
+	 * Waits for the 'update_finished' flag to be set, after a call
+	 * to Amazon. Used when two or more AJAX calls are received which
+	 * overlap with the Amazon call->response sequence.
 	 *
-	 * @see		get_available_buckets
+	 * If we don't do this, we potentially end up with duplicate items
+	 * or -- worse -- buckets in the database. Nightmare.
+	 *
 	 * @access	private
-	 * @param	array		$field_settings		Any previously saved field settings.
-	 * @return	array
+	 * @return	void
 	 */
-	private function _display_field_settings($field_settings)
+	private function wait_for_amazon()
 	{
-		global $LANG;
-		
-		// Initialise a new instance of the SettingsDisplay class.
-		$sd = new Fieldframe_SettingsDisplay();
-		
-		// Open the settings block.
-		$ret = $sd->block('field_settings_heading');
-		
-		// Attempt to retrieve a list of the available buckets.
-		if ( ! $this->check_amazon_credentials())
+		// Idiot proof.
+		if ( ! $this->session_cache_exists)
 		{
-			// Credentials not saved. Display an error message.
-			$ret .= $sd->info_row('missing_credentials');
-		}
-		else
-		{
-			// Load the available buckets.
-			if ( ! $buckets = $this->get_buckets())
-			{
-				$ret .= $sd->info_row('no_buckets');
-			}
-			else
-			{
-				$ret 		.= $sd->info_row('buckets_info');
-				$options 	= array();
-				$bucket_ids = array();
-				$attributes = array('size' => 8, 'width' => '100%');
-				
-				foreach ($buckets AS $bucket)
-				{
-					$bucket_ids[] = $bucket['bucket_id'];
-					$options[$bucket['bucket_id']] = $bucket['bucket_name'];
-				}
-				
-				$selected = isset($field_settings['field_buckets']) ? $field_settings['field_buckets'] : $bucket_ids;
-				
-				$ret .= $sd->row(array(
-					$sd->label('buckets_label'),
-					$sd->multiselect('field_buckets[]', $selected, $options, $attributes)
-				));
-			}
+			return FALSE;
 		}
 		
-		// Close the settings block.
-		$ret .= $sd->block_c();
+		// Shortcut.
+		$cache = $SESS->cache[$this->namespace][$this->lower_case];
 		
-		return array('cell2' => $ret);
+		// Are we waiting for Amazon?
+		if ($cache['update_started'] && ! $cache['update_finished'])
+		{
+			usleep(100000);		// Nap for 1000 microseconds (0.1 seconds).
+			wait_for_amazon();
+		}
+		
 	}
 	
 	
@@ -927,9 +856,17 @@ _HTML_;
 	 * @param 		object		$session	The current Session class.
 	 * @return		void
 	 */
-	public function sessions_start($session)
+	public function sessions_start(&$session)
 	{
 		global $IN;
+		
+		// Initialise the cache.
+		$session->cache[$this->namespace] = array();
+		$session->cache[$this->namespace][$this->lower_class] = array();
+		$session->cache[$this->namespace][$this->lower_class]['buckets'] = array();
+		$session->cache[$this->namespace][$this->lower_class]['items'] = array();
+		$session->cache[$this->namespace][$this->lower_class]['update_started'] = FALSE;
+		$session->cache[$this->namespace][$this->lower_class]['update_finished'] = FALSE;
 		
 		if ($IN->GBL('ajax', 'GET') == 'y' && $IN->GBL('addon_id', 'GET') == $this->lower_class)
 		{
@@ -965,13 +902,16 @@ _HTML_;
 	 */
 	public function display_field($field_name, $field_data, $field_settings)
 	{
-		global $DB, $FNS, $IN, $LANG, $PREFS, $REGX;
+		global $DB, $FNS, $IN, $LANG, $PREFS, $REGX, $SESS;
 		
 		// Check that this isn't an AJAX request.
 		if ($IN->GBL('ajax', 'GET') == 'y')
 		{
 			return FALSE;
 		}
+		
+		// Shortcut.
+		$cache =& $SESS->cache[$this->namespace][$this->lower_class];
 		
 		// Retrieve the correct language file.
 		$LANG->fetch_language_file($this->lower_class);
@@ -1004,8 +944,58 @@ _HTML_;
 			return $ret;
 		}
 		
-		// Retrieve the buckets that are available for this field.
-		$buckets = $this->get_available_buckets();
+		
+		if ( ! $cache['update_started'])
+		{
+			/**
+			 * Nothing has been done yet. It's up to you.
+			 * We're depending on you, man.
+			 */
+			
+			$cache['update_started'] = TRUE;
+			
+			/**
+			 * Load the buckets. This will retrieve everything from the database and
+			 * (if required) Amazon, and populate the session cache.
+			 */
+			
+			$buckets = $this->load_buckets();
+			
+			/**
+			 * Before we go any further, call load_items for each of the buckets.
+			 *
+			 * I'd prefer not to call this here, as it's loading -- possibly from
+			 * Amazon -- items that may not be accessed by the user.
+			 *
+			 * However, doing this solves all sorts of problems with multiple
+			 * simultaneous 'autoload' AJAX calls overlapping with Amazon calls.
+			 *
+			 * It all makes it possible for us to reliably check whether the saved
+			 * item is still valid.
+			 */
+			
+			foreach ($buckets AS $key => $val)
+			{
+				$this->load_items($key);
+			}
+			
+			// Set the flags.
+			$cache['update_finished'] = TRUE;
+			
+		}
+		elseif ($cache['update_started'] && ! $cache['update_finished'])
+		{
+			/**
+			 * Somebody else is doing your dirty work for you, slacker.
+			 * Go and wait somewhere else while the real men do some work.
+			 */
+			
+			$this->wait_for_amazon();
+		}
+		
+		// If we've made it this far, the buckets should be in the cache.
+		$buckets = $cache['buckets'];
+		
 		
 		if ( ! $buckets)
 		{
@@ -1015,24 +1005,6 @@ _HTML_;
 			return $ret;
 		}
 		
-		/**
-		 * Before we go any further, call get_items for each of the buckets.
-		 * Without this, we can run into problems when running the 'autoload'
-		 * sequence for saved files.
-		 * 
-		 * If there is more than one BucketList on a page, we get hit with
-		 * simultaneous AJAX queries. If the cache is out of date, this results
-		 * in multiple near simultaneous calls to Amazon, and duplicate items
-		 * in the database. Boo.
-		 *
-		 * Calling get_items also makes it possible for us to check whether
-		 * the save item is still valid (more on that in a bit).
-		 */
-		
-		foreach ($buckets AS $key => $val)
-		{
-			$this->get_items($key);
-		}
 		
 		/**
 		 * Do we have saved field data? If so, we need to check
