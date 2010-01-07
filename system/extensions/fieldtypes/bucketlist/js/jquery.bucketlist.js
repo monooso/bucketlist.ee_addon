@@ -113,6 +113,8 @@ $.fn.bucketlist = function(options) {
 			// Apend the form to the div.
 			$uploadLink.parent().append($form);
 			
+			console.log('In initializeUpload the path is ' + $('#path', $form).val());
+			
 			// If this is an anchor (which it should be), disable the default click event.
 			if ($uploadLink[0].nodeName.toLowerCase() == 'a') {
 				$uploadLink.bind('click', function(e) {
@@ -315,6 +317,8 @@ $.fn.bucketlist = function(options) {
 			var iframeId = 'bucketload-iframe-' + uploadId;
 			var $iframe = $('<iframe id="' + iframeId + '" name="' + iframeId + '"></iframe>').appendTo('body').hide();
 			
+			console.log('Before upload path is: ' + $('input[id="path"]', $form).val());
+			
 			// Wait a moment for the iframe to be created in FF and IE.
 			setTimeout(function() {
 				// Add the target attribute to the form, and submit it.
@@ -395,10 +399,19 @@ $.fn.bucketlist = function(options) {
 					// Collapse the tree.
 					$target.parent().find('ul').slideUp({duration : 500});
 					$target.parent().removeClass('expanded').addClass('collapsed');
-
 				}
 
 			} else {
+				$wrapper = $target.closest('.eepro-co-uk');
+				
+				// Mark the selected file as such.
+				$('li.selected', $wrapper).removeClass('selected');
+				$target.parent().addClass('selected');
+				
+				// Make a note of the selected file name in the hidden form field.
+				$target.closest('.eepro-co-uk').find('> input:hidden').val($target.attr('rel'));
+				
+				// Callback.
 				localOptions.onFileClick({$target : $target, fileName : $target.attr('rel')});
 			}
 			

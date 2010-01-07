@@ -114,20 +114,6 @@ function uploadStart(params) {
 
 
 /**
- * Called when a file is selected in the file browser.
- *
- * @access	public
- * @param	object		params		$target, fileName.
- */
-function handleFileClick(params) {
-	// Make a note of the selected filename.
-	params.$target.parents('.eepro-co-uk').find(':hidden').val(params.fileName);
-	params.$target.parents('.eepro-co-uk').find('.selected').removeClass('selected');
-	params.$target.parent().addClass('selected');
-}
-
-
-/**
  * Alerts the user to in-progress uploads when he attempts to save, preview, or quick save
  * the page. If there are no in-progress uploads, we let him proceed without question.
  *
@@ -197,8 +183,6 @@ $(document).ready(function() {
 	baseAjaxURL	+= 'ajax=y&addon_id=bucketlist&request=';
 	
 	$.fn.bucketlist.defaults.ajaxScriptURL 		= baseAjaxURL + 'tree';
-	/* $.fn.bucketlist.defaults.languageStrings 	= languageStrings;		/* Not used at present. */
-	$.fn.bucketlist.defaults.onFileClick		= handleFileClick;
 	$.fn.bucketlist.defaults.uploadFormAction	= baseAjaxURL + 'upload';
 	$.fn.bucketlist.defaults.onUploadFailure 	= uploadFailure;
 	$.fn.bucketlist.defaults.onUploadStart		= uploadStart;
