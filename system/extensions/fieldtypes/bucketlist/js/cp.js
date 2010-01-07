@@ -193,7 +193,7 @@ $(document).ready(function() {
 	displayStatusBar(false);
 	
 	baseAjaxURL	= document.location.href;
-	baseAjaxURL	+= (baseAjaxURL.indexOf('?') === false) ? '?' : '&';
+	baseAjaxURL	+= (baseAjaxURL.indexOf('?') < 0) ? '?' : '&';
 	baseAjaxURL	+= 'ajax=y&addon_id=bucketlist&request=';
 	
 	$.fn.bucketlist.defaults.ajaxScriptURL 		= baseAjaxURL + 'tree';
