@@ -731,7 +731,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 					{
 						// Create the HTML for the new list item.
 						$list_item = '<li class="file ext_' .$item_extension .'">
-							<a href="#" rel="' .$item_path .'">' .$item_name .'</a></li>';
+							<a href="#" rel="' .rawurlencode($item_path) .'">' .$item_name .'</a></li>';
 						
 						$DB->query($DB->insert_string(
 							'exp_bucketlist_items',
