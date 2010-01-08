@@ -263,6 +263,7 @@ color : #666;
 .bucketlist-ui .bucketlist-tree .ext_tif > a,
 .bucketlist-ui .bucketlist-tree .ext_tiff {background-image : url(../img/icons/file-image.png);}
 
+.bucketlist-ui .bucketlist-tree .ext_m4a > a,
 .bucketlist-ui .bucketlist-tree .ext_m4p > a,
 .bucketlist-ui .bucketlist-tree .ext_mp3 > a,
 .bucketlist-ui .bucketlist-tree .ext_ogg > a,
