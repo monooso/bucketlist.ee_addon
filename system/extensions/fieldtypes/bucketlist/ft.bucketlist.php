@@ -1194,7 +1194,8 @@ _HTML_;
 			item_last_updated int(10) unsigned NOT NULL,
 			CONSTRAINT pk_items PRIMARY KEY(item_id),
 			CONSTRAINT fk_item_site_id FOREIGN KEY(site_id) REFERENCES exp_site(site_id),
-			CONSTRAINT fk_item_bucket_id FOREIGN KEY(bucket_id) REFERENCES exp_bucketlist_buckets(bucket_id))";
+			CONSTRAINT fk_item_bucket_id FOREIGN KEY(bucket_id) REFERENCES exp_bucketlist_buckets(bucket_id)
+			CONSTRAINT uk_item_path UNIQUE (item_path))";
 		
 		foreach ($sql AS $query)
 		{
