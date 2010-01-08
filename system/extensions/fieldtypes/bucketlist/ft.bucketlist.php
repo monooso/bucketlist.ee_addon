@@ -152,6 +152,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		global $DB, $SESS;
 		
 		$items = array();
+		$cache =& $SESS->cache[$this->namespace][$this->lower_class]['items'];
 		
 		// Have we been given a bucket name?
 		if ( ! $bucket_name)
@@ -175,9 +176,9 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		$bucket_id = $db_bucket->row['bucket_id'];
 		
 		// Check the session cache.
-		if (array_key_exists($bucket_name, $SESS->cache[$this->namespace][$this->lower_class]['items']))
+		if (array_key_exists($bucket_name, $cache))
 		{
-			$items = $SESS->cache[$this->namespace][$this->lower_class]['items'][$bucket_name];
+			$items = $cache[$bucket_name];
 		}
 		
 		// Check the database cache.
@@ -234,6 +235,8 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		// Load the items from S3.
 		if ( ! $items)
 		{
+			$DB->query("DELETE FROM exp_bucketlist_items WHERE bucket_id = '{$bucket_id}'");
+			
 			// Create the S3 object.
 			$s3 = new S3($this->site_settings['access_key_id'],
 				$this->site_settings['secret_access_key'],
@@ -242,6 +245,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 			// Request the bucket content from Amazon.
 			$s3_items = @$s3->getBucket($bucket_name);
 			
+						
 			if (is_array($s3_items) && count($s3_items) > 0)
 			{
 				// Write the items to the database.
@@ -277,6 +281,8 @@ class Bucketlist extends Fieldframe_Fieldtype {
 				}
 				
 				$sql = rtrim($sql, ', ');
+				
+								
 				$DB->query($sql);
 				
 				// Call this method again to load the items from the database, in name order.
@@ -284,13 +290,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 			}
 		}
 		
-		if ( ! isset($SESS->cache[$this->namespace][$this->lower_class]['items'])
-			OR ! is_array($SESS->cache[$this->namespace][$this->lower_class]['items']))
-		{
-			$SESS->cache[$this->namespace][$this->lower_class]['items'] = array();
-		}
-		
-		$SESS->cache[$this->namespace][$this->lower_class]['items'][$bucket_name] = $items;
+		$cache[$bucket_name] = $items;
 		
 		// Return the items.
 		return $items;
@@ -345,6 +345,12 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		// If we still have no buckets, it's time to place a call to Amazon.
 		if ( ! $buckets)
 		{
+			// Delete the buckets from the database.
+			$DB->query("DELETE FROM exp_bucketlist_buckets");
+			
+			// Delete the items from the database.
+			$DB->query("DELETE FROM exp_bucketlist_items");
+			
 			// Create the S3 object.
 			$s3 = new S3($this->site_settings['access_key_id'],
 				$this->site_settings['secret_access_key'],
@@ -356,12 +362,6 @@ class Bucketlist extends Fieldframe_Fieldtype {
 			// Do we have some results?
 			if (is_array($s3_buckets) && count($s3_buckets) > 0)
 			{
-				// Delete the buckets from the database.
-				$DB->query("DELETE FROM exp_bucketlist_buckets");
-				
-				// Delete the items from the database.
-				$DB->query("DELETE FROM exp_bucketlist_items");
-				
 				// Write the new buckets to the database.
 				$cache_date = time();
 				$sql 		= 'INSERT INTO exp_bucketlist_buckets (site_id, bucket_name, bucket_cache_date) VALUES';
@@ -580,6 +580,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		header('Content-Type: text/html; charset=' .$PREFS->ini('charset'));
 		
 		exit($this->build_items_ui($parent_directory));
+		exit('<ul class="bucketlist-tree" style="display : none;"><li class="empty">Parent: ' .$this->build_items_ui() .'</li></ul>');
 	}
 	
 	
@@ -807,19 +808,14 @@ _HTML_;
 	 */
 	private function wait_for_amazon()
 	{
-		// Idiot proof.
-		if ( ! $this->session_cache_exists)
-		{
-			return FALSE;
-		}
-		
 		// Shortcut.
-		$cache = $SESS->cache[$this->namespace][$this->lower_case];
+		$cache &= $SESS->cache[$this->namespace][$this->lower_case];
 		
 		// Are we waiting for Amazon?
 		if ($cache['update_started'] && ! $cache['update_finished'])
 		{
-			usleep(100000);		// Nap for 1000 microseconds (0.1 seconds).
+			// usleep(100000);		// Nap for 1000 microseconds (0.1 seconds).
+			sleep(1);
 			wait_for_amazon();
 		}
 		
@@ -904,6 +900,7 @@ _HTML_;
 	{
 		global $DB, $FNS, $IN, $LANG, $PREFS, $REGX, $SESS;
 		
+				
 		// Check that this isn't an AJAX request.
 		if ($IN->GBL('ajax', 'GET') == 'y')
 		{
@@ -983,19 +980,18 @@ _HTML_;
 			$cache['update_finished'] = TRUE;
 			
 		}
-		elseif ($cache['update_started'] && ! $cache['update_finished'])
+		elseif ( ! $cache['update_finished'])
 		{
 			/**
 			 * Somebody else is doing your dirty work for you, slacker.
 			 * Go and wait somewhere else while the real men do some work.
 			 */
 			
-			$this->wait_for_amazon();
+			// $this->wait_for_amazon();
 		}
 		
 		// If we've made it this far, the buckets should be in the cache.
 		$buckets = $cache['buckets'];
-		
 		
 		if ( ! $buckets)
 		{
@@ -1004,7 +1000,6 @@ _HTML_;
 			$ret .= '</div>';
 			return $ret;
 		}
-		
 		
 		/**
 		 * Do we have saved field data? If so, we need to check
@@ -1104,6 +1099,7 @@ _HTML_;
 		*/
 			
 		$options = array(
+			'30'	=> '30_sec',
 			'300'	=> '5_min',
 			'600'	=> '10_min',
 			'900'	=> '15_min',
@@ -1183,7 +1179,8 @@ _HTML_;
 			bucket_name varchar(255) NOT NULL,
 			bucket_cache_date int(10) unsigned NOT NULL default 0,
 			CONSTRAINT pk_buckets PRIMARY KEY(bucket_id),
-			CONSTRAINT fk_bucket_site_id FOREIGN KEY(site_id) REFERENCES exp_site(site_id))";
+			CONSTRAINT fk_bucket_site_id FOREIGN KEY(site_id) REFERENCES exp_site(site_id)
+			CONSTRAINT uk_bucket_name UNIQUE (bucket_name))";
 		
 		$sql[] = "CREATE TABLE IF NOT EXISTS exp_bucketlist_items (
 			item_id int(10) unsigned NOT NULL auto_increment,

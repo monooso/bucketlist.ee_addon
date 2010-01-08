@@ -78,9 +78,8 @@ text-shadow : 0 1px 0 rgba(0, 0, 0, 0.35);
 
 /* FF Matrix styles. */
 td.bucketlist {
-padding-bottom : 0 !important;
-padding-left : 0 !important;
-padding-right : 0 !important;
+background : transparent url(../img/finder-bg.gif) repeat 0 0;
+padding : 0 !important;
 width : 25%;
 }
 
@@ -90,7 +89,7 @@ margin-bottom : 0;
 width : 100%;
 }
 
-.bucketlist.tableCellTwo .eepro-co-uk {background : #FFF url(../img/finder-bg-alt.gif) repeat 0 0;}
+.bucketlist .eepro-co-uk {background : none;}
 
 .bucketlist.tableCellTwo .eepro-co-uk .alert,
 .bucketlist.tableCellTwo .eepro-co-uk .error,
@@ -178,16 +177,15 @@ content : ".";
 
 html > body #bucketload-status ul {*zoom : 1;}	/* IE7 :after fix */
 
+/* Ditch the rgba border colours to keep IE7 happy. And then ditched the rgba background-color too. */
 #bucketload-status li {
 background-color : #F2F2F2;
-background-color : rgba(255, 255, 255, 0.5);
 background-image : url(../img/icons/spinner.gif);
 background-position : 10px 50%;
 background-repeat : no-repeat;
-border-top : 1px solid #CCC;
-border-top-color : rgba(0, 0, 0, 0.25);
-border-bottom : 1px solid #F4F4F4;
-border-bottom-color : rgba(255, 255, 255, 0.9);
+border : 1px solid #EEE;
+border-top-color : #CCC;
+border-bottom-color : #F4F4F4;
 float : left;
 font : normal 11px/20px "Lucida Grande", Tahoma, Verdana, sans-serif;
 height : 20px;

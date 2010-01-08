@@ -68,6 +68,48 @@ $.fn.bucketlist = function(options) {
 		}; /* getLanguageString */
 		
 		
+		/**
+		 * Are we dealing with IE7? Tried setting this as a this.isIE7 variable,
+		 * and IE7 failed to recognise it. Oh the irony.
+		 *
+		 * @access	private
+		 */
+		function isIE7() {
+			return (document.all && navigator.appVersion.indexOf('MSIE 7.') != -1);
+		}
+		
+		
+		/**
+		 * Fixes *other* IE7 FF Matrix fields on the page. Not entirely happy
+		 * that the code belongs here, but here's the deal...
+		 *
+		 * When any non-FF Matrix BucketList tree is clicked, all the FF Matrix
+		 * bucket trees disappear in IE7. *punches Bill Gates in the kidneys*
+		 *
+		 * The same thing happens, sometimes, on page load.
+		 *
+		 * The fix is to resize the FF Matrix table(s) using a simple bit of JS.
+		 * I'm not entirely happy that this fix belongs here, but never mind.
+		 * This is the simplest solution for the time being.
+		 *
+		 * @access	private
+		 */
+		function fix_ie7_matrices() {
+			
+			if (isIE7()) {
+				
+				$('td.bucketlist').each(function() {
+					$this = $(this);
+					
+					tWidth = $this.width();
+					$this.width(tWidth - 1);
+					$this.width(tWidth);
+				});
+				
+			}
+		};
+		
+		
 		
 		/**
 		 * ----------------------------------------------------------
@@ -374,6 +416,8 @@ $.fn.bucketlist = function(options) {
 		 */
 		function treeClick($target) {
 			
+			fix_ie7_matrices();		// Wait for the slow child.
+			
 			if ($target.parent().hasClass('directory')) {
 
 				if ($target.parent().hasClass('collapsed')) {
@@ -382,8 +426,14 @@ $.fn.bucketlist = function(options) {
 					 * Expand the tree. Only one branch of the tree can be
 					 * open at any one time.
 					 */
-
-					$target.parent().parent().find('ul').slideUp({duration : 500});
+					
+					if (isIE7()) {
+						$target.parent().parent().find('ul').hide();
+						fix_ie7_matrices();
+					} else {
+						$target.parent().parent().find('ul').slideUp({duration : 500});
+					}
+					
 					$target.parent().parent().find('.directory').removeClass('expanded').addClass('collapsed');
 					$target.parent().find('ul').remove();
 					
@@ -396,11 +446,18 @@ $.fn.bucketlist = function(options) {
 
 				} else {
 					// Collapse the tree.
-					$target.parent().find('ul').slideUp({duration : 500});
+					if (isIE7()) {
+						$target.parent().parent().find('ul').hide();
+						fix_ie7_matrices();
+					} else {
+						$target.parent().find('ul').slideUp({duration : 500});
+					}
+					
 					$target.parent().removeClass('expanded').addClass('collapsed');
 				}
 
 			} else {
+				
 				$wrapper = $target.closest('.eepro-co-uk');
 				
 				// Mark the selected file as such.
@@ -485,7 +542,13 @@ $.fn.bucketlist = function(options) {
 					if (path == '') {
 						$li.find('ul:hidden').show();
 					} else {
-						$li.find('ul:hidden').slideDown({duration : 500});
+						
+						if (isIE7()) {
+							$li.find('ul:hidden').show();
+							fix_ie7_matrices();
+						} else {
+							$li.find('ul:hidden').slideDown({duration : 500});
+						}
 						
 						/**
 						 * Remember to pass the UNESCAPED path out of the method.
@@ -520,7 +583,6 @@ $.fn.bucketlist = function(options) {
 				}); /* $.get */
 				
 		}; /* showTree */
-		
 		
 		// Starts the ball rolling.
 		initializeTree();
