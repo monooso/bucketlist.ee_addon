@@ -264,7 +264,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 				{
 					$item_is_folder 	= (substr($s3_item['name'], -1) == '/') ? 'y' : 'n';
 					$item_last_updated 	= $DB->escape_str($s3_item['time']);
-					$item_extension		= $DB->escape_str(pathinfo($s3_item['name'], PATHINFO_EXTENSION));
+					$item_extension		= $DB->escape_str(strtolower(pathinfo($s3_item['name'], PATHINFO_EXTENSION)));
 					
 					$item_name = $DB->escape_str(pathinfo($s3_item['name'], PATHINFO_BASENAME));
 					$item_path = $DB->escape_str($bucket_name .'/' .$s3_item['name']);
@@ -730,7 +730,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 					else
 					{
 						// Create the HTML for the new list item.
-						$list_item = '<li class="file ext_' .$item_extension .'">
+						$list_item = '<li class="file ext_' .strtolower($item_extension) .'">
 							<a href="#" rel="' .rawurlencode($item_path) .'">' .$item_name .'</a></li>';
 						
 						$DB->query($DB->insert_string(
