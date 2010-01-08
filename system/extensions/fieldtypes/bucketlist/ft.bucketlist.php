@@ -852,9 +852,12 @@ _HTML_;
 	 * @param 		object		$session	The current Session class.
 	 * @return		void
 	 */
-	public function sessions_start(&$session)
+	public function sessions_start($s)
 	{
 		global $IN;
+		
+		// Tracking down bug #15 for RM.
+		$session =& $SESS;
 		
 		// Initialise the cache.
 		$session->cache[$this->namespace] = array();
