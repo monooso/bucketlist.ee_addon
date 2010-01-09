@@ -235,8 +235,6 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		// Load the items from S3.
 		if ( ! $items)
 		{
-			$DB->query("DELETE FROM exp_bucketlist_items WHERE bucket_id = '{$bucket_id}'");
-			
 			// Create the S3 object.
 			$s3 = new S3($this->site_settings['access_key_id'],
 				$this->site_settings['secret_access_key'],
@@ -245,12 +243,11 @@ class Bucketlist extends Fieldframe_Fieldtype {
 			// Request the bucket content from Amazon.
 			$s3_items = @$s3->getBucket($bucket_name);
 			
-						
 			if (is_array($s3_items) && count($s3_items) > 0)
 			{
 				// Write the items to the database.
 				$cache_date = time();
-				$sql = "INSERT INTO exp_bucketlist_items (
+				$insert_sql = "INSERT INTO exp_bucketlist_items (
 					bucket_id,
 					item_is_folder,
 					item_last_updated,
@@ -262,15 +259,14 @@ class Bucketlist extends Fieldframe_Fieldtype {
 				
 				foreach ($s3_items AS $s3_item)
 				{
+					$item_name 			= $DB->escape_str(pathinfo($s3_item['name'], PATHINFO_BASENAME));
 					$item_is_folder 	= (substr($s3_item['name'], -1) == '/') ? 'y' : 'n';
 					$item_last_updated 	= $DB->escape_str($s3_item['time']);
 					$item_extension		= $DB->escape_str(strtolower(pathinfo($s3_item['name'], PATHINFO_EXTENSION)));
+					$item_path 			= $DB->escape_str($bucket_name .'/' .$s3_item['name']);
+					$item_size 			= $DB->escape_str($s3_item['size']);
 					
-					$item_name = $DB->escape_str(pathinfo($s3_item['name'], PATHINFO_BASENAME));
-					$item_path = $DB->escape_str($bucket_name .'/' .$s3_item['name']);
-					$item_size = $DB->escape_str($s3_item['size']);
-					
-					$sql .= "('{$bucket_id}',
+					$insert_sql .= "('{$bucket_id}',
 						'{$item_is_folder}',
 						'{$item_last_updated}',
 						'{$item_name}',
@@ -280,10 +276,17 @@ class Bucketlist extends Fieldframe_Fieldtype {
 						'{$this->site_id}'), ";
 				}
 				
-				$sql = rtrim($sql, ', ');
+				$insert_sql = rtrim($insert_sql, ', ');
 				
-								
-				$DB->query($sql);
+				$sql = array(
+					"DELETE FROM exp_bucketlist_items WHERE bucket_id = '{$bucket_id}'",
+					$insert_sql
+				);
+				
+				foreach ($sql AS $query)
+				{
+					$DB->query($query);
+				}
 				
 				// Call this method again to load the items from the database, in name order.
 				return $this->load_items($bucket_name);
@@ -345,12 +348,6 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		// If we still have no buckets, it's time to place a call to Amazon.
 		if ( ! $buckets)
 		{
-			// Delete the buckets from the database.
-			$DB->query("DELETE FROM exp_bucketlist_buckets");
-			
-			// Delete the items from the database.
-			$DB->query("DELETE FROM exp_bucketlist_items");
-			
 			// Create the S3 object.
 			$s3 = new S3($this->site_settings['access_key_id'],
 				$this->site_settings['secret_access_key'],
@@ -364,15 +361,25 @@ class Bucketlist extends Fieldframe_Fieldtype {
 			{
 				// Write the new buckets to the database.
 				$cache_date = time();
-				$sql 		= 'INSERT INTO exp_bucketlist_buckets (site_id, bucket_name, bucket_cache_date) VALUES';
+				$insert_sql = 'INSERT INTO exp_bucketlist_buckets (site_id, bucket_name, bucket_cache_date) VALUES';
 				
 				foreach ($s3_buckets AS $s3_bucket)
 				{
-					$sql .= "('{$this->site_id}', '" .$DB->escape_str($s3_bucket) ."', '{$cache_date}'), ";
+					$insert_sql .= "('{$this->site_id}', '" .$DB->escape_str($s3_bucket) ."', '{$cache_date}'), ";
 				}
 				
-				$sql = rtrim($sql, ', ');
-				$DB->query($sql);
+				$insert_sql = rtrim($insert_sql, ', ');
+				
+				$sql = array(
+					"DELETE FROM exp_bucketlist_buckets",
+					"DELETE FROM exp_bucketlist_items",
+					$insert_sql
+				);
+				
+				foreach ($sql AS $query)
+				{
+					$DB->query($query);
+				}
 				
 				// Call this method again to load the buckets from the database, in name order.
 				return $this->load_buckets();
