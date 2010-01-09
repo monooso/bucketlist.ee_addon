@@ -580,7 +580,6 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		header('Content-Type: text/html; charset=' .$PREFS->ini('charset'));
 		
 		exit($this->build_items_ui($parent_directory));
-		exit('<ul class="bucketlist-tree" style="display : none;"><li class="empty">Parent: ' .$this->build_items_ui() .'</li></ul>');
 	}
 	
 	
@@ -852,12 +851,9 @@ _HTML_;
 	 * @param 		object		$session	The current Session class.
 	 * @return		void
 	 */
-	public function sessions_start($s)
+	public function sessions_start(&$session)
 	{
 		global $IN;
-		
-		// Tracking down bug #15 for RM.
-		$session =& $SESS;
 		
 		// Initialise the cache.
 		$session->cache[$this->namespace] = array();
