@@ -1184,7 +1184,7 @@ _HTML_;
 			bucket_name varchar(255) NOT NULL,
 			bucket_cache_date int(10) unsigned NOT NULL default 0,
 			CONSTRAINT pk_buckets PRIMARY KEY(bucket_id),
-			CONSTRAINT fk_bucket_site_id FOREIGN KEY(site_id) REFERENCES exp_site(site_id),
+			CONSTRAINT fk_bucket_site_id FOREIGN KEY(site_id) REFERENCES exp_sites(site_id),
 			CONSTRAINT uk_bucket_name UNIQUE (bucket_name))";
 		
 		$sql[] = "CREATE TABLE IF NOT EXISTS exp_bucketlist_items (
@@ -1198,7 +1198,7 @@ _HTML_;
 			item_is_folder char(1) NOT NULL default 'n',
 			item_last_updated int(10) unsigned NOT NULL,
 			CONSTRAINT pk_items PRIMARY KEY(item_id),
-			CONSTRAINT fk_item_site_id FOREIGN KEY(site_id) REFERENCES exp_site(site_id),
+			CONSTRAINT fk_item_site_id FOREIGN KEY(site_id) REFERENCES exp_sites(site_id),
 			CONSTRAINT fk_item_bucket_id FOREIGN KEY(bucket_id) REFERENCES exp_bucketlist_buckets(bucket_id),
 			CONSTRAINT uk_item_path UNIQUE (item_path))";
 		
