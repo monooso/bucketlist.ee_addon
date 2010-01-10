@@ -102,17 +102,300 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 */
 	
 	/**
-	 * Checks that the AWS credentials have been set.
+	 * Checks that the S3 credentials have been set. Makes not attempt to check their validity.
 	 *
 	 * @access  private
 	 * @return  bool
 	 */
-	private function check_amazon_credentials()
+	function check_s3_credentials()
 	{
 		return (isset($this->site_settings['access_key_id'])
-		  && $this->site_settings['access_key_id'] !== ''
-		  && isset($this->site_settings['secret_access_key'])
-		  && $this->site_settings['secret_access_key'] !== '');
+			&& $this->site_settings['access_key_id'] !== ''
+			&& isset($this->site_settings['secret_access_key'])
+			&& $this->site_settings['secret_access_key'] !== '');
+	}
+	
+	
+	/**
+	 * Checks whether the specified item exists on the S3 server.
+	 *
+	 * @access	private
+	 * @param	string		$item_name		The full item path and name, including the bucket.
+	 * @return	bool
+	 */
+	function item_exists_on_s3($item_name = '')
+	{
+		// Clearly not, muppet.
+		if ( ! $item_name)
+		{
+			return FALSE;
+		}
+		
+		// Separate out the bucket name.
+		if ( ! preg_match('/^([0-9a-z]{1}[0-9a-z\.\_\-]{2,254})\/{1}(.*)$/', $item_name, $matches))
+		{
+			return FALSE;
+		}
+		
+		// Make the call.
+		$s3 = new S3($this->site_settings['access_key_id'], $this->site_settings['secret_access_key'], FALSE);
+		return @$s3->getObjectInfo($matches[1], $matches[2], FALSE);
+		
+	}
+
+
+	
+	
+	
+	/**
+	 * Parses a single 'item' DB record, and returns an array containing the
+	 * item information.
+	 *
+	 * @access	private
+	 * @param 	array 		$db_item		The DB record.
+	 * @return 	array
+	 */
+	function parse_item_db_result($db_item = array())
+	{
+		if ( ! $db_item OR ! is_array($db_item))
+		{
+			return array();
+		}
+		
+		// Do we have the required information?
+		$required_fields 	= array('item_extension', 'item_is_folder', 'item_name', 'item_path', 'item_size');
+		$item 				= array();
+		$missing_field		= FALSE;
+		
+		foreach ($required_fields AS $field_id)
+		{
+			if ( ! array_key_exists($field_id, $db_item))
+			{
+				$missing_field = TRUE;
+				break;
+			}
+			
+			$item[$field_id] = $db_item[$field_id];
+		}
+		
+		if ($missing_field)
+		{
+			return array();
+		}
+		else
+		{
+			// Bit of cleaning up, and we'll be done.
+			$item['item_is_folder'] = strtolower($item['item_is_folder']);
+			$item['item_size']		= intval($item['item_size']);
+			
+			return $item;
+		}
+	}
+	
+	
+	/**
+	 * Parses a single Amazon S3 item, representing a single item of content in a bucket.
+	 *
+	 * @access	private
+	 * @param	array		$s3_item	The S3 item to parse.
+	 * @return	array
+	 */
+	function parse_item_s3_result($s3_item = array())
+	{
+		// Steady butt.
+		if ( ! $s3_item OR ! is_array($s3_item))
+		{
+			return array();
+		}
+		
+		// Do we have the required information?
+		$required_fields 	= array('name', 'time', 'size', 'hash');
+		$item 				= array();
+		$missing_field		= FALSE;
+		
+		foreach ($required_fields AS $field_id)
+		{
+			if ( ! array_key_exists($field_id, $s3_item) OR (is_string($s3_item[$field_id]) && $s3_item[$field_id] == ''))
+			{
+				$missing_field = TRUE;
+				break;
+			}
+		}
+		
+		if ($missing_field)
+		{
+			return array();
+		}
+		
+		// Extract the information we require.
+		$item = array(
+			'item_extension'	=> pathinfo($s3_item['name'], PATHINFO_EXTENSION),
+			'item_is_folder'	=> (substr($s3_item['name'], -1) == '/') ? 'y' : 'n',
+			'item_name'			=> pathinfo($s3_item['name'], PATHINFO_BASENAME),
+			'item_path'			=> $s3_item['name'],
+			'item_size'			=> intval($s3_item['size'])
+		);
+		
+		return $item;
+	}
+	
+	
+	/**
+	 * Parses a single 'bucket' DB record, and returns an array containing the
+	 * bucket information.
+	 *
+	 * @access	private
+	 * @param 	array 		$db_bucket		The DB record.
+	 * @return 	array
+	 */
+	function parse_bucket_db_result($db_bucket = array())
+	{
+		if ( ! $db_bucket OR ! is_array($db_bucket))
+		{
+			return array();
+		}
+		
+		// Do we have the required information?
+		$required_fields 	= array('bucket_id', 'bucket_items_cache_date', 'bucket_name', 'site_id');
+		$bucket 			= array();
+		$missing_field		= FALSE;
+		
+		foreach ($required_fields AS $field_id)
+		{
+			if ( ! array_key_exists($field_id, $db_bucket))
+			{
+				$missing_field = TRUE;
+				break;
+			}
+			
+			$bucket[$field_id] = $db_bucket[$field_id];
+		}
+		
+		return ($missing_field ? array() : $bucket);
+	}
+	
+	
+	/**
+	 * Retrieves all the buckets from the database.
+	 *
+	 * @access	private
+	 * @return 	array
+	 */
+	function load_all_buckets_from_db()
+	{
+		global $DB;
+		
+		$db_buckets = $DB->query("SELECT
+				bucket_id, bucket_items_cache_date, bucket_name, site_id
+			FROM exp_bucketlist_buckets
+			WHERE site_id = '{$this->site_id}'");
+			
+		if ($db_buckets->num_rows == 0)
+		{
+			return array();
+		}
+		
+		// Initialise the return array.
+		$buckets = array();
+		
+		foreach ($db_buckets->result AS $db_bucket)
+		{
+			if ($bucket = $this->parse_bucket_db_result($db_bucket))
+			{
+				$buckets[] = $bucket;
+			}
+		}
+		
+		return $buckets;
+	}
+	
+	
+	/**
+	 * Retrieves a bucket from the database, given its name.
+	 *
+	 * @access	private
+	 * @param 	string		$bucket_name		The name of the bucket.
+	 * @return 	array
+	 */
+	function load_bucket_from_db($bucket_name = '')
+	{
+		global $DB;
+		
+		if ( ! $bucket_name)
+		{
+			return array();
+		}
+		
+		$db_bucket = $DB->query("SELECT
+				bucket_id, bucket_items_cache_date, bucket_name, site_id
+			FROM exp_bucketlist_buckets
+			WHERE bucket_name = '" .$DB->escape_str($bucket_name) ."'
+			AND site_id = '{$this->site_id}'
+			LIMIT 1");
+			
+		return ($this->parse_bucket_db_result($db_bucket->row));
+	}
+	
+	
+	/**
+	 * Retrieve a bucket's contents from the database.
+	 *
+	 * @access	private
+	 * @param 	string		$bucket_name		The name of the bucket.
+	 * @return 	array
+	 */
+	function load_bucket_items_from_db($bucket_name = '')
+	{
+		global $DB;
+		
+		// NOTE: DOES NOT check whether the items cache has expired.
+		
+		// Talk sense man.
+		if ( ! $bucket_name)
+		{
+			return array();
+		}
+		
+		// Load the items from the database.
+		$db_items = $DB->query("SELECT
+				item_id, item_path, item_name, item_size, item_extension, item_is_folder,
+				buckets.bucket_id, buckets.bucket_name
+			FROM exp_bucketlist_items AS items
+			INNER JOIN exp_bucketlist_buckets AS buckets
+			ON buckets.bucket_id = items.bucket_id
+			WHERE buckets.bucket_name = '" .$DB->escape_str($bucket_name) ."'
+			AND items.site_id = '{$this->site_id}'
+			ORDER BY item_name ASC");
+			
+		if ($db_items->num_rows < 1)
+		{
+			return array();
+		}
+		
+		// Parse the data into arrays ('folders' and 'files').
+		$folders = $files = array();
+		
+		foreach ($db_items->result AS $db_item)
+		{
+			$item = $this->parse_item_db_result($db_item);
+			
+			if ($item)
+			{
+				$item['item_is_folder'] == 'y' ? $folders[] = $item : $files[] = $item;
+			}
+		}
+		
+		// Do we have any items?
+		$items = array();
+		
+		if ($folders OR $files)
+		{
+			$items['folders'] 	= $folders;
+			$items['files']		= $files;
+		}
+		
+		// Return the data.
+		return $items;
 	}
 	
 	
@@ -121,369 +404,257 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 * buckets have been created in the interim. Does not check the contents.
 	 *
 	 * @access	private
-	 * @return 	void
+	 * @return 	bool
 	 */
-	private function update_buckets_from_amazon()
+	function update_buckets_from_s3()
 	{
+		global $DB;
+		
 		// Retrieve all the buckets from Amazon.
+		$s3 = new S3($this->site_settings['access_key_id'], $this->site_settings['secret_access_key'], FALSE);
 		
-		// If the bucket already exists, do nothing.
+		$s3_buckets = @$s3->listBuckets();
 		
-		// If a saved bucket is not found, delete the record, and all the bucket items.
+		// Do we have any results?
+		if ( ! $s3_buckets)
+		{
+			return FALSE;
+		}
 		
-		// If a new bucket is found, create the record, and set the cache date to
-		// the epoch.
+		/**
+		 * Delete any obsolete buckets, and their associated items.
+		 */
+		
+		// @todo: data cleansing. Should never be an issue, but still...
+		$valid_bucket_names = "'" .implode("', '", $s3_buckets) ."'";
+		
+		// Retrieve the obsolete buckets.
+		$db_obsolete_buckets = $DB->query("SELECT bucket_id
+			FROM exp_bucketlist_buckets
+			WHERE bucket_name NOT IN({$valid_bucket_names})");
+		
+		if ($db_obsolete_buckets->num_rows > 0)
+		{
+			// Create an array of obsolete bucket IDs.
+			$obsolete_bucket_ids = array();
+			
+			foreach ($db_obsolete_buckets->result AS $db_obb)
+			{
+				$obsolete_bucket_ids[] = $db_obb['bucket_id'];
+			}
+			
+			$obsolete_bucket_ids = "'" .implode("', '", $obsolete_bucket_ids) ."'";
+			
+			// Delete the associated items.
+			$DB->query("DELETE FROM exp_bucketlist_items
+				WHERE bucket_id IN ({$obsolete_bucket_ids})");
+			
+			// Delete the obsolete buckets.
+			$DB->query("DELETE FROM exp_bucketlist_buckets
+				WHERE bucket_id IN ({$obsolete_bucket_ids})");
+		}
+		
+		/**
+		 * Add any missing buckets to the database.
+		 */
+		
+		// Retrieve all the buckets from the database.
+		$existing_buckets = $this->load_all_buckets_from_db();
+		
+		/**
+		 * We've deleted any obsolete buckets, so if the number
+		 * of existing buckets equals the number of S3 buckets,
+		 * we're golden.
+		 */
+		
+		if (count($existing_buckets) != count($s3_buckets))
+		{
+			// Create an array of the existing bucket names.
+			$existing_bucket_names = array();
+			foreach ($existing_buckets AS $eb)
+			{
+				$existing_bucket_names[] = $eb['bucket_name'];
+			}
+			
+			// Determine the missing items.
+			$missing_bucket_names = array_diff($s3_buckets, $existing_bucket_names);
+			$missing_buckets = array();
+			
+			$old_cache = strtotime('19 February 1973');		// Olden times.
+			
+			foreach ($missing_bucket_names AS $missing)
+			{
+				$missing_buckets[] = "{$this->site_id}, '{$missing}', {$old_cache}";
+			}
+			
+			// Build the SQL.
+			$sql = "INSERT INTO exp_bucketlist_buckets (
+					site_id, bucket_name, bucket_items_cache_date
+				) VALUES (" .implode('), (', $missing_buckets) .")";
+				
+			$DB->query($sql);
+		}
+		
+		return TRUE;
 	}
 	
 	
 	/**
-	 * Loads all the items for the specified bucket into the Session
-	 * cache, and returns the results, for convenience.
-	 *
-	 * The results take the form of an associative array containing
-	 * two arrays, one of all the folders in the specified bucket,
-	 * the other of all the files.
-	 *
-	 * The session cache is checked, followed by the database cache,
-	 * before Amazon S3 is queried.
+	 * Attempts to retrieve a bucket's contents from Amazon, and save them
+	 * to the database.
 	 *
 	 * @access	private
-	 * @param 	string		$bucket		The parent bucket.
+	 * @param 	string		$bucket_name		The name of the bucket.
+	 * @return 	bool
+	 */
+	function update_bucket_items_from_s3($bucket_name = '')
+	{
+		global $DB;
+		
+		// NOTE: the cache date is not checked. We just assume this call is required.
+		
+		// Leave it ahhht, you slag.
+		if ( ! $bucket_name)
+		{
+			return FALSE;
+		}
+		
+		// Is this a valid bucket?
+		if ( ! $bucket = $this->load_bucket_from_db($bucket_name))
+		{
+			return FALSE;
+		}
+		
+		// Make the call to Amazon.
+		$s3 = new S3($this->site_settings['access_key_id'], $this->site_settings['secret_access_key'], FALSE);
+		
+		if ( ! $s3_items = @$s3->getBucket($bucket_name))
+		{
+			return FALSE;
+		}
+		
+		// Parse the data returned from Amazon.
+		$new_items = array();
+		
+		foreach ($s3_items AS $s3_item)
+		{
+			if ($item = $this->parse_item_s3_result($s3_item))
+			{
+				/**
+				 * Paranoia with the string escaping, but better than the alternative. Field list:
+				 * bucket_id, item_extension, item_is_folder, item_name, item_path, item_size, site_id
+				 */
+				
+				$new_items[] = "'" .$DB->escape_str($bucket['bucket_id']) ."'"
+					.", '" .$DB->escape_str($item['item_extension']) ."'"
+					.", '" .$DB->escape_str($item['item_is_folder']) ."'"
+					.", '" .$DB->escape_str($item['item_name']) ."'"
+					.", '" .$DB->escape_str($item['item_path']) ."'"
+					.", '" .$DB->escape_str($item['item_size']) ."'"
+					.", {$this->site_id}";
+			}
+		}
+		
+		// Delete any existing bucket items from the database.
+		$DB->query("DELETE FROM exp_bucketlist_items
+			WHERE bucket_id = {$bucket['bucket_id']}
+			AND site_id = {$this->site_id}");
+		
+		// Add the new items to the database.
+		$sql = "INSERT INTO exp_bucketlist_items (
+				bucket_id, item_extension, item_is_folder, item_name, item_path, item_size, site_id
+			) VALUES (" .implode('), (', $new_items) .")";
+			
+		$DB->query($sql);
+		
+		// Update the bucket_items_cache_date column in exp_bucketlist_buckets.
+		$DB->query($DB->update_string(
+			'exp_bucketlist_buckets',
+			array('bucket_items_cache_date' => time()),
+			"bucket_id = {$bucket['bucket_id']}"
+		));
+		
+		return TRUE;
+		
+	}
+	
+	
+	/**
+	 * Loads a bucket's contents.
+	 *
+	 * @access	private
+	 * @param 	string		$bucket_name		The name of the bucket.
 	 * @return 	array
 	 */
-	private function load_items($bucket_name = '')
+	function load_bucket_items($bucket_name = '')
 	{
 		global $DB, $SESS;
 		
-		$items = array();
-		$cache =& $SESS->cache[$this->namespace][$this->lower_class]['items'];
-		
-		// Have we been given a bucket name?
+		// Be reasonable.
 		if ( ! $bucket_name)
 		{
-			return $items;
+			return array();
 		}
 		
-		// Have we been given a *valid* bucket name?
-		$db_bucket = $DB->query("SELECT
-				bucket_id
-			FROM exp_bucketlist_buckets
-			WHERE bucket_name = '{$bucket_name}'
-			AND site_id = '{$this->site_id}'");
-			
-		if ($db_bucket->num_rows !== 1)
+		// Shorthand.
+		$session_cache =& $SESS->cache[$this->namespace][$this->lower_class];
+		
+		$items = array();
+		
+		// Check the Session cache.
+		if (array_key_exists($bucket_name, $session_cache['items']))
 		{
-			return $items;
+			$items = $session_cache['items'][$bucket_name];
 		}
 		
-		// Make a note of the bucket ID.
-		$bucket_id = $db_bucket->row['bucket_id'];
-		
-		// Check the session cache.
-		if (array_key_exists($bucket_name, $cache))
-		{
-			error_log('Using the items cache.');
-			$items = $cache[$bucket_name];
-		}
-		else
-		{
-			error_log('Not using the items cache.');
-		}
-		
-		// Check the database cache.
+		// Nothing in the Sessions cache? Check the database.
 		if ( ! $items)
 		{
-			$db_folders = $DB->query("SELECT
-					items.item_extension,
-					items.item_name,
-					items.item_path
-				FROM exp_bucketlist_items AS items
-				WHERE items.site_id = '{$this->site_id}'
-				AND items.bucket_id = '{$bucket_id}'
-				AND items.item_is_folder = 'y'
-				ORDER BY items.item_name ASC");
-			
-			$db_files = $DB->query("SELECT
-					items.item_extension,
-					items.item_name,
-					items.item_path
-				FROM exp_bucketlist_items AS items
-				WHERE items.site_id = '{$this->site_id}'
-				AND items.bucket_id = '{$bucket_id}'
-				AND items.item_is_folder = 'n'
-				ORDER BY items.item_name ASC");
-				
-			if ($db_folders->num_rows > 0 OR $db_files->num_rows > 0)
+			// Is this even a valid bucket?
+			if ($bucket = $this->load_bucket_from_db($bucket_name))
 			{
-				$items = array('folders' => array(), 'files' => array());
+				/**
+				 * If the bucket_items_cache_date is valid, load the items
+				 * from the database.
+				 *
+				 * Otherwise, update the items from S3, and then load them.
+				 */
 				
-				// Folders.
-				foreach ($db_folders->result AS $db_folder)
+				$cache_expiry_date = $bucket['bucket_items_cache_date'] + intval($this->site_settings['cache_duration']);
+				if ($cache_expiry_date < time())
 				{
-					$items['folders'][] = array(
-						'item_extension' 	=> $db_folder['item_extension'],
-						'item_name' 		=> $db_folder['item_name'],
-						'item_path' 		=> $db_folder['item_path'],
-						'item_is_folder'	=> 'y'
-					);
+					$this->update_bucket_items_from_s3($bucket_name);
 				}
-				
-				// Files.
-				foreach ($db_files->result AS $db_file)
-				{
-					$items['files'][] = array(
-						'item_extension' 	=> $db_file['item_extension'],
-						'item_name' 		=> $db_file['item_name'],
-						'item_path' 		=> $db_file['item_path'],
-						'item_is_folder'	=> 'n'
-					);
-				}
-			}
-		}
-
-		// Load the items from S3.
-		if ( ! $items)
-		{
-			// Create the S3 object.
-			$s3 = new S3($this->site_settings['access_key_id'],
-				$this->site_settings['secret_access_key'],
-				FALSE);
-				
-			// Request the bucket content from Amazon.
-			$s3_items = @$s3->getBucket($bucket_name);
 			
-			if (is_array($s3_items) && count($s3_items) > 0)
-			{
-				// Write the items to the database.
-				$cache_date = time();
-				$insert_sql = "INSERT INTO exp_bucketlist_items (
-					bucket_id,
-					item_is_folder,
-					item_last_updated,
-					item_name,
-					item_path,
-					item_size,
-					item_extension,
-					site_id) VALUES ";
-				
-				foreach ($s3_items AS $s3_item)
-				{
-					$item_name 			= $DB->escape_str(pathinfo($s3_item['name'], PATHINFO_BASENAME));
-					$item_is_folder 	= (substr($s3_item['name'], -1) == '/') ? 'y' : 'n';
-					$item_last_updated 	= $DB->escape_str($s3_item['time']);
-					$item_extension		= $DB->escape_str(strtolower(pathinfo($s3_item['name'], PATHINFO_EXTENSION)));
-					$item_path 			= $DB->escape_str($bucket_name .'/' .$s3_item['name']);
-					$item_size 			= $DB->escape_str($s3_item['size']);
-					
-					$insert_sql .= "('{$bucket_id}',
-						'{$item_is_folder}',
-						'{$item_last_updated}',
-						'{$item_name}',
-						'{$item_path}',
-						'{$item_size}',
-						'{$item_extension}',
-						'{$this->site_id}'), ";
-				}
-				
-				$insert_sql = rtrim($insert_sql, ', ');
-				
-				$sql = array(
-					"DELETE FROM exp_bucketlist_items WHERE bucket_id = '{$bucket_id}'",
-					$insert_sql
-				);
-				
-				foreach ($sql AS $query)
-				{
-					$DB->query($query);
-				}
-				
-				// Call this method again to load the items from the database, in name order.
-				return $this->load_items($bucket_name);
+				$items = $this->load_bucket_items_from_db($bucket_name);
 			}
 		}
 		
-		$cache[$bucket_name] = $items;
+		/**
+		 * Even if we don't have any items at this point, there's nothing
+		 * else we can do. Just set the Session cache, and move on.
+		 */
 		
-		// Return the items.
+		$session_cache['items'][$bucket_name] = $items;
+		
 		return $items;
 	}
 	
 	
-	/**
-	 * Loads the buckets from the Amazon.
-	 *
-	 * @access	private
-	 * @return 	array
-	 */
-	private function load_buckets_from_amazon()
-	{
-		global $DB;
-		
-		// Create the S3 object.
-		$s3 = new S3($this->site_settings['access_key_id'],
-			$this->site_settings['secret_access_key'],
-			FALSE);
-		
-		// Make the call.
-		$s3_buckets = @$s3->listBuckets();
-		
-		// Do we have some results?
-		if (is_array($s3_buckets) && count($s3_buckets) > 0)
-		{
-			// Write the new buckets to the database.
-			$cache_date = time();
-			$insert_sql = 'INSERT INTO exp_bucketlist_buckets (site_id, bucket_name, bucket_cache_date) VALUES';
-			
-			foreach ($s3_buckets AS $s3_bucket)
-			{
-				$insert_sql .= "('{$this->site_id}', '" .$DB->escape_str($s3_bucket) ."', '{$cache_date}'), ";
-			}
-			
-			$insert_sql = rtrim($insert_sql, ', ');
-			
-			$sql = array(
-				"DELETE FROM exp_bucketlist_buckets",
-				"DELETE FROM exp_bucketlist_items",
-				$insert_sql
-			);
-			
-			foreach ($sql AS $query)
-			{
-				$DB->query($query);
-			}
-			
-			// Call load_buckets_from_db to load the buckets from the database, in name order.
-			return $this->load_buckets_from_db();
-		}
-	}
-	
 	
 	/**
-	 * Loads the buckets from the database.
-	 *
-	 * @access	private
-	 * @return 	array
+	 * --------------------------------------------------------------
+	 * USER INTERFACE METHODS
+	 * --------------------------------------------------------------
 	 */
-	private function load_buckets_from_db()
-	{
-		global $DB;
-		
-		$buckets = array();
-		$min_cache_date = time() - intval($this->site_settings['cache_duration']);
-		
-		$db_buckets = $DB->query("SELECT bucket_id, bucket_name, bucket_cache_date
-			FROM exp_bucketlist_buckets
-			WHERE site_id = '{$this->site_id}'
-			AND bucket_cache_date > {$min_cache_date}
-			ORDER BY bucket_name ASC");
-		
-		if ($db_buckets->num_rows > 0)
-		{
-			foreach ($db_buckets->result AS $db_bucket)
-			{
-				$buckets[$db_bucket['bucket_name']] = array(
-					'bucket_id'			=> $db_bucket['bucket_id'],
-					'bucket_name'		=> $db_bucket['bucket_name'],
-					'bucket_cache_date'	=> $db_bucket['bucket_cache_date']
-				);
-			}
-		}
-		
-		return $buckets;
-	}
-	
-	
-	/**
-	 * Loads a list of S3 buckets into the Session cache, and returns
-	 * them, for convenience. The session cache is checked, followed
-	 * by the database cache, before Amazon S3 is queried.
-	 *
-	 * @access	private
-	 * @return 	array
-	 */
-	private function load_buckets()
-	{
-		global $DB, $SESS;
-		
-		$buckets = array();
-		$cache =& $SESS->cache[$this->namespace][$this->lower_class];
-		
-		
-		if ( ! $cache['update_started'])
-		{
-			error_log('--> Updating stuff.');
-			
-			/**
-			 * Nothing has been done yet. It's up to you.
-			 * We're depending on you, man.
-			 */
-			
-			$cache['update_started'] = TRUE;
-			
-			/**
-			 * Load the buckets. This will retrieve everything from the database and
-			 * (if required) Amazon, and populate the session cache.
-			 */
-			
-			// $buckets = $this->load_buckets();
-			
-			// Does a Session cache exist? If yes, use it.
-			if (is_array($cache['buckets']))
-			{
-				error_log('Using the buckets cache.');
-				$buckets = $cache['buckets'];
-			}
-			else
-			{
-				error_log('No buckets cache.');
-			}
-			
-			// If we have no buckets, load them from the database.
-			if ( ! $buckets)
-			{
-				$buckets = $this->load_buckets_from_db();
-			}
-			
-			// If we still have no buckets, it's time to place a call to Amazon.
-			if ( ! $buckets)
-			{
-				$buckets = $this->load_buckets_from_amazon();
-			}
-			
-			// Set the flags.
-			$cache['update_finished'] = TRUE;
-			
-			// Cache the results.
-			$cache['buckets'] = $buckets;
-			
-		}
-		elseif ( ! $cache['update_finished'])
-		{
-			error_log('--> Waiting for Amazon...');
-			
-			/**
-			 * Somebody else is doing your dirty work for you, slacker.
-			 * Go and wait somewhere else while the real men do some work.
-			 */
-			
-			$this->wait_for_amazon();
-		}
-		
-		// If we've made it this far, the buckets should be in the cache.
-		$buckets = $cache['buckets'];
 
-		// Return the buckets.
-		return $buckets;
-	}
-	
-	
 	/**
-	 * Builds the UL used to display the top-level buckets list.
+	 * Builds the 'root' HTML. That is, the buckets.
 	 *
 	 * @access	private
 	 * @return 	string
 	 */
-	private function build_buckets_ui()
+	function build_root_ui()
 	{	
 		global $LANG;
 		
@@ -503,19 +674,32 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		
 		$LANG->fetch_language_file($this->lower_class);
 		
-		$buckets = $this->load_buckets();
+		/**
+		 * Note that we're explicitly loading the buckets from the database.
+		 *
+		 * This is because the display_field method, called when the field is
+		 * first, um, displayed, runs update_buckets_from_s3, to make sure we
+		 * have an up-to-date list of buckets.
+		 *
+		 * REMEMBER:
+		 * The cache date is irrelevant as far as buckets are concerned. Whenever
+		 * the field is display, we check that our list of buckets is still valid.
+		 *
+		 * The bucket items are the things that get cached for the period set by
+		 * the user.
+		 */
 		
-		if ( ! $buckets)
+		if ( ! $buckets = $this->load_all_buckets_from_db())
 		{
-			$ret = '<ul class="bucketlist-tree" style="display : none;"><li class="empty">' .$LANG->line('no_buckets') .'</li></ul>';
+			$html = '<ul class="bucketlist-tree"><li class="empty">' .$LANG->line('no_buckets') .'</li></ul>';
 		}
 		else
 		{
-			$ret = "<ul class='bucketlist-tree' style='display : none;'>";
+			$html = '<ul class="bucketlist-tree">';
 		
 			foreach ($buckets AS $bucket)
 			{
-				$ret .= '<li class="directory bucket collapsed">';
+				$html .= '<li class="directory bucket collapsed">';
 				
 				/**
 				 * Note the addition of a forward slash after the bucket name.
@@ -524,42 +708,26 @@ class Bucketlist extends Fieldframe_Fieldtype {
 				 * they are returned to us.
 				 */
 				
-				$ret .= '<a href="#" rel="' .rawurlencode($bucket['bucket_name'] .'/') .'">' .$bucket['bucket_name'] .'</a></li>';
+				$html .= '<a href="#" rel="' .rawurlencode($bucket['bucket_name'] .'/') .'">' .$bucket['bucket_name'] .'</a></li>';
 			}
 		
-			$ret .= '</ul>';
+			$html .= '</ul>';
 		}
 		
-		return $ret;
+		return $html;
 	}
 	
 	
 	/**
-	 * Builds the UL used to display the items within a bucket or directory.
+	 * Builds the branch HTML.
 	 *
-	 * IMPORTANT NOTE:
-	 * A potential bug lurks within.
-	 *
-	 * In theory, if two separate users on the same EE install were to make
-	 * two near-simultaneous AJAX requests, AND if the database cache was out
-	 * of date, AND if the second of those two calls was to overlap with the
-	 * Amazon call->response instigated by the first AJAX request, THEN we
-	 * could end up with duplicate items in the database.
-	 *
-	 * Surprisingly, I let this one slide for 1.0.0.
-	 *
-	 * @access		private
-	 * @param 		string		$file_path		The file path.
-	 * @return 		string
+	 * @access	private
+	 * @param	string		$tree_path		The path from the root of the tree.
+	 * @return	string
 	 */
-	private function build_items_ui($file_path = '')
+	function build_branch_ui($tree_path = '')
 	{
 		global $LANG;
-		
-		if ( ! $file_path)
-		{
-			return $this->build_buckets_ui();
-		}
 		
 		/**
 		 * This method is called from sessions_start, which runs before
@@ -577,80 +745,90 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		
 		$LANG->fetch_language_file($this->lower_class);
 		
-		// Extract the bucket name.
-		$bucket_name = substr($file_path, 0, strpos($file_path, '/'));
 		
-		// Retrieve the items residing in the bucket.
-		$items = $this->load_items($bucket_name);
+		// Initialise the return HTML.
+		$html = '';
 		
-		// Open the list of files and folders.
-		$ret = "<ul class='bucketlist-tree' style='display : none;'>";
 		
-		if ($this->site_settings['allow_upload'] == 'y')
+		// Extract the bucket name from the tree path.
+		$bucket_name = substr($tree_path, 0, strpos($tree_path, '/'));
+		
+		
+		// Extract the item path (the full tree path, minus the bucket).
+		$item_path = substr($tree_path, strlen($bucket_name) + 1);
+		
+		
+		// Retrieve the bucket items.
+		if ($items = $this->load_bucket_items($bucket_name))
 		{
-			$ret .= '<li class="upload"><a href="#">' .$LANG->line('upload_here') .'</a></li>';
-		}
-		
-		if (array_key_exists('folders', $items)
-			&& array_key_exists('files', $items)
-			&& (count($items['folders']) > 0 OR count($items['files']) > 0))
-		{
+			// Merge the files and folders, so we can process them in a single loop.
 			$files_and_folders = array_merge($items['folders'], $items['files']);
-			$ret_files = $ret_folders = '';
+			
+			$files_html = $folders_html = '';
+			
+			// The pattern to find the files and folders under the current item path.
+			$pattern = '/^' .preg_quote(stripslashes($item_path), '/') .'([^\/]+)\/?$/';
 			
 			foreach ($files_and_folders AS $f)
 			{
-				/**
-				 * Filter the array of folders and files to match only those under
-				 * the current file path.
-				 */
-				
-				$pattern = '/^' .preg_quote(stripslashes($file_path), '/') .'([^\/]+)\/?$/';
-				
 				if (preg_match($pattern, $f['item_path'], $matches))
 				{
-					// URL encode the path, in case it contains quotes and the like.
-					$f['item_path'] = rawurlencode($f['item_path']);
+					/**
+					 * We want to return the full tree path: the bucket name, plus
+					 * the item path.
+					 *
+					 * We also URL encode the path, in case it contains quotes and the like.
+					 */
+					
+					$f['item_path'] = rawurlencode($bucket_name .'/' .$f['item_path']);
 					
 					$item_name = rtrim($matches[1], '/');
 					
 					// Add items to our folders or files lists.
 					if ($f['item_is_folder'] == 'y')
 					{
-						$ret_folders .= "<li class='directory collapsed'>
+						$folders_html .= "<li class='directory collapsed'>
 							<a href='#' rel='{$f['item_path']}'>{$item_name}</a></li>";
 					}
 					else
 					{
-						$ret_files .= "<li class='file ext_{$f['item_extension']}'>
+						$files_html .= "<li class='file ext_{$f['item_extension']}'>
 							<a href='#' rel='{$f['item_path']}'>{$item_name}</a></li>";
 					}
 				}
 			}
 			
-			if ( ! $ret_folders && ! $ret_files && $this->site_settings['allow_upload'] != 'y')
-			{
-				$ret .= '<li class="empty">' .$LANG->line('no_items') .'</li></ul>';
-			}
-			
-			$ret .= $ret_folders .$ret_files;
+			$html .= $folders_html .$files_html;
 		}
 		
-		// Close the list of files and folders.
-		$ret .= '</ul>';
+		// If we have no items to display, and uploading is not allowed, display an 'empty' message.
+		if ( ! $html && $this->site_settings['allow_upload'] != 'y')
+		{
+			$html .= '<li class="empty">' .$LANG->line('no_items') .'</li></ul>';
+		}
 		
-		return $ret;
+		// Include upload link?
+		if ($this->site_settings['allow_upload'] == 'y')
+		{
+			$html = '<li class="upload"><a href="#">' .$LANG->line('upload_here') .'</a></li>' .$html;
+		}
+		
+		// Wrap everything in a list.
+		$html = '<ul class="bucketlist-tree" style="display : none;">' .$html .'</ul>';
+		
+		return $html;
+		
 	}
 	
 	
 	/**
-	 * Retrieves the requested file tree fragment, and returns it.
+	 * Retrieves the requested branch, and returns it.
 	 *
 	 * @access	private
-	 * @param 	string		$parent_directory		The root of this file tree branch.
+	 * @param 	string		$tree_path		The path from the root of the tree.
 	 * @return	void
 	 */
-	private function output_branch($parent_directory = '')
+	function output_branch_ui($tree_path = '')
 	{
 		global $PREFS;
 		
@@ -669,7 +847,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		header('Cache-Control: no-cache, must-revalidate');
 		header('Content-Type: text/html; charset=' .$PREFS->ini('charset'));
 		
-		exit($this->build_items_ui($parent_directory));
+		exit($this->build_branch_ui($tree_path));
 	}
 	
 	
@@ -884,33 +1062,6 @@ _HTML_;
 	}
 	
 	
-	/**
-	 * Waits for the 'update_finished' flag to be set, after a call
-	 * to Amazon. Used when two or more AJAX calls are received which
-	 * overlap with the Amazon call->response sequence.
-	 *
-	 * If we don't do this, we potentially end up with duplicate items
-	 * or -- worse -- buckets in the database. Nightmare.
-	 *
-	 * @access	private
-	 * @return	void
-	 */
-	private function wait_for_amazon()
-	{
-		// Shortcut.
-		$cache &= $SESS->cache[$this->namespace][$this->lower_case];
-		
-		// Are we waiting for Amazon?
-		if ($cache['update_started'] && ! $cache['update_finished'])
-		{
-			// usleep(100000);		// Nap for 1000 microseconds (0.1 seconds).
-			sleep(1);
-			wait_for_amazon();
-		}
-		
-	}
-	
-	
 	
 	/**
 	 * ----------------------------------------------------------------
@@ -950,20 +1101,17 @@ _HTML_;
 		$session->cache[$this->namespace][$this->lower_class] = array();
 		$session->cache[$this->namespace][$this->lower_class]['buckets'] = array();
 		$session->cache[$this->namespace][$this->lower_class]['items'] = array();
-		$session->cache[$this->namespace][$this->lower_class]['update_started'] = FALSE;
-		$session->cache[$this->namespace][$this->lower_class]['update_finished'] = FALSE;
+		$session->cache[$this->namespace][$this->lower_class]['buckets_updated_from_s3'] = FALSE;
 		
 		if ($IN->GBL('ajax', 'GET') == 'y' && $IN->GBL('addon_id', 'GET') == $this->lower_class)
 		{
-			error_log('**** AJAX request ****');
-			
 			// We're either being summoned by the file tree, or the uploader. Which is it?
 			$request = $IN->GBL('request', 'GET');
 			
 			switch ($request)
 			{
 				case 'tree':
-					$this->output_branch(urldecode($IN->GBL('dir', 'GET')));
+					$this->output_branch_ui(urldecode($IN->GBL('dir', 'GET')));
 					break;
 					
 				case 'upload':
@@ -976,40 +1124,34 @@ _HTML_;
 			}
 		}
 	}
-  
-  
+	
+	
 	/**
-	 * Displays the standard fieldtype.
+	 * Displays the field.
 	 *
-	 * @access		public
-	 * @param		string		$field_name			The field ID.
-	 * @param		string		$field_data			Previously saved field data.
-	 * @param		array		$field_settings		The field settings.
-	 * @return		string
+	 * @access	public
+	 * @param	string		$field_name			The field ID.
+	 * @param	string		$field_data			Previously-saved field data.
+	 * @param 	array 		$field_settings		The field settings.
+	 * @return	string
 	 */
 	public function display_field($field_name, $field_data, $field_settings)
 	{
-		global $DB, $FNS, $IN, $LANG, $PREFS, $REGX, $SESS;
+		global $IN, $LANG, $SESS;
 		
-				
-		// Check that this isn't an AJAX request.
+		// We have no truck with AJAX requests. They are handled by sessions_start.
 		if ($IN->GBL('ajax', 'GET') == 'y')
 		{
-			return FALSE;
+			return '';
 		}
-		
-		error_log('**** DISPLAY FIELD ****');
-		
-		// Shortcut.
-		$cache =& $SESS->cache[$this->namespace][$this->lower_class];
 		
 		// Retrieve the correct language file.
 		$LANG->fetch_language_file($this->lower_class);
 		
-		// Initialise the return string.
-		$ret = '';
+		/**
+		 * Add some JavaScript and CSS to the header.
+		 */
 		
-		// Include external JS and CSS.
 		$this->include_js('js/cp.js');
 		$this->include_js('js/jquery.bucketlist.js');
 		$this->include_css('css/cp.css');
@@ -1025,82 +1167,64 @@ _HTML_;
 		
 		$this->insert_js($js_language);
 		
-		// Check the AWS credentials.
-		if ( ! $this->check_amazon_credentials())
-		{
-			$ret .= '<div class="eepro-co-uk">';
-			$ret .= '<p class="alert">' .$LANG->line('missing_credentials'). '</p>';
-			$ret .= '</div>';
-			return $ret;
-		}
-		
-		$buckets = $this->load_buckets();
-		
-		if ( ! $buckets)
-		{
-			$ret .= '<div class="eepro-co-uk">';
-			$ret .= '<p class="error">' .$LANG->line('no_available_buckets'). '</p>';
-			$ret .= '</div>';
-			return $ret;
-		}
 		
 		/**
-		 * Before we go any further, call load_items for each of the buckets.
-		 *
-		 * I'd prefer not to call this here, as it's loading -- possibly from
-		 * Amazon -- items that may not be accessed by the user.
-		 *
-		 * However, doing this solves all sorts of problems with multiple
-		 * simultaneous 'autoload' AJAX calls overlapping with Amazon calls.
-		 *
-		 * It all makes it possible for us to reliably check whether the saved
-		 * item is still valid.
+		 * Now on with the real work.
 		 */
 		
-		foreach ($buckets AS $key => $val)
+		// Open the .eepro-co-uk wrapper element.
+		$html = '<div class="eepro-co-uk">';
+		
+		// Can't do much without the S3 credentials.
+		if ( ! $this->check_s3_credentials())
 		{
-			$this->load_items($key);
+			$html .= '<p class="alert">' .$LANG->line('missing_credentials'). '</p>';
 		}
-		
-		/**
-		 * Do we have saved field data? If so, we need to check
-		 * that the saved file still exists.
-		 */
-		
-		if ($field_data)
+		else
 		{
-			$db_field = $DB->query("SELECT item_id
-				FROM exp_bucketlist_items
-				WHERE item_path = '" .$DB->escape_str($field_data) ."'
-				AND site_id = '{$this->site_id}'");
-			
-			$sql = "SELECT item_id
-				FROM exp_bucketlist_items
-				WHERE item_path = '" .$DB->escape_str($field_data) ."'
-				AND site_id = '{$this->site_id}'";
-			
-			if ($db_field->num_rows !== 1)
+			// If we have a saved field, does it still exist on the server?
+			if ( ! $this->item_exists_on_s3($field_data))
 			{
+				/**
+				 * Let's not try to get too clever here. We could try to check
+				 * whether the bucket even exists anymore, and refresh all the
+				 * bucket items, as things have clearly changed.
+				 *
+				 * However, that is all handled when the user 'opens' a bucket
+				 * anyway, so let's just reset the field data so nothing auto-
+				 * displays, and leave it at that.
+				 */
+				
 				$field_data = '';
 			}
+			
+			// Update the buckets cache from S3. Only need to do this once.
+			if ( ! $SESS->cache[$this->namespace][$this->lower_class]['buckets_updated_from_s3'])
+			{
+				$this->update_buckets_from_s3();
+				$SESS->cache[$this->namespace][$this->lower_class]['buckets_updated_from_s3'] = TRUE;
+			}
+			
+			// Open the UI wrapper.
+			$html .= '<div class="bucketlist-ui">';
+
+			// Retrieve the tree root UI (i.e. the buckets).
+			$html .= $this->build_root_ui();
+			
+			// Close the UI wrapper.
+			$html .= '</div>';
+			
+			// Output a hidden field containing the field's value.
+			$html .= '<input class="hidden" id="' .$field_name .'" name="' .$field_name
+				.'" type="hidden" value="' .rawurlencode($field_data) .'" />';
+		
 		}
 		
-		/**
-		 * If we have previously-saved field data, things get quite tricky.
-		 * We need automatically 'open' the bucket / folders / sub-folders / etc
-		 * within which the saved file is contained.
-		 */
+		// Close the .eepro-co-uk wrapper element.
+		$html .= '</div>';
 		
-		// Build the UI.
-		$ret .= '<div class="eepro-co-uk">';
-		$ret .= '<div class="bucketlist-ui">';
-		$ret .= '<p class="initial-load">' .$LANG->line('loading') .'</p>';
-		$ret .= '</div>';
-		$ret .= '<input class="hidden" id="' .$field_name
-			.'" name="' .$field_name .'" type="hidden" value="' .rawurlencode($field_data) .'" />';
-		$ret .= '</div>';
-
-		return $ret;
+		return $html;
+		
 	}
 	
 	
@@ -1117,8 +1241,8 @@ _HTML_;
 	{
 		return $this->display_field($cell_name, $cell_data, $cell_settings);
 	}
-  
-  
+	
+	
 	/**
 	 * Displays the site-wide fieldtype settings form.
 	 *
@@ -1246,7 +1370,7 @@ _HTML_;
 			item_id int(10) unsigned NOT NULL auto_increment,
 			site_id int(2) unsigned NOT NULL default 1,
 			bucket_id int(10) unsigned NOT NULL,
-			item_path varchar(10000) NOT NULL,
+			item_path varchar(1000) NOT NULL,
 			item_name varchar(255) NOT NULL,
 			item_is_folder char(1) NOT NULL default 'n',
 			item_size int(10) unsigned NOT NULL,

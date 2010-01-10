@@ -397,12 +397,15 @@ $.fn.bucketlist = function(options) {
 				treeClick($(e.target));
 				return false;
 			});
-
-			// Load the buckets.
-			showTree({
-				$root	: $this,
-				path	: ''
-			});
+			
+			// Are we auto-displaying an initial file?
+			if ($.isArray(initialFilePath) && initialFilePath) {
+					
+				pathToLoad = initialFilePath[0] + slash;
+				treeClick($this.find('[rel="' + pathToLoad + '"]'));
+				
+				initialFileStep++;
+			}
 			
 		}; /* initializeTree */
 		
