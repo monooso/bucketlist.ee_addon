@@ -107,7 +107,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 * @access  private
 	 * @return  bool
 	 */
-	function check_s3_credentials()
+	function _check_s3_credentials()
 	{
 		return (isset($this->site_settings['access_key_id'])
 			&& $this->site_settings['access_key_id'] !== ''
@@ -123,7 +123,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 * @param	string		$item_name		The full item path and name, including the bucket.
 	 * @return	bool
 	 */
-	function item_exists_on_s3($item_name = '')
+	function _item_exists_on_s3($item_name = '')
 	{
 		// Clearly not, muppet.
 		if ( ! $item_name)
@@ -142,9 +142,6 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		return @$s3->getObjectInfo($matches[1], $matches[2], FALSE);
 		
 	}
-
-
-	
 	
 	
 	/**
@@ -155,7 +152,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 * @param 	array 		$db_item		The DB record.
 	 * @return 	array
 	 */
-	function parse_item_db_result($db_item = array())
+	function _parse_item_db_result($db_item = array())
 	{
 		if ( ! $db_item OR ! is_array($db_item))
 		{
@@ -200,7 +197,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 * @param	array		$s3_item	The S3 item to parse.
 	 * @return	array
 	 */
-	function parse_item_s3_result($s3_item = array())
+	function _parse_item_s3_result($s3_item = array())
 	{
 		// Steady butt.
 		if ( ! $s3_item OR ! is_array($s3_item))
@@ -248,7 +245,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 * @param 	array 		$db_bucket		The DB record.
 	 * @return 	array
 	 */
-	function parse_bucket_db_result($db_bucket = array())
+	function _parse_bucket_db_result($db_bucket = array())
 	{
 		if ( ! $db_bucket OR ! is_array($db_bucket))
 		{
@@ -281,7 +278,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 * @access	private
 	 * @return 	array
 	 */
-	function load_all_buckets_from_db()
+	function _load_all_buckets_from_db()
 	{
 		global $DB;
 		
@@ -300,7 +297,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		
 		foreach ($db_buckets->result AS $db_bucket)
 		{
-			if ($bucket = $this->parse_bucket_db_result($db_bucket))
+			if ($bucket = $this->_parse_bucket_db_result($db_bucket))
 			{
 				$buckets[] = $bucket;
 			}
@@ -317,7 +314,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 * @param 	string		$bucket_name		The name of the bucket.
 	 * @return 	array
 	 */
-	function load_bucket_from_db($bucket_name = '')
+	function _load_bucket_from_db($bucket_name = '')
 	{
 		global $DB;
 		
@@ -333,7 +330,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 			AND site_id = '{$this->site_id}'
 			LIMIT 1");
 			
-		return ($this->parse_bucket_db_result($db_bucket->row));
+		return ($this->_parse_bucket_db_result($db_bucket->row));
 	}
 	
 	
@@ -344,7 +341,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 * @param 	string		$bucket_name		The name of the bucket.
 	 * @return 	array
 	 */
-	function load_bucket_items_from_db($bucket_name = '')
+	function _load_bucket_items_from_db($bucket_name = '')
 	{
 		global $DB;
 		
@@ -377,7 +374,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		
 		foreach ($db_items->result AS $db_item)
 		{
-			$item = $this->parse_item_db_result($db_item);
+			$item = $this->_parse_item_db_result($db_item);
 			
 			if ($item)
 			{
@@ -406,7 +403,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 * @access	private
 	 * @return 	bool
 	 */
-	function update_buckets_from_s3()
+	function _update_buckets_from_s3()
 	{
 		global $DB;
 		
@@ -459,7 +456,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		 */
 		
 		// Retrieve all the buckets from the database.
-		$existing_buckets = $this->load_all_buckets_from_db();
+		$existing_buckets = $this->_load_all_buckets_from_db();
 		
 		/**
 		 * We've deleted any obsolete buckets, so if the number
@@ -507,7 +504,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 * @param 	string		$bucket_name		The name of the bucket.
 	 * @return 	bool
 	 */
-	function update_bucket_items_from_s3($bucket_name = '')
+	function _update_bucket_items_from_s3($bucket_name = '')
 	{
 		global $DB;
 		
@@ -520,7 +517,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		}
 		
 		// Is this a valid bucket?
-		if ( ! $bucket = $this->load_bucket_from_db($bucket_name))
+		if ( ! $bucket = $this->_load_bucket_from_db($bucket_name))
 		{
 			return FALSE;
 		}
@@ -538,7 +535,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		
 		foreach ($s3_items AS $s3_item)
 		{
-			if ($item = $this->parse_item_s3_result($s3_item))
+			if ($item = $this->_parse_item_s3_result($s3_item))
 			{
 				/**
 				 * Paranoia with the string escaping, but better than the alternative. Field list:
@@ -586,7 +583,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 * @param 	string		$bucket_name		The name of the bucket.
 	 * @return 	array
 	 */
-	function load_bucket_items($bucket_name = '')
+	function _load_bucket_items($bucket_name = '')
 	{
 		global $DB, $SESS;
 		
@@ -611,7 +608,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		if ( ! $items)
 		{
 			// Is this even a valid bucket?
-			if ($bucket = $this->load_bucket_from_db($bucket_name))
+			if ($bucket = $this->_load_bucket_from_db($bucket_name))
 			{
 				/**
 				 * If the bucket_items_cache_date is valid, load the items
@@ -623,10 +620,10 @@ class Bucketlist extends Fieldframe_Fieldtype {
 				$cache_expiry_date = $bucket['bucket_items_cache_date'] + intval($this->site_settings['cache_duration']);
 				if ($cache_expiry_date < time())
 				{
-					$this->update_bucket_items_from_s3($bucket_name);
+					$this->_update_bucket_items_from_s3($bucket_name);
 				}
 			
-				$items = $this->load_bucket_items_from_db($bucket_name);
+				$items = $this->_load_bucket_items_from_db($bucket_name);
 			}
 		}
 		
@@ -654,7 +651,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 * @access	private
 	 * @return 	string
 	 */
-	function build_root_ui()
+	function _build_root_ui()
 	{	
 		global $LANG;
 		
@@ -689,7 +686,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		 * the user.
 		 */
 		
-		if ( ! $buckets = $this->load_all_buckets_from_db())
+		if ( ! $buckets = $this->_load_all_buckets_from_db())
 		{
 			$html = '<ul class="bucketlist-tree"><li class="empty">' .$LANG->line('no_buckets') .'</li></ul>';
 		}
@@ -725,7 +722,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 * @param	string		$tree_path		The path from the root of the tree.
 	 * @return	string
 	 */
-	function build_branch_ui($tree_path = '')
+	function _build_branch_ui($tree_path = '')
 	{
 		global $LANG;
 		
@@ -759,7 +756,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		
 		
 		// Retrieve the bucket items.
-		if ($items = $this->load_bucket_items($bucket_name))
+		if ($items = $this->_load_bucket_items($bucket_name))
 		{
 			// Merge the files and folders, so we can process them in a single loop.
 			$files_and_folders = array_merge($items['folders'], $items['files']);
@@ -828,7 +825,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 * @param 	string		$tree_path		The path from the root of the tree.
 	 * @return	void
 	 */
-	function output_branch_ui($tree_path = '')
+	function _output_branch_ui($tree_path = '')
 	{
 		global $PREFS;
 		
@@ -847,7 +844,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		header('Cache-Control: no-cache, must-revalidate');
 		header('Content-Type: text/html; charset=' .$PREFS->ini('charset'));
 		
-		exit($this->build_branch_ui($tree_path));
+		exit($this->_build_branch_ui($tree_path));
 	}
 	
 	
@@ -858,7 +855,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 * @access	private
 	 * @return	void
 	 */
-	private function upload_file()
+	private function _upload_file()
 	{
 		global $DB, $FNS, $IN, $LANG, $PREFS, $SESS;
 		
@@ -1111,11 +1108,11 @@ _HTML_;
 			switch ($request)
 			{
 				case 'tree':
-					$this->output_branch_ui(urldecode($IN->GBL('dir', 'GET')));
+					$this->_output_branch_ui(urldecode($IN->GBL('dir', 'GET')));
 					break;
 					
 				case 'upload':
-					$this->upload_file();
+					$this->_upload_file();
 					break;
 					
 				default:
@@ -1176,14 +1173,14 @@ _HTML_;
 		$html = '<div class="eepro-co-uk">';
 		
 		// Can't do much without the S3 credentials.
-		if ( ! $this->check_s3_credentials())
+		if ( ! $this->_check_s3_credentials())
 		{
 			$html .= '<p class="alert">' .$LANG->line('missing_credentials'). '</p>';
 		}
 		else
 		{
 			// If we have a saved field, does it still exist on the server?
-			if ( ! $this->item_exists_on_s3($field_data))
+			if ( ! $this->_item_exists_on_s3($field_data))
 			{
 				/**
 				 * Let's not try to get too clever here. We could try to check
@@ -1201,7 +1198,7 @@ _HTML_;
 			// Update the buckets cache from S3. Only need to do this once.
 			if ( ! $SESS->cache[$this->namespace][$this->lower_class]['buckets_updated_from_s3'])
 			{
-				$this->update_buckets_from_s3();
+				$this->_update_buckets_from_s3();
 				$SESS->cache[$this->namespace][$this->lower_class]['buckets_updated_from_s3'] = TRUE;
 			}
 			
@@ -1209,7 +1206,7 @@ _HTML_;
 			$html .= '<div class="bucketlist-ui">';
 
 			// Retrieve the tree root UI (i.e. the buckets).
-			$html .= $this->build_root_ui();
+			$html .= $this->_build_root_ui();
 			
 			// Close the UI wrapper.
 			$html .= '</div>';
