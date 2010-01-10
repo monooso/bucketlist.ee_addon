@@ -1,10 +1,10 @@
 <?php
 
 /**
- * Fieldtype extension enabling integration of Amazon S3 with your ExpressionEngine website.
+ * Seamlessly integrate Amazon S3 with your ExpressionEngine website.
  *
  * @package   	BucketList
- * @version   	1.1.0b3
+ * @version   	1.0.0b4
  * @author    	Stephen Lewis <addons@eepro.co.uk>
  * @copyright 	Copyright (c) 2009, Stephen Lewis
  * @link      	http://eepro.co.uk/bucketlist/
@@ -22,10 +22,10 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 */
 	public $info = array(
 		'name'				=> 'BucketList',
-		'version'			=> '1.1.0b3',
-		'desc'				=> 'Effortlessly integrate Amazon S3 storage with your ExpressionEngine site.',
-		'docs_url'			=> 'http://experienceinternet.co.uk/bucketlist/',
-		'versions_xml_url'	=> 'http://experienceinternet.co.uk/addon-versions.xml'
+		'version'			=> '1.0.0b4',
+		'desc'				=> 'Seamlessly integrate Amazon S3 with your ExpressionEngine site.',
+		'docs_url'			=> 'http://eepro.co.uk/bucketlist/',
+		'versions_xml_url'	=> 'http://eepro.co.uk/addon-versions.xml'
 	);
 
 	/**
@@ -1059,6 +1059,56 @@ _HTML_;
 	}
 	
 	
+	/**
+	 * Forces an update of the fieldtype. Used during beta testing, when the
+	 * version number updates are not recognised by FieldFrame.
+	 *
+	 * @access	private
+	 * @return	void
+	 */
+	function _force_update()
+	{
+		global $DB;
+		
+		/**
+		 * No messing about. Just blat the lot, and start again with
+		 * a clean database cache.
+		 */
+		
+		$sql[] = 'DROP TABLE IF EXISTS exp_bucketlist_buckets';
+		$sql[] = 'DROP TABLE IF EXISTS exp_bucketlist_files';		// Pre-0.8.0 hangover.
+		$sql[] = 'DROP TABLE IF EXISTS exp_bucketlist_items';
+			
+		$sql[] = "CREATE TABLE IF NOT EXISTS exp_bucketlist_buckets (
+			bucket_id int(10) unsigned NOT NULL auto_increment,
+			site_id int(2) unsigned NOT NULL default 1,
+			bucket_name varchar(255) NOT NULL,
+			bucket_items_cache_date int(10) unsigned NOT NULL default 0,
+			CONSTRAINT pk_buckets PRIMARY KEY(bucket_id),
+			CONSTRAINT fk_bucket_site_id FOREIGN KEY(site_id) REFERENCES exp_sites(site_id),
+			CONSTRAINT uk_bucket_name UNIQUE (bucket_name))";
+		
+		$sql[] = "CREATE TABLE IF NOT EXISTS exp_bucketlist_items (
+			item_id int(10) unsigned NOT NULL auto_increment,
+			site_id int(2) unsigned NOT NULL default 1,
+			bucket_id int(10) unsigned NOT NULL,
+			item_path varchar(1000) NOT NULL,
+			item_name varchar(255) NOT NULL,
+			item_is_folder char(1) NOT NULL default 'n',
+			item_size int(10) unsigned NOT NULL,
+			item_extension varchar(10) NOT NULL,
+			CONSTRAINT pk_items PRIMARY KEY(item_id),
+			CONSTRAINT fk_item_site_id FOREIGN KEY(site_id) REFERENCES exp_sites(site_id),
+			CONSTRAINT fk_item_bucket_id FOREIGN KEY(bucket_id) REFERENCES exp_bucketlist_buckets(bucket_id),
+			CONSTRAINT uk_item_path UNIQUE (item_path))";
+		
+		foreach ($sql AS $query)
+		{
+			$DB->query($query);
+		}
+	}
+	
+	
 	
 	/**
 	 * ----------------------------------------------------------------
@@ -1079,6 +1129,12 @@ _HTML_;
 		$this->class 		= get_class($this);
 		$this->lower_class 	= strtolower($this->class);
 		$this->namespace	= 'sl';
+		
+		// If this is a beta version, force the update method to run.
+		if (strpos($this->info['version'], 'b'))
+		{
+			$this->_force_update();
+		}
 	}
 	
 	
@@ -1343,44 +1399,7 @@ _HTML_;
 	 */
 	public function update($from = FALSE)
 	{
-		global $DB;
-		
-		/**
-		 * No messing about. Just blat the lot, and start again with
-		 * a clean database cache.
-		 */
-		
-		$sql[] = 'DROP TABLE IF EXISTS exp_bucketlist_buckets';
-		$sql[] = 'DROP TABLE IF EXISTS exp_bucketlist_files';		// Pre-0.8.0 hangover.
-		$sql[] = 'DROP TABLE IF EXISTS exp_bucketlist_items';
-			
-		$sql[] = "CREATE TABLE IF NOT EXISTS exp_bucketlist_buckets (
-			bucket_id int(10) unsigned NOT NULL auto_increment,
-			site_id int(2) unsigned NOT NULL default 1,
-			bucket_name varchar(255) NOT NULL,
-			bucket_items_cache_date int(10) unsigned NOT NULL default 0,
-			CONSTRAINT pk_buckets PRIMARY KEY(bucket_id),
-			CONSTRAINT fk_bucket_site_id FOREIGN KEY(site_id) REFERENCES exp_sites(site_id),
-			CONSTRAINT uk_bucket_name UNIQUE (bucket_name))";
-		
-		$sql[] = "CREATE TABLE IF NOT EXISTS exp_bucketlist_items (
-			item_id int(10) unsigned NOT NULL auto_increment,
-			site_id int(2) unsigned NOT NULL default 1,
-			bucket_id int(10) unsigned NOT NULL,
-			item_path varchar(1000) NOT NULL,
-			item_name varchar(255) NOT NULL,
-			item_is_folder char(1) NOT NULL default 'n',
-			item_size int(10) unsigned NOT NULL,
-			item_extension varchar(10) NOT NULL,
-			CONSTRAINT pk_items PRIMARY KEY(item_id),
-			CONSTRAINT fk_item_site_id FOREIGN KEY(site_id) REFERENCES exp_sites(site_id),
-			CONSTRAINT fk_item_bucket_id FOREIGN KEY(bucket_id) REFERENCES exp_bucketlist_buckets(bucket_id),
-			CONSTRAINT uk_item_path UNIQUE (item_path))";
-		
-		foreach ($sql AS $query)
-		{
-			$DB->query($query);
-		}
+		$this->_force_update();
 	}
 	
 	
