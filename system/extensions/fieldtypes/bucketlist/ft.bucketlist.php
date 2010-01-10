@@ -178,7 +178,12 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		// Check the session cache.
 		if (array_key_exists($bucket_name, $cache))
 		{
+			error_log('Using the items cache.');
 			$items = $cache[$bucket_name];
+		}
+		else
+		{
+			error_log('Not using the items cache.');
 		}
 		
 		// Check the database cache.
@@ -301,6 +306,90 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	
 	
 	/**
+	 * Loads the buckets from the Amazon.
+	 *
+	 * @access	private
+	 * @return 	array
+	 */
+	private function load_buckets_from_amazon()
+	{
+		global $DB;
+		
+		// Create the S3 object.
+		$s3 = new S3($this->site_settings['access_key_id'],
+			$this->site_settings['secret_access_key'],
+			FALSE);
+		
+		// Make the call.
+		$s3_buckets = @$s3->listBuckets();
+		
+		// Do we have some results?
+		if (is_array($s3_buckets) && count($s3_buckets) > 0)
+		{
+			// Write the new buckets to the database.
+			$cache_date = time();
+			$insert_sql = 'INSERT INTO exp_bucketlist_buckets (site_id, bucket_name, bucket_cache_date) VALUES';
+			
+			foreach ($s3_buckets AS $s3_bucket)
+			{
+				$insert_sql .= "('{$this->site_id}', '" .$DB->escape_str($s3_bucket) ."', '{$cache_date}'), ";
+			}
+			
+			$insert_sql = rtrim($insert_sql, ', ');
+			
+			$sql = array(
+				"DELETE FROM exp_bucketlist_buckets",
+				"DELETE FROM exp_bucketlist_items",
+				$insert_sql
+			);
+			
+			foreach ($sql AS $query)
+			{
+				$DB->query($query);
+			}
+			
+			// Call load_buckets_from_db to load the buckets from the database, in name order.
+			return $this->load_buckets_from_db();
+		}
+	}
+	
+	
+	/**
+	 * Loads the buckets from the database.
+	 *
+	 * @access	private
+	 * @return 	array
+	 */
+	private function load_buckets_from_db()
+	{
+		global $DB;
+		
+		$buckets = array();
+		$min_cache_date = time() - intval($this->site_settings['cache_duration']);
+		
+		$db_buckets = $DB->query("SELECT bucket_id, bucket_name, bucket_cache_date
+			FROM exp_bucketlist_buckets
+			WHERE site_id = '{$this->site_id}'
+			AND bucket_cache_date > {$min_cache_date}
+			ORDER BY bucket_name ASC");
+		
+		if ($db_buckets->num_rows > 0)
+		{
+			foreach ($db_buckets->result AS $db_bucket)
+			{
+				$buckets[$db_bucket['bucket_name']] = array(
+					'bucket_id'			=> $db_bucket['bucket_id'],
+					'bucket_name'		=> $db_bucket['bucket_name'],
+					'bucket_cache_date'	=> $db_bucket['bucket_cache_date']
+				);
+			}
+		}
+		
+		return $buckets;
+	}
+	
+	
+	/**
 	 * Loads a list of S3 buckets into the Session cache, and returns
 	 * them, for convenience. The session cache is checked, followed
 	 * by the database cache, before Amazon S3 is queried.
@@ -315,80 +404,70 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		$buckets = array();
 		$cache =& $SESS->cache[$this->namespace][$this->lower_class];
 		
-		// Does a Session cache exist? If yes, use it.
-		if (is_array($cache['buckets']))
-		{
-			$buckets = $cache['buckets'];
-		}
 		
-		// If we have no buckets, load them from the database.
-		if ( ! $buckets)
+		if ( ! $cache['update_started'])
 		{
-			$min_cache_date = time() - intval($this->site_settings['cache_duration']);
+			error_log('--> Updating stuff.');
 			
-			$db_buckets = $DB->query("SELECT bucket_id, bucket_name, bucket_cache_date
-				FROM exp_bucketlist_buckets
-				WHERE site_id = '{$this->site_id}'
-				AND bucket_cache_date > {$min_cache_date}
-				ORDER BY bucket_name ASC");
+			/**
+			 * Nothing has been done yet. It's up to you.
+			 * We're depending on you, man.
+			 */
 			
-			if ($db_buckets->num_rows > 0)
+			$cache['update_started'] = TRUE;
+			
+			/**
+			 * Load the buckets. This will retrieve everything from the database and
+			 * (if required) Amazon, and populate the session cache.
+			 */
+			
+			// $buckets = $this->load_buckets();
+			
+			// Does a Session cache exist? If yes, use it.
+			if (is_array($cache['buckets']))
 			{
-				foreach ($db_buckets->result AS $db_bucket)
-				{
-					$buckets[$db_bucket['bucket_name']] = array(
-						'bucket_id'			=> $db_bucket['bucket_id'],
-						'bucket_name'		=> $db_bucket['bucket_name'],
-						'bucket_cache_date'	=> $db_bucket['bucket_cache_date']
-					);
-				}
+				error_log('Using the buckets cache.');
+				$buckets = $cache['buckets'];
 			}
-		}
-		
-		// If we still have no buckets, it's time to place a call to Amazon.
-		if ( ! $buckets)
-		{
-			// Create the S3 object.
-			$s3 = new S3($this->site_settings['access_key_id'],
-				$this->site_settings['secret_access_key'],
-				FALSE);
-			
-			// Make the call.
-			$s3_buckets = @$s3->listBuckets();
-			
-			// Do we have some results?
-			if (is_array($s3_buckets) && count($s3_buckets) > 0)
+			else
 			{
-				// Write the new buckets to the database.
-				$cache_date = time();
-				$insert_sql = 'INSERT INTO exp_bucketlist_buckets (site_id, bucket_name, bucket_cache_date) VALUES';
-				
-				foreach ($s3_buckets AS $s3_bucket)
-				{
-					$insert_sql .= "('{$this->site_id}', '" .$DB->escape_str($s3_bucket) ."', '{$cache_date}'), ";
-				}
-				
-				$insert_sql = rtrim($insert_sql, ', ');
-				
-				$sql = array(
-					"DELETE FROM exp_bucketlist_buckets",
-					"DELETE FROM exp_bucketlist_items",
-					$insert_sql
-				);
-				
-				foreach ($sql AS $query)
-				{
-					$DB->query($query);
-				}
-				
-				// Call this method again to load the buckets from the database, in name order.
-				return $this->load_buckets();
+				error_log('No buckets cache.');
 			}
+			
+			// If we have no buckets, load them from the database.
+			if ( ! $buckets)
+			{
+				$buckets = $this->load_buckets_from_db();
+			}
+			
+			// If we still have no buckets, it's time to place a call to Amazon.
+			if ( ! $buckets)
+			{
+				$buckets = $this->load_buckets_from_amazon();
+			}
+			
+			// Set the flags.
+			$cache['update_finished'] = TRUE;
+			
+			// Cache the results.
+			$cache['buckets'] = $buckets;
+			
+		}
+		elseif ( ! $cache['update_finished'])
+		{
+			error_log('--> Waiting for Amazon...');
+			
+			/**
+			 * Somebody else is doing your dirty work for you, slacker.
+			 * Go and wait somewhere else while the real men do some work.
+			 */
+			
+			$this->wait_for_amazon();
 		}
 		
-		// Cache the results.
-		$cache['buckets'] = $buckets;
-		
+		// If we've made it this far, the buckets should be in the cache.
+		$buckets = $cache['buckets'];
+
 		// Return the buckets.
 		return $buckets;
 	}
@@ -872,6 +951,8 @@ _HTML_;
 		
 		if ($IN->GBL('ajax', 'GET') == 'y' && $IN->GBL('addon_id', 'GET') == $this->lower_class)
 		{
+			error_log('**** AJAX request ****');
+			
 			// We're either being summoned by the file tree, or the uploader. Which is it?
 			$request = $IN->GBL('request', 'GET');
 			
@@ -913,6 +994,8 @@ _HTML_;
 			return FALSE;
 		}
 		
+		error_log('**** DISPLAY FIELD ****');
+		
 		// Shortcut.
 		$cache =& $SESS->cache[$this->namespace][$this->lower_class];
 		
@@ -947,57 +1030,7 @@ _HTML_;
 			return $ret;
 		}
 		
-		
-		if ( ! $cache['update_started'])
-		{
-			/**
-			 * Nothing has been done yet. It's up to you.
-			 * We're depending on you, man.
-			 */
-			
-			$cache['update_started'] = TRUE;
-			
-			/**
-			 * Load the buckets. This will retrieve everything from the database and
-			 * (if required) Amazon, and populate the session cache.
-			 */
-			
-			$buckets = $this->load_buckets();
-			
-			/**
-			 * Before we go any further, call load_items for each of the buckets.
-			 *
-			 * I'd prefer not to call this here, as it's loading -- possibly from
-			 * Amazon -- items that may not be accessed by the user.
-			 *
-			 * However, doing this solves all sorts of problems with multiple
-			 * simultaneous 'autoload' AJAX calls overlapping with Amazon calls.
-			 *
-			 * It all makes it possible for us to reliably check whether the saved
-			 * item is still valid.
-			 */
-			
-			foreach ($buckets AS $key => $val)
-			{
-				$this->load_items($key);
-			}
-			
-			// Set the flags.
-			$cache['update_finished'] = TRUE;
-			
-		}
-		elseif ( ! $cache['update_finished'])
-		{
-			/**
-			 * Somebody else is doing your dirty work for you, slacker.
-			 * Go and wait somewhere else while the real men do some work.
-			 */
-			
-			// $this->wait_for_amazon();
-		}
-		
-		// If we've made it this far, the buckets should be in the cache.
-		$buckets = $cache['buckets'];
+		$buckets = $this->load_buckets();
 		
 		if ( ! $buckets)
 		{
@@ -1005,6 +1038,24 @@ _HTML_;
 			$ret .= '<p class="error">' .$LANG->line('no_available_buckets'). '</p>';
 			$ret .= '</div>';
 			return $ret;
+		}
+		
+		/**
+		 * Before we go any further, call load_items for each of the buckets.
+		 *
+		 * I'd prefer not to call this here, as it's loading -- possibly from
+		 * Amazon -- items that may not be accessed by the user.
+		 *
+		 * However, doing this solves all sorts of problems with multiple
+		 * simultaneous 'autoload' AJAX calls overlapping with Amazon calls.
+		 *
+		 * It all makes it possible for us to reliably check whether the saved
+		 * item is still valid.
+		 */
+		
+		foreach ($buckets AS $key => $val)
+		{
+			$this->load_items($key);
 		}
 		
 		/**
@@ -1191,12 +1242,11 @@ _HTML_;
 			item_id int(10) unsigned NOT NULL auto_increment,
 			site_id int(2) unsigned NOT NULL default 1,
 			bucket_id int(10) unsigned NOT NULL,
-			item_path varchar(255) NOT NULL,
+			item_path varchar(10000) NOT NULL,
 			item_name varchar(255) NOT NULL,
+			item_is_folder char(1) NOT NULL default 'n',
 			item_size int(10) unsigned NOT NULL,
 			item_extension varchar(10) NOT NULL,
-			item_is_folder char(1) NOT NULL default 'n',
-			item_last_updated int(10) unsigned NOT NULL,
 			CONSTRAINT pk_items PRIMARY KEY(item_id),
 			CONSTRAINT fk_item_site_id FOREIGN KEY(site_id) REFERENCES exp_sites(site_id),
 			CONSTRAINT fk_item_bucket_id FOREIGN KEY(bucket_id) REFERENCES exp_bucketlist_buckets(bucket_id),
