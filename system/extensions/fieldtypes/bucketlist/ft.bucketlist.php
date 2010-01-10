@@ -1237,7 +1237,7 @@ _HTML_;
 			bucket_id int(10) unsigned NOT NULL auto_increment,
 			site_id int(2) unsigned NOT NULL default 1,
 			bucket_name varchar(255) NOT NULL,
-			bucket_cache_date int(10) unsigned NOT NULL default 0,
+			bucket_items_cache_date int(10) unsigned NOT NULL default 0,
 			CONSTRAINT pk_buckets PRIMARY KEY(bucket_id),
 			CONSTRAINT fk_bucket_site_id FOREIGN KEY(site_id) REFERENCES exp_sites(site_id),
 			CONSTRAINT uk_bucket_name UNIQUE (bucket_name))";
