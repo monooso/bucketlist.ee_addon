@@ -114,22 +114,6 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		  && isset($this->site_settings['secret_access_key'])
 		  && $this->site_settings['secret_access_key'] !== '');
 	}
-
-
-	/**
-	 * Checks for the existence of a Session cache.
-	 *
-	 * @access  private
-	 * @return  bool
-	 */
-	private function session_cache_exists()
-	{
-		global $SESS;
-
-		return (isset($SESS->cache[$this->namespace])
-			&& isset($SESS->cache[$this->namespace][$this->lower_class])
-			&& isset($SESS->cache[$this->namespace][$this->lower_class]['items']));
-	}
 	
 	
 	/**
