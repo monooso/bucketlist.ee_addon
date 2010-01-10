@@ -117,6 +117,26 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	
 	
 	/**
+	 * Checks whether the stored buckets still exist, and whether any new
+	 * buckets have been created in the interim. Does not check the contents.
+	 *
+	 * @access	private
+	 * @return 	void
+	 */
+	private function update_buckets_from_amazon()
+	{
+		// Retrieve all the buckets from Amazon.
+		
+		// If the bucket already exists, do nothing.
+		
+		// If a saved bucket is not found, delete the record, and all the bucket items.
+		
+		// If a new bucket is found, create the record, and set the cache date to
+		// the epoch.
+	}
+	
+	
+	/**
 	 * Loads all the items for the specified bucket into the Session
 	 * cache, and returns the results, for convenience.
 	 *
