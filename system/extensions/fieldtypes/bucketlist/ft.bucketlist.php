@@ -1123,15 +1123,22 @@ _HTML_;
 	 */
 	public function __construct()
 	{
-		global $DB, $PREFS;
+		global $DB, $IN, $PREFS;
 		
 		$this->site_id 		= $DB->escape_str($PREFS->ini('site_id'));
 		$this->class 		= get_class($this);
 		$this->lower_class 	= strtolower($this->class);
 		$this->namespace	= 'sl';
 		
-		// If this is a beta version, force the update method to run.
-		if (strpos($this->info['version'], 'b'))
+		
+		/**
+		 * If this is a beta version, force the update method to run
+		 * on the FieldFrame settings page.
+		 */
+		
+		if (strpos($this->info['version'], 'b')
+			&& $IN->GBL('P', 'GET') == 'extension_settings'
+			&& $IN->GBL('name', 'GET') == 'fieldframe')
 		{
 			$this->_force_update();
 		}
