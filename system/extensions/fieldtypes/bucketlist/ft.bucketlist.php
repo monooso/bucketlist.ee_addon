@@ -298,6 +298,43 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	
 	
 	/**
+	 * Retrieves an item based on the saved field data.
+	 *
+	 * @access	private
+	 * @param	string			$field_data		The saved field data (a full item path, including bucket).
+	 * @return	array|bool
+	 */
+	function _load_item_using_field_data($field_data = '')
+	{
+		global $DB;
+		
+		if ( ! $field_data)
+		{
+			return FALSE;
+		}
+		
+		// Trim the bucket from the start of the field data.
+		if ($bucket_and_path = $this->_split_bucket_and_path_string($field_data))
+		{
+			$db_item = $DB->query("SELECT item_extension, item_is_folder, item_name, item_path, item_size
+				FROM exp_bucketlist_items AS items
+				INNER JOIN exp_bucketlist_buckets AS buckets
+				ON buckets.bucket_id = items.bucket_id
+				WHERE buckets.bucket_name = '" .$DB->escape_str($bucket_and_path['bucket']) ."'
+				AND items.item_path = '" .$DB->escape_str($bucket_and_path['item_path']) ."'
+				LIMIT 1");
+			
+			if ($db_item->num_rows == 1 && $item = $this->_validate_item($db_item->row))
+			{
+				return $item;
+			}
+		}
+		
+		return FALSE;
+	}
+	
+	
+	/**
 	 * Retrieves all the buckets from the database.
 	 *
 	 * @access	private
@@ -1632,11 +1669,13 @@ _HTML_;
 	 */
 	public function file_name($params, $tagdata, $field_data, $field_settings)
 	{
+		global $DB;
+		
 		$out = '';
 		
-		if ($field_data)
+		if ($item = $this->_load_item_using_field_data($field_data))
 		{
-			$out = pathinfo($field_data, PATHINFO_BASENAME);
+			$out = $item['item_name'];
 		}
 		
 		return $out;
@@ -1662,41 +1701,33 @@ _HTML_;
 		
 		$out = '';
 		
-		if ($field_data)
+		if ($item = $this->_load_item_using_field_data($field_data))
 		{
-			$db_item = $DB->query("SELECT item_size FROM exp_bucketlist_items
-				WHERE item_path = '{$field_data}'");
-				
-			if ($db_item->num_rows == 1)
+			switch ($params['format'])
 			{
-				$file_size = intval($db_item->row['item_size']);
+				case 'bytes':
+					$out = $item['item_size'];
+					break;
 				
-				switch ($params['format'])
-				{
-					case 'bytes':
-						$out = $file_size;
-						break;
-						
-					case 'kilobytes':
-						$out = round($file_size / 1024, 2);
-						break;
-						
-					case 'megabytes':
-						$out = round($file_size / 1048576, 2);		// 1024 * 1024
-						break;
-						
-					case 'auto':
-					default:
-						if ($file_size < 1048567)
-						{
-							$out = round($file_size / 1024, 2) .'<abbr title="Kilobytes">KB</abbr>';
-						}
-						else
-						{
-							$out = round($file_size / 1048567, 2) .'<abbr title="Megabytes">MB</abbr>';
-						}
-						break;
-				}
+				case 'kilobytes':
+					$out = round($item['item_size'] / 1024, 2);
+					break;
+				
+				case 'megabytes':
+					$out = round($item['item_size'] / 1048576, 2);		// 1024 * 1024
+					break;
+				
+				case 'auto':
+				default:
+					if ($item['item_size'] < 1048567)
+					{
+						$out = round($item['item_size'] / 1024, 2) .'<abbr title="Kilobytes">KB</abbr>';
+					}
+					else
+					{
+						$out = round($item['item_size'] / 1048567, 2) .'<abbr title="Megabytes">MB</abbr>';
+					}
+					break;
 			}
 		}
 		
