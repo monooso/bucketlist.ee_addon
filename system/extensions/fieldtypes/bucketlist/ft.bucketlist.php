@@ -1634,8 +1634,8 @@ _HTML_;
 	 * Outputs the basic file information (the URL to the file).
 	 *
 	 * @access	public
-	 * @param	array		$params				Array of key / value pairs of the tag parameters.
-	 * @param	string		$tagdata			Content between the opening and closing tags, if it's a tag pair.
+	 * @param	array		$params				Array of tag parameters as key / value pairs.
+	 * @param	string		$tagdata			Content between the opening and closing tags (not used).
 	 * @param	string		$field_data			The field data.
 	 * @param	array		$field_settings		The field settings.
 	 * @return	string
@@ -1643,14 +1643,13 @@ _HTML_;
 	public function display_tag($params, $tagdata, $field_data, $field_settings)
 	{
 		$out = '';
-		
-		if ($field_data)
-		{
-			$bucket	= substr($field_data, 0, strpos($field_data, '/'));
-			$file	= substr($field_data, strlen($bucket) + 1);
+		$bucket_and_path = $this->_split_bucket_and_path_string($field_data);
 			
+		if ($bucket_and_path['bucket'] && $bucket_and_path['item_path'])
+		{
 			$out .= $this->site_settings['use_ssl'] == 'y' ? 'https://' : 'http://';
-			$out .= urlencode($bucket) .($this->site_settings['custom_url'] == 'y' ? '/' : '.s3.amazonaws.com/') .urlencode($file);
+			$out .= urlencode($bucket_and_path['bucket'])
+				.($this->site_settings['custom_url'] == 'y' ? '/' : '.s3.amazonaws.com/') .urlencode($bucket_and_path['item_path']);
 		}
 		
 		return $out;
@@ -1661,16 +1660,14 @@ _HTML_;
 	 * Outputs the file name.
 	 *
 	 * @access	public
-	 * @param	array		$params				Array of key / value pairs of the tag parameters.
-	 * @param	string		$tagdata			Content between the opening and closing tags, if it's a tag pair.
+	 * @param	array		$params				Array of tag parameters as key / value pairs.
+	 * @param	string		$tagdata			Content between the opening and closing tags (not used).
 	 * @param	string		$field_data			The field data.
 	 * @param	array		$field_settings		The field settings.
 	 * @return	string
 	 */
 	public function file_name($params, $tagdata, $field_data, $field_settings)
 	{
-		global $DB;
-		
 		$out = '';
 		
 		if ($item = $this->_load_item_using_field_data($field_data))
@@ -1686,16 +1683,14 @@ _HTML_;
 	 * Outputs the file size.
 	 *
 	 * @access	public
-	 * @param	array		$params				Array of key / value pairs of the tag parameters.
-	 * @param	string		$tagdata			Content between the opening and closing tags, if it's a tag pair.
+	 * @param	array		$params				Array of tag parameters as key / value pairs.
+	 * @param	string		$tagdata			Content between the opening and closing tags (not used).
 	 * @param	string		$field_data			The field data.
 	 * @param	array		$field_settings		The field settings.
 	 * @return	string
 	 */
 	public function file_size($params, $tagdata, $field_data, $field_settings)
 	{
-		global $DB;
-		
 		// Default parameters.
 		$params = array_merge(array('format' => 'auto'), $params);
 		
@@ -1733,6 +1728,7 @@ _HTML_;
 		
 		return $out;
 	}
+	
 	
 }
 
