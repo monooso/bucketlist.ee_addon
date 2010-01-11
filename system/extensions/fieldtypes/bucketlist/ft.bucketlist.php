@@ -132,60 +132,85 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		}
 		
 		// Separate out the bucket name.
-		if ( ! preg_match('/^([0-9a-z]{1}[0-9a-z\.\_\-]{2,254})\/{1}(.*)$/', $item_name, $matches))
+		$bucket_and_path = $this->_split_bucket_and_path_string($item_name);
+		
+		if ( ! $bucket_and_path['bucket'])
 		{
 			return FALSE;
 		}
 		
 		// Make the call.
 		$s3 = new S3($this->site_settings['access_key_id'], $this->site_settings['secret_access_key'], FALSE);
-		return @$s3->getObjectInfo($matches[1], $matches[2], FALSE);
+		return @$s3->getObjectInfo($bucket_and_path['bucket'], $bucket_and_path['item_path'], FALSE);
 		
 	}
 	
 	
 	/**
-	 * Parses a single 'item' DB record, and returns an array containing the
-	 * item information.
+	 * Validates the structure of an 'item' array. Returns a valid item array, with any extraneous
+	 * information stripped out, or FALSE.
 	 *
 	 * @access	private
-	 * @param 	array 		$db_item		The DB record.
-	 * @return 	array
+	 * @param 	array 			$item		The item to validate.
+	 * @return 	array|bool
 	 */
-	function _parse_item_db_result($db_item = array())
+	function _validate_item($item = array())
 	{
-		if ( ! $db_item OR ! is_array($db_item))
+		if ( ! $item OR ! is_array($item))
 		{
-			return array();
+			return FALSE;
 		}
 		
-		// Do we have the required information?
-		$required_fields 	= array('item_extension', 'item_is_folder', 'item_name', 'item_path', 'item_size');
-		$item 				= array();
+		$default_item = array(
+			'item_extension'	=> '',
+			'item_is_folder'	=> '',
+			'item_name'			=> '',
+			'item_path'			=> '',
+			'item_size'			=> ''
+		);
+		
+		$item = array_merge($default_item, $item);
+		
+		/**
+		 * Item extension is optional in this first check, as folders don't have one.
+		 */
+		
+		$required_fields 	= array('item_is_folder', 'item_name', 'item_path', 'item_size');
+		$valid_item 		= array();
 		$missing_field		= FALSE;
 		
 		foreach ($required_fields AS $field_id)
 		{
-			if ( ! array_key_exists($field_id, $db_item))
+			if ($field_id != 'item_size' && ( ! is_string($item[$field_id]) OR $item[$field_id] == ''))
 			{
 				$missing_field = TRUE;
 				break;
 			}
 			
-			$item[$field_id] = $db_item[$field_id];
+			$valid_item[$field_id] = $item[$field_id];
+		}
+		
+		// One last check. Files need extension.
+		if (strtolower($valid_item['item_is_folder']) != 'y' && ( ! is_string($item['item_extension']) OR $item['item_extension'] == ''))
+		{
+			$missing_field = TRUE;
+		}
+		else
+		{
+			$valid_item['item_extension'] = strtolower($item['item_extension']);
 		}
 		
 		if ($missing_field)
 		{
-			return array();
+			return FALSE;
 		}
 		else
 		{
 			// Bit of cleaning up, and we'll be done.
-			$item['item_is_folder'] = strtolower($item['item_is_folder']);
-			$item['item_size']		= intval($item['item_size']);
+			$valid_item['item_is_folder'] 	= strtolower($valid_item['item_is_folder']);
+			$valid_item['item_size']		= intval($valid_item['item_size']);
 			
-			return $item;
+			return $valid_item;
 		}
 	}
 	
@@ -238,37 +263,37 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	
 	
 	/**
-	 * Parses a single 'bucket' DB record, and returns an array containing the
-	 * bucket information.
+	 * Validates the structure of a 'bucket' array. Returns a valid item array, with any extraneous
+	 * information stripped out, or FALSE.
 	 *
 	 * @access	private
-	 * @param 	array 		$db_bucket		The DB record.
-	 * @return 	array
+	 * @param 	array 			$bucket		The bucket to validate.
+	 * @return 	array|bool
 	 */
-	function _parse_bucket_db_result($db_bucket = array())
+	function _validate_bucket($bucket = array())
 	{
-		if ( ! $db_bucket OR ! is_array($db_bucket))
+		if ( ! $bucket OR ! is_array($bucket))
 		{
-			return array();
+			return FALSE;
 		}
 		
 		// Do we have the required information?
 		$required_fields 	= array('bucket_id', 'bucket_items_cache_date', 'bucket_name', 'site_id');
-		$bucket 			= array();
+		$valid_bucket 		= array();
 		$missing_field		= FALSE;
 		
 		foreach ($required_fields AS $field_id)
 		{
-			if ( ! array_key_exists($field_id, $db_bucket))
+			if ( ! array_key_exists($field_id, $bucket))
 			{
 				$missing_field = TRUE;
 				break;
 			}
 			
-			$bucket[$field_id] = $db_bucket[$field_id];
+			$valid_bucket[$field_id] = $bucket[$field_id];
 		}
 		
-		return ($missing_field ? array() : $bucket);
+		return ($missing_field ? FALSE : $valid_bucket);
 	}
 	
 	
@@ -297,7 +322,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		
 		foreach ($db_buckets->result AS $db_bucket)
 		{
-			if ($bucket = $this->_parse_bucket_db_result($db_bucket))
+			if ($bucket = $this->_validate_bucket($db_bucket))
 			{
 				$buckets[] = $bucket;
 			}
@@ -312,7 +337,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 *
 	 * @access	private
 	 * @param 	string		$bucket_name		The name of the bucket.
-	 * @return 	array
+	 * @return 	array|bool
 	 */
 	function _load_bucket_from_db($bucket_name = '')
 	{
@@ -320,7 +345,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		
 		if ( ! $bucket_name)
 		{
-			return array();
+			return FALSE;
 		}
 		
 		$db_bucket = $DB->query("SELECT
@@ -330,7 +355,65 @@ class Bucketlist extends Fieldframe_Fieldtype {
 			AND site_id = '{$this->site_id}'
 			LIMIT 1");
 			
-		return ($this->_parse_bucket_db_result($db_bucket->row));
+		return ($this->_validate_bucket($db_bucket->row));
+	}
+	
+	
+	/**
+	 * Add a bucket item to the database, if it doesn't already exist. If the item was added,
+	 * the method returns 1. If the item was already present, the method returns 0. If an error
+	 * occurred, the method returns FALSE.
+	 *
+	 * In other words use === when evaluating the response.
+	 *
+	 * @access	private
+	 * @param	array 		$item			A bucket item.
+	 * @param 	string		$bucket_name	The bucket to which to add the items.
+	 * @return	int|bool
+	 */
+	function _add_bucket_item_to_db($item = array(), $bucket_name = '')
+	{
+		global $DB;
+		
+		// No trainers mate.
+		if ( ! $item OR ! $bucket_name OR ! is_array($item))
+		{
+			return FALSE;
+		}
+		
+		// Is this a valid bucket?
+		if ( ! $bucket = $this->_load_bucket_from_db($bucket_name))
+		{
+			return FALSE;
+		}
+		
+		if ( ! $valid_item = $this->_validate_item($item))
+		{
+			return FALSE;
+		}
+		
+		// Does this item already exist in the database?
+		$db_item = $DB->query("SELECT item_id
+			FROM exp_bucketlist_items
+			WHERE bucket_id = '" .$DB->escape_str($bucket['bucket_id']) ."'
+			AND item_name = '" .$DB->escape_str($valid_item['item_name']) ."'
+			AND item_path = '" .$DB->escape_str($valid_item['item_path']) ."'
+			LIMIT 1");
+			
+		if ($db_item->num_rows == 1)
+		{
+			return 0;
+		}
+
+		// Add a couple of extra bits to the $valid_item array.
+		$valid_item['bucket_id'] = $DB->escape_str($bucket['bucket_id']);
+		$valid_item['site_id'] = $this->site_id;
+		
+		// Add the item to the database.
+		$DB->query($DB->insert_string('exp_bucketlist_items', $valid_item));
+		
+		return $DB->affected_rows;
+		
 	}
 	
 	
@@ -350,21 +433,24 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		// Talk sense man.
 		if ( ! $bucket_name)
 		{
-			return array();
+			return FALSE;
+		}
+		
+		// Is this a valid bucket name?
+		if ( ! $bucket = $this->_load_bucket_from_db($bucket_name))
+		{
+			return FALSE;
 		}
 		
 		// Load the items from the database.
 		$db_items = $DB->query("SELECT
-				item_id, item_path, item_name, item_size, item_extension, item_is_folder,
-				buckets.bucket_id, buckets.bucket_name
-			FROM exp_bucketlist_items AS items
-			INNER JOIN exp_bucketlist_buckets AS buckets
-			ON buckets.bucket_id = items.bucket_id
-			WHERE buckets.bucket_name = '" .$DB->escape_str($bucket_name) ."'
-			AND items.site_id = '{$this->site_id}'
+				item_id, item_path, item_name, item_size, item_extension, item_is_folder
+			FROM exp_bucketlist_items
+			WHERE bucket_id = '" .$DB->escape_str($bucket['bucket_id']) ."'
+			AND site_id = '{$this->site_id}'
 			ORDER BY item_name ASC");
 			
-		if ($db_items->num_rows < 1)
+		if ($db_items->num_rows == 0)
 		{
 			return array();
 		}
@@ -374,7 +460,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		
 		foreach ($db_items->result AS $db_item)
 		{
-			$item = $this->_parse_item_db_result($db_item);
+			$item = $this->_validate_item($db_item);
 			
 			if ($item)
 			{
@@ -590,7 +676,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		// Be reasonable.
 		if ( ! $bucket_name)
 		{
-			return array();
+			return FALSE;
 		}
 		
 		// Shorthand.
@@ -635,6 +721,90 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		$session_cache['items'][$bucket_name] = $items;
 		
 		return $items;
+	}
+	
+	
+	/**
+	 * Splits a 'bucket and item path' string into two separate strings.
+	 *
+	 * IMPORTANT NOTE:
+	 * If the item path is the bucket root (/), the method still expects the
+	 * slash to be included. If it's not, an empty value is returned for both
+	 * the bucket and path.
+	 *
+	 * @access	private
+	 * @param	string		$full_path			The full 'bucket and item path' string.
+	 * @param	bool		$strip_slashes		Strips and forward slashes from the end of the item path.
+	 * @return	array|bool
+	 */
+	function _split_bucket_and_path_string($full_path = '', $strip_slashes = FALSE)
+	{
+		$bucket_and_path = array('bucket' => '', 'item_path' => '');
+		
+		if ( ! $full_path)
+		{
+			return FALSE;
+		}
+		
+		/**
+		 * The following regular expression also contains a little bit
+		 * of validation for the bucket name. It's not 100% strict
+		 * though, as there's no way we should ever be passed a non-
+		 * existent bucket name, never mind an entirely invalid one.
+		 */
+		
+		if (preg_match('/^([0-9a-z]{1}[0-9a-z\.\_\-]{2,254})\/{1}(.*)$/', $full_path, $matches))
+		{
+			if ($matches[1] OR $matches[2])
+			{
+				$bucket_and_path['bucket'] 		= $matches[1];
+				$bucket_and_path['item_path']	= $strip_slashes ? rtrim($matches[2], '/') : $matches[2];
+			}
+		}
+		
+		return $bucket_and_path;
+	}
+	
+	
+	/**
+	 * Forwards the specified file from the $_FILES array to S3
+	 *
+	 * @access	private
+	 * @param	string		$field_id		The ID of the file field.
+	 * @param	string		$bucket_name	The name of the destination bucket.
+	 * @param 	string		$item_path 		The path to the item from the bucket root.
+	 * @return	bool
+	 */
+	function _upload_file_to_s3($field_id = '', $bucket_name = '', $item_path = '')
+	{
+		
+		// Idiot check.
+		if ( ! $field_id OR ! isset($_FILES[$field_id]) OR ! $bucket_name)
+		{
+			return FALSE;
+		}
+		
+		$file = $_FILES[$field_id];
+		
+		// Strip trailing slashes from the end of $item_path, just in case.
+		$item_path = rtrim($item_path, '/');
+			
+		// The destination.
+		$uri = $item_path ? $item_path .'/' .$file['name'] : $file['name'];
+			
+		// Retrieve the Amazon account credentials.
+		$access_key = $this->site_settings['access_key_id'];
+		$secret_key = $this->site_settings['secret_access_key'];
+		
+		// Create the S3 instance.
+		$s3 = new S3($access_key, $secret_key, FALSE);
+
+		// Generate the input array for our file.
+		$input = $s3->inputFile($file['tmp_name']);	
+		
+		// Upload the file.
+		return $s3->putObject($input, $bucket_name, $uri, S3::ACL_PUBLIC_READ);
+		
 	}
 	
 	
@@ -778,6 +948,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 					 */
 					
 					$f['item_path'] = rawurlencode($bucket_name .'/' .$f['item_path']);
+					$f['item_extension'] = strtolower($f['item_extension']);
 					
 					$item_name = rtrim($matches[1], '/');
 					
@@ -849,21 +1020,77 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	
 	
 	/**
+	 * Outputs the upload response HTML.
+	 *
+	 * @access	private
+	 * @param	string		$message_data	Message data: status, message, upload_id, list_item.
+	 * @return	string
+	 */
+	function _output_upload_response($message_data = array())
+	{
+		global $LANG, $PREFS;
+		
+		// Fine, be like that, see what I care.
+		if ( ! is_array($message_data))
+		{
+			$message_data = array();
+		}
+		
+		// Ever the optimist.
+		$default_data = array(
+			'status'		=>	'failure',
+			'message'		=>	$LANG->line('upload_failure'),
+			'upload_id'		=> '',
+			'list_item'		=> '');
+			
+		$message_data = array_merge($default_data, $message_data);
+		
+		// Tidy see.
+		foreach ($message_data AS $field)
+		{
+			$message_data[$field] = htmlspecialchars($message_data[$field], ENT_COMPAT, 'UTF-8');
+		}
+
+		/**
+		 * Create and return the HTML document. Why, you may ask,
+		 * do we not respond with XML, or perhaps even JSON?
+		 *
+		 * Simple, Internet Explorer and can't handle XML. JSON
+		 * is even more problematic.
+		 */
+
+		$html = <<<_HTML_
+<html>
+<head>
+	<title>Amazon S3 Response</title>
+</head>
+<body>
+<p id="status">{$message_data['status']}</p>
+<p id="message">{$message_data['message']}</p>
+<p id="uploadId">{$message_data['upload_id']}</p>
+<ul id="listItem">{$message_data['list_item']}</ul>
+</body>
+</html>
+_HTML_;
+
+		// Output the return document.
+		header('Content-type: text/html; charset=' .$PREFS->ini('charset'));
+		exit($html);
+
+	}
+	
+	
+	/**
 	 * Forwards the just-uploaded file to Amazon S3, and writes out a
 	 * response document based on the success or failure of the operation.
 	 *
 	 * @access	private
 	 * @return	void
 	 */
-	private function _upload_file()
+	function _process_upload()
 	{
-		global $DB, $FNS, $IN, $LANG, $PREFS, $SESS;
+		global $IN, $LANG, $SESS;
 		
-		// Paranoia.
-		if ($this->site_settings['allow_upload'] != 'y')
-		{
-			return false;
-		}
 		
 		/**
 		 * This is being called from the sessions_start method, so the
@@ -877,12 +1104,28 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		}
 		
 		$LANG->fetch_language_file($this->lower_class);
-
-		/**
-		 * Retrieve the submitted file from the field entitled "file".
-		 */
-
-		$file = isset($_FILES['file']) ? $_FILES['file'] : array();
+		
+		
+		// Retrieve the upload ID.
+		$upload_id = $IN->GBL('upload_id', 'POST');
+		
+		
+		// Paranoia. Get out early.
+		if ($this->site_settings['allow_upload'] != 'y')
+		{
+			$status = 'failure';
+			$message = $LANG->line('upload_failure');
+			
+			$this->_output_upload_response(array(
+				'status'	=> $status,
+				'message'	=> $message,
+				'upload_id'	=> $upload_id,
+				'list_item'	=> ''
+			));
+			
+			return FALSE;
+		}
+		
 		
 		/**
 		 * The path has been on a round trip from this class, contained in
@@ -893,169 +1136,80 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		 */
 		
 		$full_path 	= rawurldecode($IN->GBL('path', 'POST'));
-		$upload_id	= $IN->GBL('upload_id', 'POST');
-		
-		/**
-		 * The $full_path contains the bucket and the folder elements.
-		 * We need them separate.
-		 * 
-		 * The following regular expression also contains a little bit
-		 * of validation for the bucket name. It's not 100% strict
-		 * though, as there's no way we should ever be passed a non-
-		 * existent bucket name, never mind an entirely invalid one.
-		 */
-		
-		if (preg_match('/^([0-9a-z]{1}[0-9a-z\.\_\-]{2,254})\/{1}(.*)$/', $full_path, $matches))
-		{
-			$bucket	= $matches[1];
-			$path 	= $matches[2];
-		}
-		else
-		{
-			$bucket = $path = '';
-		}
+		$bucket_and_path = $this->_split_bucket_and_path_string($full_path, TRUE);
 		
 		
-		if ( ! $bucket OR ! $file)
+		// Upload the file to S3.
+		if ( ! $bucket_and_path['bucket']
+			OR ! $this->_upload_file_to_s3('file', $bucket_and_path['bucket'], $bucket_and_path['item_path']))
 		{
 			$status = 'failure';
-			$message = $LANG->line('upload_failure_missing_info');
+			$message = $LANG->line('upload_failure');
+			
+			$this->_output_upload_response(array(
+				'status'		=> $status,
+				'message'		=> $message,
+				'upload_id'		=> $upload_id,
+				'list_item'		=> ''
+			));
+			
+			return FALSE;
+		}
+		
+		// Shortcut to the uploaded file (which we now know exists).
+		$file = $_FILES['file'];
+		
+		// All good so far.
+		$status = 'success';
+		$message = $LANG->line('upload_success') .$file['name'];
+		
+		// Construct the URI.
+		$uri = $bucket_and_path['item_path'] ? $bucket_and_path['item_path'] .'/' .$file['name'] : $file['name'];
+		
+		// Extract some file information.
+		$item_info = array(
+			'item_extension' 	=> pathinfo($file['name'], PATHINFO_EXTENSION),
+			'item_is_folder'	=> 'n',
+			'item_name' 		=> $file['name'],
+			'item_path' 		=> $uri,
+			'item_size' 		=> $file['size']
+		);
+		
+		
+		// Add our item to the database.
+		$database_result = $this->_add_bucket_item_to_db($item_info, $bucket_and_path['bucket']);
+		
+		/**
+		 * Whether the operation failed, or no items were added, we do
+		 * the same thing at the moment. If this changes in the future,
+		 * we'll need to do a strict === check here.
+		 */
+		
+		if ( ! $database_result)
+		{
+			$list_item = '';
 		}
 		else
 		{
-			// Remove extraneous slashes from the path.
-			$path = rtrim($path, '/');
-			
-			// The destination.
-			$uri = ($path == '') ? $file['name'] : $path .'/' .$file['name'];
-			
-			// Retrieve the Amazon account credentials.
-			$access_key = $this->site_settings['access_key_id'];
-			$secret_key = $this->site_settings['secret_access_key'];
-
-			// Create the S3 instance.
-			$s3 = new S3($access_key, $secret_key, FALSE);
-
-			// Generate the input array for our file.
-			$input = $s3->inputFile($file['tmp_name']);
-			
-			// Upload the file.
-			if ($s3->putObject($input, $bucket, $uri, S3::ACL_PUBLIC_READ))
-			{
-				$status = 'success';
-				$message = $LANG->line('upload_success') .$file['name'];
+			// Create the HTML for the new list item.
+			$list_item = '<li class="file ext_' .strtolower($item_info['item_extension']) .'">
+				<a href="#" rel="' .rawurlencode($bucket_and_path['bucket'] .'/'
+				.$item_info['item_path']) .'">' .$item_info['item_name'] .'</a></li>';
 				
-				//Prepare ourselves for the upcoming database action.
-				$now 			= time();
-				$item_name 		= $file['name'];
-				$item_path 		= $bucket .'/' .$uri;
-				$item_size 		= $file['size'];
-				$item_extension = pathinfo($file['name'], PATHINFO_EXTENSION);
-				
-				/**
-				 * Does this item already exist in the database? If so, we're
-				 * overwriting it on the S3 server, so we just need to update
-				 * the item_last_updated time in the database.
-				 *
-				 * If it's a brand-spanking new item, add it to the DB, and
-				 * return a new list item for the file tree.
-				 *
-				 * @todo Return information about an overwritten file, so
-				 * the user can at least get some visual feedback.
-				 */
-				
-				$db_existing_item = $DB->query("SELECT item_id
-					FROM exp_bucketlist_items
-					INNER JOIN exp_bucketlist_buckets
-					USING (bucket_id)
-					WHERE item_name = '" .$DB->escape_str($item_name) ."'
-					AND item_path = '" .$DB->escape_str($item_path) ."'
-					AND bucket_name = '" .$DB->escape_str($bucket) ."'");
-					
-				if ($db_existing_item->num_rows == 1)
-				{
-					$list_item = '';
-				}
-				else
-				{
-					$db_bucket = $DB->query("SELECT bucket_id
-						FROM exp_bucketlist_buckets
-						WHERE bucket_name = '" .$DB->escape_str($bucket) ."'");
-
-					/**
-					 * Quite how this could ever not be 1 is unclear,
-					 * but it doesn't hurt to check.
-					 */
-
-					if ($db_bucket->num_rows != 1)
-					{
-						$list_item = '';
-					}
-					else
-					{
-						// Create the HTML for the new list item.
-						$list_item = '<li class="file ext_' .strtolower($item_extension) .'">
-							<a href="#" rel="' .rawurlencode($item_path) .'">' .$item_name .'</a></li>';
-						
-						$DB->query($DB->insert_string(
-							'exp_bucketlist_items',
-							array(
-								'bucket_id'				=> $db_bucket->row['bucket_id'],
-								'item_is_folder'		=> 'n',
-								'item_last_updated'		=> $now,
-								'item_name'				=> $item_name,
-								'item_path'				=> $item_path,
-								'item_size'				=> $item_size,
-								'item_extension'		=> $item_extension,
-								'site_id'				=> $this->site_id
-							)
-						));
-						
-						/**
-						 * The cache is now out of date, dagnammit.
-						 * Clear the Session cache for this bucket, and fob everything off onto load_items.
-						 */
-						
-						$SESS->cache[$this->namespace][$this->lower_class]['items'][$bucket] = array();
-						$this->load_items($bucket);
-					}
-				}
-			}
-			else
-			{
-				$status = 'failure';
-				$message = $LANG->line('upload_failure_generic') .$file['name'];
-			}
+			// The Session cache is now out of date. Just load the items from the database.
+			$SESS->cache[$this->namespace][$this->lower_class]['items'][$bucket_and_path['bucket']]
+				= $this->_load_bucket_items_from_db($bucket_and_path['bucket']);
+			
 		}
-
-		// Ensure the message is SFW.
-		$message = htmlspecialchars($message, ENT_COMPAT, 'UTF-8');
-
-		/**
-		 * Create the HTML document. Why, you may ask, do we not
-		 * respond with XML, or perhaps even JSON?
-		 *
-		 * Simple, Internet Explorer and can't handle XML. JSON
-		 * is even more problematic.
-		 */
-
-		$return = <<<_HTML_
-<html>
-<head>
-	<title>Amazon S3 Response</title>
-</head>
-<body>
-<p id="status">{$status}</p>
-<p id="message">{$message}</p>
-<p id="uploadId">{$upload_id}</p>
-<ul id="listItem">{$list_item}</ul>
-</body>
-</html>
-_HTML_;
-
+		
+		
 		// Output the return document.
-		header('Content-type: text/html; charset=' .$PREFS->ini('charset'));
-		exit($return);
+		$this->_output_upload_response(array(
+			'status'		=> $status,
+			'message'		=> $message,
+			'upload_id'		=> $upload_id,
+			'list_item'		=> $list_item
+		));
 	}
 	
 	
@@ -1099,8 +1253,7 @@ _HTML_;
 			item_extension varchar(10) NOT NULL,
 			CONSTRAINT pk_items PRIMARY KEY(item_id),
 			CONSTRAINT fk_item_site_id FOREIGN KEY(site_id) REFERENCES exp_sites(site_id),
-			CONSTRAINT fk_item_bucket_id FOREIGN KEY(bucket_id) REFERENCES exp_bucketlist_buckets(bucket_id),
-			CONSTRAINT uk_item_path UNIQUE (item_path))";
+			CONSTRAINT fk_item_bucket_id FOREIGN KEY(bucket_id) REFERENCES exp_bucketlist_buckets(bucket_id))";
 		
 		foreach ($sql AS $query)
 		{
@@ -1175,7 +1328,7 @@ _HTML_;
 					break;
 					
 				case 'upload':
-					$this->_upload_file();
+					$this->_process_upload();
 					break;
 					
 				default:
@@ -1217,7 +1370,7 @@ _HTML_;
 		$this->include_css('css/cp.css');
 		
 		// Language strings, for use in the JS.
-		$upload_failure = str_replace(array('"', '"'), '', $LANG->line('upload_failure_unknown'));
+		$upload_failure = str_replace(array('"', '"'), '', $LANG->line('upload_failure'));
 		$confirm_exit	= addslashes($LANG->line('confirm_exit'));
 		
 		$js_language = "var languageStrings = {
