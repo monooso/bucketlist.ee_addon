@@ -461,14 +461,33 @@ $.fn.bucketlist = function(options) {
 
 			} else {
 				
-				$wrapper = $target.closest('.eepro-co-uk');
+				// Is this item already selected?
+				if ($target.parent().hasClass('selected')) {
+					
+					// Deselect the target element.
+					$target.parent().removeClass('selected');
+					
+					// Clear the target value.
+					field_value = '';
+					
+				} else {
+					
+					// Deselect and other selected elements.
+					$target
+						.closest('.eepro-co-uk')
+						.find('li.selected')
+						.removeClass('selected');
+						
+					// Select the target element.
+					$target.parent().addClass('selected');
+					
+					// Record the target value.
+					field_value = $target.attr('rel');
+					
+				}
 				
-				// Mark the selected file as such.
-				$('li.selected', $wrapper).removeClass('selected');
-				$target.parent().addClass('selected');
-				
-				// Make a note of the selected file name in the hidden form field.
-				$target.closest('.eepro-co-uk').find('> input:hidden').val($target.attr('rel'));
+				// Update the hidden form field.
+				$target.closest('.eepro-co-uk').find('> input:hidden').val(field_value);
 				
 				// Callback.
 				localOptions.onFileClick({$target : $target, fileName : $target.attr('rel')});
