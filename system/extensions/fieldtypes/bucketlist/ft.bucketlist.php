@@ -352,7 +352,8 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		$db_buckets = $DB->query("SELECT
 				bucket_id, bucket_items_cache_date, bucket_name, site_id
 			FROM exp_bucketlist_buckets
-			WHERE site_id = '{$this->site_id}'");
+			WHERE site_id = '{$this->site_id}'
+			ORDER BY bucket_name ASC");
 			
 		if ($db_buckets->num_rows == 0)
 		{
