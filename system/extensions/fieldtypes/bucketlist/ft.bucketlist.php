@@ -658,11 +658,32 @@ class Bucketlist extends Fieldframe_Fieldtype {
 			return FALSE;
 		}
 		
+		// Delete any existing bucket items from the database.
+		$DB->query("DELETE FROM exp_bucketlist_items
+			WHERE bucket_id = {$bucket['bucket_id']}
+			AND site_id = {$this->site_id}");
+		
 		// Parse the data returned from Amazon.
 		$new_items = array();
 		
+		// The basic SQL query.
+		$base_insert_sql = 'INSERT INTO exp_bucketlist_items (
+				bucket_id, item_extension, item_is_folder, item_name, item_path, item_size, site_id
+			) VALUES (%s)';
+		
 		foreach ($s3_items AS $s3_item)
 		{
+			/**
+			 * Every 1500 items, we write to the database. This prevents MySQL max_allowed_packet
+			 * errors when dealing with extremely large buckets.
+			 */
+			
+			if (count($new_items) >= 1500)
+			{
+				$DB->query(sprintf($base_insert_sql, implode('), (', $new_items)));
+				$new_items = array();
+			}
+			
 			if ($item = $this->_parse_item_s3_result($s3_item))
 			{
 				/**
@@ -680,17 +701,11 @@ class Bucketlist extends Fieldframe_Fieldtype {
 			}
 		}
 		
-		// Delete any existing bucket items from the database.
-		$DB->query("DELETE FROM exp_bucketlist_items
-			WHERE bucket_id = {$bucket['bucket_id']}
-			AND site_id = {$this->site_id}");
-		
-		// Add the new items to the database.
-		$sql = "INSERT INTO exp_bucketlist_items (
-				bucket_id, item_extension, item_is_folder, item_name, item_path, item_size, site_id
-			) VALUES (" .implode('), (', $new_items) .")";
-			
-		$DB->query($sql);
+		// Stragglers?
+		if (count($new_items) > 0)
+		{
+			$DB->query(sprintf($base_insert_sql, implode('), (', $new_items)));
+		}
 		
 		// Update the bucket_items_cache_date column in exp_bucketlist_buckets.
 		$DB->query($DB->update_string(
