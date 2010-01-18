@@ -64,7 +64,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		'secret_access_key'	=> '',
 		'cache_duration' 	=> '3600',		// 60 minutes
 		'use_ssl' 			=> 'n',
-		'custom_url'		=> 'y'
+		'custom_url'		=> 'n'
 	);
 	
 	/**
