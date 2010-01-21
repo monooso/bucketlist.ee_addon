@@ -147,19 +147,12 @@ $.fn.bucketlist = function(options) {
 			// Add the file field.
 			$('<input name="file" type="file">').appendTo($form).bind('change', fileChange);
 			
-			// Add the hidden fields.
-			$form.append('<input id="addon_id" name="addon_id" type="hidden" value="bucketlist">');
-			$form.append('<input id="ajax" name="ajax" type="hidden" value="y">');
+			// Add the hidden 'path' field.
 			$form.append('<input id="path" name="path" type="hidden" value="' + path + '">');
-			$form.append('<input id="request" name="request" type="hidden" value="upload">');
-			
-			// Set just before upload commences.
-			$form.append('<input id="upload_id" name="upload_id" type="hidden" value="">');
 			
 			// Apend the form to the div.
-			$uploadLink.parent().append($form);
+			$uploadLink.parent().append($form);	
 			
-						
 			// If this is an anchor (which it should be), disable the default click event.
 			if ($uploadLink[0].nodeName.toLowerCase() == 'a') {
 				$uploadLink.bind('click', function(e) {
@@ -357,8 +350,19 @@ $.fn.bucketlist = function(options) {
 			// Generate a new upload ID.
 			var uploadId = Math.round(Math.random() * new Date().getTime());
 			
-			// Add the upload ID to the hidden form field.
-			$('#upload_id', $form).attr('value', uploadId);
+			/**
+			 * Add some additional hidden form fields.
+			 * We add these at the last possible moment, and then delete them
+			 * as soon as possible.
+			 *
+			 * Otherwise we run into problems with the 'publish' form submission
+			 * being interpreted as a file upload request in IE.
+			 */
+			
+			$form.append('<input id="addon_id" name="addon_id" type="hidden" value="bucketlist">');
+			$form.append('<input id="ajax" name="ajax" type="hidden" value="y">');
+			$form.append('<input id="request" name="request" type="hidden" value="upload">');
+			$form.append('<input id="upload_id" name="upload_id" type="hidden" value="' + uploadId + '">');
 			
 			// Create a new iframe for the upload.
 			var iframeId = 'bucketload-iframe-' + uploadId;
@@ -378,6 +382,12 @@ $.fn.bucketlist = function(options) {
 
 				// Call the onStart handler.
 				localOptions.onUploadStart({fileName : $file.val(), uploadId : uploadId});
+				
+				// Delete the hidden form fields to keep IE happy.
+				$form.find('#addon_id').remove();
+				$form.find('#ajax').remove();
+				$form.find('#request').remove();
+				$form.find('#upload_id').remove();
 				
 			}, 1);
 			

@@ -98,14 +98,6 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 * @var 	string
 	 */
 	private $namespace = '';
-	
-	/**
-	 * Demo mode doesn't actually upload the files to Amazon S3.
-	 *
-	 * @access	private
-	 * @var 	bool
-	 */
-	private $demo = FALSE;
 
 
 	/**
@@ -848,12 +840,6 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		if ( ! $field_id OR ! isset($_FILES[$field_id]) OR ! $bucket_name)
 		{
 			return FALSE;
-		}
-		
-		// If we're in demonstration mode, just return TRUE.
-		if ($this->demo)
-		{
-			return TRUE;
 		}
 		
 		$file = $_FILES[$field_id];
