@@ -59,6 +59,8 @@ margin : 0;
 padding : 0;
 }
 
+.bucketlist-ui .bucketlist-tree li {margin-bottom : 0;}
+
 .bucketlist-ui .bucketlist-tree ul {margin-left : 18px;}
 
 .bucketlist-ui .bucketlist-tree a {
