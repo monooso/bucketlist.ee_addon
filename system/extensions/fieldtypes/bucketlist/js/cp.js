@@ -178,12 +178,10 @@ $(document).ready(function() {
 	// Hide the status bar, in case it isn't already.
 	displayStatusBar(false);
 	
-	baseAjaxURL	= document.location.href;
-	baseAjaxURL	+= (baseAjaxURL.indexOf('?') < 0) ? '?' : '&';
-	baseAjaxURL	+= 'ajax=y&addon_id=bucketlist&request=';
+	targetURL = document.location.href;
 	
-	$.fn.bucketlist.defaults.ajaxScriptURL 		= baseAjaxURL + 'tree';
-	$.fn.bucketlist.defaults.uploadFormAction	= baseAjaxURL + 'upload';
+	$.fn.bucketlist.defaults.ajaxScriptURL 		= targetURL;
+	$.fn.bucketlist.defaults.uploadFormAction	= targetURL;
 	$.fn.bucketlist.defaults.onUploadFailure 	= uploadFailure;
 	$.fn.bucketlist.defaults.onUploadStart		= uploadStart;
 	$.fn.bucketlist.defaults.onUploadSuccess	= uploadSuccess;

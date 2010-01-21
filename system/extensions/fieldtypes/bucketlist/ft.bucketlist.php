@@ -1388,15 +1388,15 @@ _HTML_;
 		$session->cache[$this->namespace][$this->lower_class]['items'] = array();
 		$session->cache[$this->namespace][$this->lower_class]['buckets_updated_from_s3'] = FALSE;
 		
-		if ($IN->GBL('ajax', 'GET') == 'y' && $IN->GBL('addon_id', 'GET') == $this->lower_class)
+		if ($IN->GBL('ajax', 'POST') == 'y' && $IN->GBL('addon_id', 'POST') == $this->lower_class)
 		{
 			// We're either being summoned by the file tree, or the uploader. Which is it?
-			$request = $IN->GBL('request', 'GET');
+			$request = $IN->GBL('request', 'POST');
 			
 			switch ($request)
 			{
 				case 'tree':
-					$this->_output_branch_ui(urldecode($IN->GBL('dir', 'GET')));
+					$this->_output_branch_ui(urldecode($IN->GBL('dir', 'POST')));
 					break;
 					
 				case 'upload':
@@ -1425,7 +1425,7 @@ _HTML_;
 		global $IN, $LANG, $SESS;
 		
 		// We have no truck with AJAX requests. They are handled by sessions_start.
-		if ($IN->GBL('ajax', 'GET') == 'y')
+		if ($IN->GBL('ajax', 'POST') == 'y')
 		{
 			return '';
 		}

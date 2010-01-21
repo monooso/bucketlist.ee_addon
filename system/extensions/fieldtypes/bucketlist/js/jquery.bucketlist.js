@@ -148,7 +148,12 @@ $.fn.bucketlist = function(options) {
 			$('<input name="file" type="file">').appendTo($form).bind('change', fileChange);
 			
 			// Add the hidden fields.
+			$form.append('<input id="addon_id" name="addon_id" type="hidden" value="bucketlist">');
+			$form.append('<input id="ajax" name="ajax" type="hidden" value="y">');
 			$form.append('<input id="path" name="path" type="hidden" value="' + path + '">');
+			$form.append('<input id="request" name="request" type="hidden" value="upload">');
+			
+			// Set just before upload commences.
 			$form.append('<input id="upload_id" name="upload_id" type="hidden" value="">');
 			
 			// Apend the form to the div.
@@ -542,9 +547,14 @@ $.fn.bucketlist = function(options) {
 			$li.addClass('wait');
 
 			// Load the bucket contents via AJAX.
-			$.get(
+			$.post(
 				localOptions.ajaxScriptURL,
-				{dir: path},
+				{
+					addon_id	: 'bucketlist',
+					ajax		: 'y',
+					dir			: path,
+					request		: 'tree'
+				},
 				function(htmlFragment) {
 					
 					// Remove the initial "loading" message.
