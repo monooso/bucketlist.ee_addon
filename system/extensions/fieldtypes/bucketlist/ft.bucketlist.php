@@ -103,7 +103,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 * Demo mode doesn't actually upload the files to Amazon S3.
 	 *
 	 * @access  private
-	 * @var   bool
+	 * @var   	bool
 	 */
 	private $demo = FALSE;
 
