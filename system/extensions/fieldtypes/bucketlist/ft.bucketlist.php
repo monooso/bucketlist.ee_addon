@@ -1311,7 +1311,7 @@ _HTML_;
 			bucket_items_cache_date int(10) unsigned NOT NULL default 0,
 			CONSTRAINT pk_buckets PRIMARY KEY(bucket_id),
 			CONSTRAINT fk_bucket_site_id FOREIGN KEY(site_id) REFERENCES exp_sites(site_id),
-			CONSTRAINT uk_bucket_name UNIQUE (bucket_name))";
+			CONSTRAINT uk_site_id_bucket_name UNIQUE (site_id, bucket_name))";
 		
 		$sql[] = "CREATE TABLE IF NOT EXISTS exp_bucketlist_items (
 			item_id int(10) unsigned NOT NULL auto_increment,
