@@ -453,6 +453,9 @@ $.fn.bucketlist = function(options) {
 					}
 					
 					$target.parent().parent().find('.directory').removeClass('expanded').addClass('collapsed');
+					
+					// Unbind any click handlers, and remove the branch.
+					$target.parent().find('li a').unbind('click');
 					$target.parent().find('ul').remove();
 					
 					showTree({
