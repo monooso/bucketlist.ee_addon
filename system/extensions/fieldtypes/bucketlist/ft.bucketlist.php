@@ -1381,7 +1381,11 @@ _HTML_;
 		global $IN;
 		
 		// Initialise the cache.
-		$session->cache[$this->namespace] = array();
+		if ( ! array_key_exists($this->namespace, $session->cache))
+		{
+			$session->cache[$this->namespace] = array();
+		}
+		
 		$session->cache[$this->namespace][$this->lower_class] = array();
 		$session->cache[$this->namespace][$this->lower_class]['buckets'] = array();
 		$session->cache[$this->namespace][$this->lower_class]['items'] = array();
