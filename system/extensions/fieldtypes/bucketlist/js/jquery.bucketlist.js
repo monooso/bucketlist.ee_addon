@@ -407,8 +407,8 @@ $.fn.bucketlist = function(options) {
 		 * @access	private
 		 */
 		function initializeTree() {
-			// Bind the click event to all current and future bucketlist links.
-			$('li a', $this).live('click', function(e) {
+			// Bind the click event to all BucketList links.
+			$('li a', $this).bind('click', function(e) {
 				treeClick($(e.target));
 				return false;
 			});
@@ -580,27 +580,27 @@ $.fn.bucketlist = function(options) {
 					$li.find('start').html('');
 					$li.removeClass('wait').append(htmlFragment);
 					
-					// If the path is empty, we're loading the root 'buckets'.
-					if (path == '') {
+					// Add the click handlers to all branch links.
+					$('li a', $li).bind('click', function(e) {
+						treeClick($(e.target));
+						return false;
+					});
+					
+					if (isIE7()) {
 						$li.find('ul:hidden').show();
+						fix_ie7_matrices();
 					} else {
-						
-						if (isIE7()) {
-							$li.find('ul:hidden').show();
-							fix_ie7_matrices();
-						} else {
-							$li.find('ul:hidden').slideDown({duration : 500});
-						}
-						
-						/**
-						 * Remember to pass the UNESCAPED path out of the method.
-						 */
-						
-						initializeUpload($li, localParams.path);
-						
-						// Execute the callback.
-						localOptions.onBranchLoad({$root : $li, path : localParams.path});
+						$li.find('ul:hidden').slideDown({duration : 500});
 					}
+					
+					/**
+					 * Remember to pass the UNESCAPED path out of the method.
+					 */
+					
+					initializeUpload($li, localParams.path);
+					
+					// Execute the callback.
+					localOptions.onBranchLoad({$root : $li, path : localParams.path});
 					
 					// Are we auto-displaying an initial file?
 					if ($.isArray(initialFilePath)
