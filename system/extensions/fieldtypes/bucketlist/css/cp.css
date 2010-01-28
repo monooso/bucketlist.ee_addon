@@ -247,6 +247,7 @@ color : #666;
 .bucketlist-ui .bucketlist-tree .ext_html > a,
 .bucketlist-ui .bucketlist-tree .ext_jar > a,
 .bucketlist-ui .bucketlist-tree .ext_lasso > a,
+.bucketlist-ui .bucketlist-tree .ext_markdown > a,
 .bucketlist-ui .bucketlist-tree .ext_php > a,
 .bucketlist-ui .bucketlist-tree .ext_rb > a,
 .bucketlist-ui .bucketlist-tree .ext_rbx > a,
@@ -265,6 +266,7 @@ color : #666;
 .bucketlist-ui .bucketlist-tree .ext_tif > a,
 .bucketlist-ui .bucketlist-tree .ext_tiff {background-image : url(../img/icons/file-image.png);}
 
+.bucketlist-ui .bucketlist-tree .ext_aiff > a,
 .bucketlist-ui .bucketlist-tree .ext_m4a > a,
 .bucketlist-ui .bucketlist-tree .ext_m4p > a,
 .bucketlist-ui .bucketlist-tree .ext_mp3 > a,
@@ -284,6 +286,7 @@ color : #666;
 .bucketlist-ui .bucketlist-tree .ext_sql > a {background-image : url(../img/icons/file-script.png);}
 
 .bucketlist-ui .bucketlist-tree .ext_log > a,
+.bucketlist-ui .bucketlist-tree .ext_pages > a,
 .bucketlist-ui .bucketlist-tree .ext_txt > a {background-image : url(../img/icons/file-text.png);}
 
 .bucketlist-ui .bucketlist-tree .ext_pdf > a {background-image : url(../img/icons/file-pdf.png);}
@@ -294,6 +297,7 @@ color : #666;
 
 .bucketlist-ui .bucketlist-tree .ext_doc > a {background-image : url(../img/icons/file-doc.png);}
 
+.bucketlist-ui .bucketlist-tree .ext_csv > a,
 .bucketlist-ui .bucketlist-tree .ext_xls > a {background-image : url(../img/icons/file-xls.png);}
 
 .bucketlist-ui .bucketlist-tree .ext_zip > a {background-image : url(../img/icons/file-zip.png);}
