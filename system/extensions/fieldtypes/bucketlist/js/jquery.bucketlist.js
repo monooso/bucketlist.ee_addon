@@ -309,6 +309,12 @@ $.fn.bucketlist = function(options) {
 						}
 					}
 					
+					// Bind a click handler to the new list item.
+					$listItem.bind('click', function(e) {
+						treeClick($(e.target));
+						return false;
+					});
+					
 					// Insert the item, and animate its arrival.
 					$listItem.slideDown(350);
 				}
