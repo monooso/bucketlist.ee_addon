@@ -7,6 +7,37 @@
  * @link 		http://eepro.co.uk/bucketlist/
  */
 
+/* BucketList Field settings. */
+.bucketlist-settings label {
+display : block;
+float : left;
+margin-bottom : 3px;
+margin-right : 2.4%;
+width : 47.5%;
+}
+
+.bucketlist-settings label input[type="checkbox"] {
+margin-right : 5px;
+width : auto !important;
+}
+
+.bucketlist-settings > label:first-child {
+float : none;
+margin-bottom : 5px;
+margin-right : 0;
+width : auto;
+}
+
+/* Cell settings. */
+.bucketlist-settings.cell label {
+float : none;
+margin-right : 0;
+width : auto;
+}
+
+
+
+
 .eepro-co-uk .hidden {display : none;}
 
 .eepro-co-uk {

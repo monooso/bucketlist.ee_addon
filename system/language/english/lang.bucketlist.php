@@ -2,6 +2,7 @@
 
 $L = array(
 
+// Site settings.
 'site_settings_heading'	=> 'BucketList Settings',
 'access_key_id'			=> 'Access Key ID',
 'allow_upload'			=> 'Allow Users to Upload Files?',
@@ -28,10 +29,8 @@ $L = array(
 '360_min'				=> '6 hours',
 '480_min'				=> '8 hours',
 
-'field_settings_heading'	=> 'BucketList Field Settings',
-'buckets_heading'			=> 'Select "Buckets"',
-'buckets_info'				=> 'Select the Amazon S3 buckets that you wish to make available for this field',
-'buckets_label'				=> 'Buckets',
+// Field settings.
+'available_buckets'		=> 'Available Buckets',
 
 'missing_credentials'	=> 'Please enter your Amazon S3 account details on the extension settings screen.',
 'no_buckets'			=> 'There are no available buckets for this account.',

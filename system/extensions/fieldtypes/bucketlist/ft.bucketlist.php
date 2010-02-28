@@ -27,7 +27,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 */
 	public $info = array(
 		'name'				=> 'BucketList',
-		'version'			=> '1.0.3',
+		'version'			=> '1.0.11',
 		'desc'				=> 'Seamlessly integrate Amazon S3 with your ExpressionEngine site.',
 		'docs_url'			=> 'http://eepro.co.uk/bucketlist/',
 		'versions_xml_url'	=> 'http://eepro.co.uk/addon-versions.xml'
@@ -113,6 +113,112 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 * PRIVATE METHODS
 	 * ----------------------------------------------------------------
 	 */
+	
+	/**
+	 * Duplicate of Fieldframe_Main->_array_ascii_to_entities. Reproduced here, as the
+	 * method is technically private.
+	 *
+	 * @see		http://pixelandtonic.com/fieldframe/
+	 * @access	private
+	 * @param 	mixed 		$vals		The value to convert.
+	 * @return 	string
+	 */
+	private function _array_ascii_to_entities($vals)
+	{
+		if (is_array($vals))
+		{
+			foreach ($vals as &$val)
+			{
+				$val = $this->_array_ascii_to_entities($val);
+			}
+		}
+		else
+		{
+			global $REGX;
+			$vals = $REGX->ascii_to_entities($vals);
+		}
+
+		return $vals;
+	}
+	
+	
+	/**
+	 * Duplicate of Fieldframe_Main->_array_entities_to_ascii. Reproduced here, as the
+	 * method is technically private.
+	 *
+	 * @see		http://pixelandtonic.com/fieldframe/
+	 * @access	private
+	 * @param 	mixed 		$vals		The value to convert.
+	 * @return 	string
+	 */
+	private function _array_entities_to_ascii($vals)
+	{
+		if (is_array($vals))
+		{
+			foreach ($vals as &$val)
+			{
+				$val = $this->_array_entities_to_ascii($val);
+			}
+		}
+		else
+		{
+			global $REGX;
+			$vals = $REGX->entities_to_ascii($vals);
+		}
+		
+		return $vals;
+	}
+	
+	
+	/**
+	 * Duplicate of the Fieldframe_Main->_serialize(). Reproduced here, as the method
+	 * is technically private.
+	 *
+	 * @see 	http://pixelandtonic.com/fieldframe/
+	 * @access	private
+	 * @param 	array 		$vals		The array to serialise.
+	 * @return 	string
+	 */
+	private function _serialize($vals = array())
+	{
+		global $PREFS;
+
+		if ($PREFS->ini('auto_convert_high_ascii') == 'y')
+		{
+			$vals = $this->_array_ascii_to_entities($vals);
+		}
+
+     	return addslashes(serialize($vals));
+	}
+	
+	
+	/**
+	 * Duplicate of Fieldframe_Main->_unserialize(). Reproduced here, as the method
+	 * is technically private.
+	 *
+	 * @see		http://pixelandtonic.com/fieldframe/
+	 * @access	private
+	 * @param 	string 		$vals		The string to unserialise.
+	 * @param 	bool		$convert	Convert high ASCII values, if the PREF is set to 'y'?
+	 * @return 	array
+	 */
+	private function _unserialize($vals, $convert = TRUE)
+	{
+		global $PREFS, $REGX;
+		
+		if (($tmp_vals = @unserialize($vals)) !== FALSE)
+		{
+			$vals = $REGX->array_stripslashes($tmp_vals);
+			
+			if ($convert && $PREFS->ini('auto_convert_high_ascii') == 'y')
+			{
+				$vals = $this->_array_entities_to_ascii($vals);
+			}
+		}
+		
+		return $vals;
+	}
+	
 	
 	/**
 	 * Checks that the S3 credentials have been set. Makes not attempt to check their validity.
@@ -348,20 +454,25 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	
 	
 	/**
-	 * Retrieves all the buckets from the database.
+	 * Retrieves all the buckets from the database, and filter them against the available buckets.
 	 *
 	 * @access	private
+	 * @param 	mixed 		$filter		An array containing the available buckets, or FALSE to return all.
 	 * @return 	array
 	 */
-	function _load_all_buckets_from_db()
+	function _load_all_buckets_from_db($filter = FALSE)
 	{
 		global $DB;
 		
-		$db_buckets = $DB->query("SELECT
+		$sql = "SELECT
 				bucket_id, bucket_items_cache_date, bucket_name, site_id
 			FROM exp_bucketlist_buckets
-			WHERE site_id = '{$this->site_id}'
-			ORDER BY bucket_name ASC");
+			WHERE site_id = '{$this->site_id}'";
+			
+		$sql .= is_array($filter) ? " AND bucket_name IN('" .implode("', '", $filter) ."')" : '';
+		$sql .= ' ORDER BY bucket_name ASC';
+		
+		$db_buckets = $DB->query($sql);
 			
 		if ($db_buckets->num_rows == 0)
 		{
@@ -890,9 +1001,10 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 * Builds the 'root' HTML. That is, the buckets.
 	 *
 	 * @access	private
+	 * @param 	array 		$settings		Field or cell settings.
 	 * @return 	string
 	 */
-	function _build_root_ui()
+	function _build_root_ui($settings = array())
 	{	
 		global $LANG;
 		
@@ -912,6 +1024,8 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		
 		$LANG->fetch_language_file($this->lower_class);
 		
+		$available_buckets = isset($settings['available_buckets']) ? $settings['available_buckets'] : array();
+		
 		/**
 		 * Note that we're explicitly loading the buckets from the database.
 		 *
@@ -927,7 +1041,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		 * the user.
 		 */
 		
-		if ( ! $buckets = $this->_load_all_buckets_from_db())
+		if ( ! $buckets = $this->_load_all_buckets_from_db($available_buckets))
 		{
 			$html = '<ul class="bucketlist-tree"><li class="empty">' .$LANG->line('no_buckets') .'</li></ul>';
 		}
@@ -1497,7 +1611,7 @@ _HTML_;
 			$html .= '<div class="bucketlist-ui">';
 
 			// Retrieve the tree root UI (i.e. the buckets).
-			$html .= $this->_build_root_ui();
+			$html .= $this->_build_root_ui($field_settings);
 			
 			// Close the UI wrapper.
 			$html .= '</div>';
@@ -1614,15 +1728,65 @@ _HTML_;
 	
 	
 	/**
-	 * Custom cell settings for FF Matrix.
+	 * Adds custom settings to the "Edit field" form.
 	 *
 	 * @access	public
-	 * @param	array	$cell_settings	Previously-saved cell settings.
+	 * @param	array 		$field_settings		Previously saved field settings.
+	 * @param 	bool 		$is_cell			Is this being called from the display_cell_settings method?
+	 * @return	array
+	 */
+	public function display_field_settings($field_settings = array(), $is_cell = FALSE)
+	{
+		global $LANG;
+		
+		$SD = new Fieldframe_SettingsDisplay();
+		
+		$html = '<div class="bucketlist-settings '
+			.($is_cell ? 'cell' : '')
+			.'">';
+			
+		$html .= '<label class="defaultBold">' .$LANG->line('available_buckets') .'</label>';
+		
+		$saved_buckets = isset($field_settings['available_buckets'])
+			? $field_settings['available_buckets']
+			: array();
+		
+		// Update the buckets cache from S3.
+		$this->_update_buckets_from_s3();
+		
+		// Load the buckets from the database.
+		if ( ! $buckets = $this->_load_all_buckets_from_db())
+		{
+			$html .= '<p>' .$LANG->line('no_buckets') .'</p>';
+		}
+		else
+		{
+			foreach ($buckets AS $bucket)
+			{
+				$checked = in_array($bucket['bucket_name'], $saved_buckets) ? 'checked="checked"' : '';
+				
+				$html .= '<label>'
+					.'<input '. $checked .' name="available_buckets[]" type="checkbox" value="' .$bucket['bucket_name'] .'">'
+					.$bucket['bucket_name']
+					.'</label>';
+			}
+		}
+		
+		return array('cell2' => $html);
+	}
+	
+	
+	/**
+	 * Adds custom FF Matrix cell settings.
+	 *
+	 * @access	public
+	 * @param	array		$cell_settings		Previously saved cell settings.
 	 * @return	string
 	 */
 	public function display_cell_settings($cell_settings = array())
 	{
-		return '';		// Don't display anything.
+		$settings = $this->display_field_settings($cell_settings, TRUE);
+		return isset($settings['cell2']) ? $settings['cell2'] : '';
 	}
 	
 	
@@ -1634,7 +1798,120 @@ _HTML_;
 	 */
 	public function update($from = FALSE)
 	{
+		global $DB, $REGX;
+		
 		$this->_force_update();
+		
+		if ($from && $from < '1.1')
+		{
+			/**
+			 * Make all buckets available for every field and cell by default.
+			 * - Determine the BucketList fieldtype.
+			 * - Determine the FF Matrix fieldtype.
+			 * - Retrieve all the BucketList fields.
+			 * - Retrieve all the BucketList cells.
+			 * - Update the buckets from S3.
+			 * - Load all the buckets from the database, and create an array of bucket names.
+			 * - Update the settings.
+			 */
+			
+			$update_fields = $update_matrices = FALSE;
+			
+			// Determine the BucketList fieldtype ID.
+			$db_bucketlist_ft = $DB->query("SELECT fieldtype_id
+				FROM exp_ff_fieldtypes
+				WHERE class = '{$this->lower_class}'
+				LIMIT 1");
+				
+			// Determine the FF Matrix fieldtype ID.
+			$db_matrix_ft = $DB->query("SELECT fieldtype_id
+				FROM exp_ff_fieldtypes
+				WHERE class = 'ff_matrix'
+				LIMIT 1");
+				
+			if ($db_bucketlist_ft->num_rows === 1)
+			{
+				// Retrieve all the BucketList fields.
+				$db_fields = $DB->query("SELECT field_id, ff_settings
+					FROM exp_weblog_fields
+					WHERE field_type = 'ftype_id_" .$db_bucketlist_ft->row['fieldtype_id'] ."'");
+					
+				$update_fields = ($db_fields->num_rows > 0);
+			}
+				
+			// Retrieve all the BucketList cells.
+			if ($db_matrix_ft->num_rows === 1)
+			{
+				$db_matrices = $DB->query("SELECT field_id, ff_settings
+					FROM exp_weblog_fields
+					WHERE field_type = 'ftype_id_" .$db_matrix_ft->row['fieldtype_id'] ."'");
+					
+				$update_matrices = ($db_matrices->num_rows > 0);
+			}
+			
+			if ($db_fields OR $db_matrices)
+			{
+				$this->_update_buckets_from_s3();
+
+				$buckets 		= $this->_load_all_buckets_from_db();
+				$field_buckets 	= array();
+
+				foreach ($buckets AS $bucket)
+				{
+					$field_buckets[] = $bucket['bucket_name'];
+				}
+
+				$field_settings = $this->_serialize(array('available_buckets' => $field_buckets));
+				
+				// Update the fields.
+				if ($update_fields)
+				{
+					foreach ($db_fields->result AS $db_field)
+					{
+						$DB->query($DB->update_string(
+							'exp_weblog_fields',
+							array('ff_settings' => $field_settings),
+							"field_id = '{$db_field['field_id']}'" 
+						));
+					}
+				}
+				
+				// Update the matrices.
+				if ($update_matrices)
+				{
+					foreach($db_matrices->result AS $db_matrix)
+					{
+						$update_matrix = FALSE;
+						$matrix_settings = $this->_unserialize($db_matrix['ff_settings']);
+						
+						// Update all the BucketList cell types.
+						if ( ! isset($matrix_settings['cols']))
+						{
+							continue;
+						}
+						
+						foreach ($matrix_settings['cols'] AS $col_key => $col_val)
+						{
+							if (isset($col_val['type']) && $col_val['type'] == $this->lower_class)
+							{
+								$update_matrix = TRUE;
+								$col_val['settings'] = array('available_buckets' => $field_buckets);
+								$matrix_settings['cols'][$col_key] = $col_val;
+							}
+						}
+						
+						if ($update_matrix)
+						{
+							$DB->query($DB->update_string(
+								'exp_weblog_fields',
+								array('ff_settings' => $this->_serialize($matrix_settings)),
+								"field_id = '{$db_matrix['field_id']}'" 
+							));
+						}
+					}
+				}
+			}
+		}
 	}
 	
 	
