@@ -2,18 +2,18 @@
  * CSS styles for the BucketList FieldFrame field type.
  *
  * @package		BucketList
- * @author 		Stephen Lewis (http://eepro.co.uk/)
+ * @author 		Stephen Lewis <addons@experienceinternet.co.uk>
  * @copyright 	Copyright (c) 2009, Stephen Lewis
- * @link 		http://eepro.co.uk/bucketlist/
+ * @link 		http://experienceinternet.co.uk/bucketlist/
  */
 
-/* BucketList Field settings. */
+/* Settings page styles */
 .bucketlist-settings label {
 display : block;
 float : left;
 margin-bottom : 3px;
-margin-right : 2.4%;
-width : 47.5%;
+margin-right : 2.5%;
+width : 45.5%;
 }
 
 .bucketlist-settings label input[type="checkbox"] {
@@ -36,8 +36,7 @@ width : auto;
 }
 
 
-
-
+/* Publish / Edit page styles */
 .eepro-co-uk .hidden {display : none;}
 
 .eepro-co-uk {
@@ -46,7 +45,10 @@ border : 1px solid #CAD0D5;
 color : #333;
 font : normal 11px/20px "Lucida Grande", Tahoma, Verdana, sans-serif;
 margin-bottom : 1em;
+max-height : 200px;
 min-height : 20px;
+overflow-x : hidden;
+overflow-y : auto;
 position : relative;
 }
 

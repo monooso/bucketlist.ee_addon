@@ -9,10 +9,10 @@ if ( ! defined('EXT'))
  * Seamlessly integrate Amazon S3 with your ExpressionEngine website.
  *
  * @package   	BucketList
- * @version   	1.0.3
- * @author    	Stephen Lewis <addons@eepro.co.uk>
+ * @version   	1.1.0
+ * @author    	Stephen Lewis <addons@experienceinternet.co.uk>
  * @copyright 	Copyright (c) 2009, Stephen Lewis
- * @link      	http://eepro.co.uk/bucketlist/
+ * @link      	http://experienceinternet.co.uk/bucketlist/
  */
 
 require_once 'resources/S3.php';
@@ -27,10 +27,10 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 */
 	public $info = array(
 		'name'				=> 'BucketList',
-		'version'			=> '1.0.11',
+		'version'			=> '1.1.0',
 		'desc'				=> 'Seamlessly integrate Amazon S3 with your ExpressionEngine site.',
-		'docs_url'			=> 'http://eepro.co.uk/bucketlist/',
-		'versions_xml_url'	=> 'http://eepro.co.uk/addon-versions.xml'
+		'docs_url'			=> 'http://experienceinternet.co.uk/bucketlist/',
+		'versions_xml_url'	=> 'http://experienceinternet.co.uk/addon-versions.xml'
 	);
 
 	/**

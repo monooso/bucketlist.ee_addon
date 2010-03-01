@@ -1,5 +1,14 @@
 <?php
 
+/**
+ * Seamlessly integrate Amazon S3 with your ExpressionEngine website.
+ *
+ * @package   	BucketList
+ * @author    	Stephen Lewis <addons@experienceinternet.co.uk>
+ * @copyright 	Copyright (c) 2009, Stephen Lewis
+ * @link      	http://experienceinternet.co.uk/bucketlist/
+ */
+
 $L = array(
 
 // Site settings.
@@ -45,7 +54,7 @@ $L = array(
 'upload_success'	=> 'Uploaded ',
 
 'confirm_exit' =>
-"Some of your files are still uploading. If you 'leave' or \"reload\" this page, they may not be saved correctly. Are you sure you wish to continue?",
+"Some of your files are still uploading. If you leave or reload this page, they may not be saved correctly. Are you sure you wish to continue?",
 
 // All done.
 '' => ''
