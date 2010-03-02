@@ -1804,17 +1804,6 @@ _HTML_;
 		
 		if ($from && $from < '1.1')
 		{
-			/**
-			 * Make all buckets available for every field and cell by default.
-			 * - Determine the BucketList fieldtype.
-			 * - Determine the FF Matrix fieldtype.
-			 * - Retrieve all the BucketList fields.
-			 * - Retrieve all the BucketList cells.
-			 * - Update the buckets from S3.
-			 * - Load all the buckets from the database, and create an array of bucket names.
-			 * - Update the settings.
-			 */
-			
 			$update_fields = $update_matrices = FALSE;
 			
 			// Determine the BucketList fieldtype ID.
