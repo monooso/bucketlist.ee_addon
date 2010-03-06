@@ -36,31 +36,6 @@ jQuery(document).ready(function($) {
 
 
 	/**
-	 * Removes an upload item from the list.
-	 *
-	 * @access	private
-	 * @param 	string		uploadId		The upload ID of the item to remove.
-	 * @return 	void.
-	 */
-	function removeUpload(uploadId) {
-
-		// Shorthand.
-		$item = $('#bucketload-status-' + uploadId);
-
-		// Hide the item.
-		$item.animate({width : 'hide', opacity : 0}, 500, function() {
-			// If this is the last item, hide the bar.
-			if ($(this).siblings().length == 0) {
-				displayStatusBar(false);
-			}
-
-			// Remove this item.
-			$(this).remove();
-		});
-	}
-
-
-	/**
 	 * Notifies the user of a successful upload.
 	 *
 	 * @access	private
@@ -72,7 +47,23 @@ jQuery(document).ready(function($) {
 			.addClass('complete')
 			.html(params.message);
 
-		setTimeout('removeUpload("' + params.uploadId + '")', 1500);
+		setTimeout(removeUpload, 1500);
+		
+		// Removes the uploaded item from the status bar.
+		function removeUpload() {
+			$item = $('#bucketload-status-' + params['uploadId']);
+
+			// Hide the item.
+			$item.animate({width : 'hide', opacity : 0}, 500, function() {
+				// If this is the last item, hide the bar.
+				if ($(this).siblings().length == 0) {
+					displayStatusBar(false);
+				}
+
+				// Remove this item.
+				$(this).remove();
+			});
+		}
 	}
 
 
