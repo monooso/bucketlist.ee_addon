@@ -558,6 +558,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		$db_item = $DB->query("SELECT item_id
 			FROM exp_bucketlist_items
 			WHERE bucket_id = '" .$DB->escape_str($bucket['bucket_id']) ."'
+			AND site_id = '{$this->site_id}'
 			AND item_name = '" .$DB->escape_str($valid_item['item_name']) ."'
 			AND item_path = '" .$DB->escape_str($valid_item['item_path']) ."'
 			LIMIT 1");
@@ -593,13 +594,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		// NOTE: DOES NOT check whether the items cache has expired.
 		
 		// Talk sense man.
-		if ( ! $bucket_name)
-		{
-			return FALSE;
-		}
-		
-		// Is this a valid bucket name?
-		if ( ! $bucket = $this->_load_bucket_from_db($bucket_name))
+		if ( ! $bucket_name OR ( ! $bucket = $this->_load_bucket_from_db($bucket_name)))
 		{
 			return FALSE;
 		}
@@ -750,22 +745,22 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 *
 	 * @access	private
 	 * @param 	string		$bucket_name		The name of the bucket.
+	 * @param 	bool		$force_update		Force an S3 query, regardless of the cache date.
 	 * @return 	bool
 	 */
-	function _update_bucket_items_from_s3($bucket_name = '')
+	function _update_bucket_items_from_s3($bucket_name = '', $force_update = FALSE)
 	{
 		global $DB;
 		
-		// NOTE: the cache date is not checked. We just assume this call is required.
-		
-		// Leave it ahhht, you slag.
-		if ( ! $bucket_name)
+		// Is this a valid bucket?
+		if ( ! $bucket_name OR ( ! $bucket = $this->_load_bucket_from_db($bucket_name)))
 		{
 			return FALSE;
 		}
 		
-		// Is this a valid bucket?
-		if ( ! $bucket = $this->_load_bucket_from_db($bucket_name))
+		// Does this bucket require updating?
+		$cache_expiry_date = $bucket['bucket_items_cache_date'] +intval($this->site_settings['cache_duration']);
+		if ($cache_expiry_date >= time() && $force_update !== TRUE)
 		{
 			return FALSE;
 		}
@@ -782,7 +777,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		$DB->query("DELETE FROM exp_bucketlist_items
 			WHERE bucket_id = {$bucket['bucket_id']}
 			AND site_id = {$this->site_id}");
-		
+			
 		// Parse the data returned from Amazon.
 		$new_items = array();
 		
@@ -827,7 +822,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 			$DB->query(sprintf($base_insert_sql, implode('), (', $new_items)));
 		}
 		
-		// Update the bucket_items_cache_date column in exp_bucketlist_buckets.
+		// Update the cache date.
 		$DB->query($DB->update_string(
 			'exp_bucketlist_buckets',
 			array('bucket_items_cache_date' => time()),
@@ -851,53 +846,22 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		global $DB, $SESS;
 		
 		// Be reasonable.
-		if ( ! $bucket_name)
+		if ( ! $bucket_name OR ( ! $bucket = $this->_load_bucket_from_db($bucket_name)))
 		{
 			return FALSE;
 		}
 		
-		// Shorthand.
-		$session_cache =& $SESS->cache[$this->namespace][$this->lower_class];
-		
-		$items = array();
-		
-		// Check the Session cache.
-		if (array_key_exists($bucket_name, $session_cache['items']))
-		{
-			$items = $session_cache['items'][$bucket_name];
-		}
-		
-		// Nothing in the Sessions cache? Check the database.
-		if ( ! $items)
-		{
-			// Is this even a valid bucket?
-			if ($bucket = $this->_load_bucket_from_db($bucket_name))
-			{
-				/**
-				 * If the bucket_items_cache_date is valid, load the items
-				 * from the database.
-				 *
-				 * Otherwise, update the items from S3, and then load them.
-				 */
-				
-				$cache_expiry_date = $bucket['bucket_items_cache_date'] + intval($this->site_settings['cache_duration']);
-				if ($cache_expiry_date < time())
-				{
-					$this->_update_bucket_items_from_s3($bucket_name);
-				}
-			
-				$items = $this->_load_bucket_items_from_db($bucket_name);
-			}
-		}
-		
 		/**
-		 * Even if we don't have any items at this point, there's nothing
-		 * else we can do. Just set the Session cache, and move on.
+		 * @since 1.1.2
+		 *
+		 * A few changes:
+		 * - Dispensed with Session cache, as this method is always called via AJAX.
+		 * - Moved S3 updates to the display_field method, so we only ever check the
+		 *	 database now. This fixed a bug whereby bucket items could be duplicated
+		 *	 in the database, due to overlapping AJAX calls.
 		 */
 		
-		$session_cache['items'][$bucket_name] = $items;
-		
-		return $items;
+		return $this->_load_bucket_items_from_db($bucket_name);
 	}
 	
 	
@@ -1380,11 +1344,6 @@ _HTML_;
 			$list_item = '<li class="file ext_' .strtolower($item_info['item_extension']) .'">
 				<a href="#" rel="' .rawurlencode($bucket_and_path['bucket'] .'/'
 				.$item_info['item_path']) .'">' .$item_info['item_name'] .'</a></li>';
-				
-			// The Session cache is now out of date. Just load the items from the database.
-			$SESS->cache[$this->namespace][$this->lower_class]['items'][$bucket_and_path['bucket']]
-				= $this->_load_bucket_items_from_db($bucket_and_path['bucket']);
-			
 		}
 		
 		
@@ -1480,6 +1439,7 @@ _HTML_;
 		{
 			$this->_force_update();
 		}
+		
 	}
 	
 	
@@ -1501,9 +1461,7 @@ _HTML_;
 		}
 		
 		$session->cache[$this->namespace][$this->lower_class] = array();
-		$session->cache[$this->namespace][$this->lower_class]['buckets'] = array();
-		$session->cache[$this->namespace][$this->lower_class]['items'] = array();
-		$session->cache[$this->namespace][$this->lower_class]['buckets_updated_from_s3'] = FALSE;
+		$session->cache[$this->namespace][$this->lower_class]['updated_from_s3'] = FALSE;
 		
 		if ($IN->GBL('ajax', 'POST') == 'y' && $IN->GBL('addon_id', 'POST') == $this->lower_class)
 		{
@@ -1587,24 +1545,22 @@ _HTML_;
 			// If we have a saved field, does it still exist on the server?
 			if ( ! $this->_item_exists_on_s3($field_data))
 			{
-				/**
-				 * Let's not try to get too clever here. We could try to check
-				 * whether the bucket even exists anymore, and refresh all the
-				 * bucket items, as things have clearly changed.
-				 *
-				 * However, that is all handled when the user 'opens' a bucket
-				 * anyway, so let's just reset the field data so nothing auto-
-				 * displays, and leave it at that.
-				 */
-				
+				// Let's not try to get too clever here.
 				$field_data = '';
 			}
 			
-			// Update the buckets cache from S3. Only need to do this once.
-			if ( ! $SESS->cache[$this->namespace][$this->lower_class]['buckets_updated_from_s3'])
+			// Update everything from S3, if required. Only need to do this once.
+			if ( ! $SESS->cache[$this->namespace][$this->lower_class]['updated_from_s3'])
 			{
 				$this->_update_buckets_from_s3();
-				$SESS->cache[$this->namespace][$this->lower_class]['buckets_updated_from_s3'] = TRUE;
+				
+				$buckets = $this->_load_all_buckets_from_db();
+				foreach ($buckets AS $bucket)
+				{
+					$this->_update_bucket_items_from_s3($bucket['bucket_name']);
+				}
+				
+				$SESS->cache[$this->namespace][$this->lower_class]['updated_from_s3'] = TRUE;
 			}
 			
 			// Open the UI wrapper.
