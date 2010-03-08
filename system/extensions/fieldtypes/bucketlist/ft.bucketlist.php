@@ -9,7 +9,7 @@ if ( ! defined('EXT'))
  * Seamlessly integrate Amazon S3 with your ExpressionEngine website.
  *
  * @package   	BucketList
- * @version   	1.1.2
+ * @version   	1.1.3
  * @author    	Stephen Lewis <addons@experienceinternet.co.uk>
  * @copyright 	Copyright (c) 2009, Stephen Lewis
  * @link      	http://experienceinternet.co.uk/bucketlist/
@@ -27,7 +27,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 */
 	public $info = array(
 		'name'				=> 'BucketList',
-		'version'			=> '1.1.2',
+		'version'			=> '1.1.3',
 		'desc'				=> 'Seamlessly integrate Amazon S3 with your ExpressionEngine site.',
 		'docs_url'			=> 'http://experienceinternet.co.uk/bucketlist/',
 		'versions_xml_url'	=> 'http://experienceinternet.co.uk/addon-versions.xml'
@@ -1366,7 +1366,7 @@ _HTML_;
 	 */
 	function _force_update()
 	{
-		global $DB;
+		global $DB, $PREFS;
 		
 		/**
 		 * No messing about. Just blat the lot, and start again with
@@ -1376,28 +1376,52 @@ _HTML_;
 		$sql[] = 'DROP TABLE IF EXISTS exp_bucketlist_buckets';
 		$sql[] = 'DROP TABLE IF EXISTS exp_bucketlist_files';		// Pre-0.8.0 hangover.
 		$sql[] = 'DROP TABLE IF EXISTS exp_bucketlist_items';
+		
+		/**
+		 * @since 1.1.3
+		 * Some older MySQL installations use MyISAM. However, new tables are automatically
+		 * created using INNODB, resulting in problems with foreign keys.
+		 *
+		 * We can either drop the foreign keys, which would be tantamount to admitting defeat,
+		 * or we can determine the engine, and explicitly specify it. We do the latter.
+		 */
+		
+		$db_engine = $DB->query("SELECT `ENGINE` AS `engine`
+			FROM information_schema.TABLES
+			WHERE TABLE_SCHEMA =  '" .$PREFS->ini('db_name') ."'
+			AND TABLE_NAME =  'exp_sites'
+			LIMIT 1");
 			
+		if ($db_engine->num_rows !== 1)
+		{
+			exit('Unable to determine your database engine.');
+		}
+		
+		$engine = $db_engine->row['engine'];
+		
 		$sql[] = "CREATE TABLE IF NOT EXISTS exp_bucketlist_buckets (
-			bucket_id int(10) unsigned NOT NULL auto_increment,
-			site_id int(2) unsigned NOT NULL default 1,
-			bucket_name varchar(255) NOT NULL,
-			bucket_items_cache_date int(10) unsigned NOT NULL default 0,
-			CONSTRAINT pk_buckets PRIMARY KEY(bucket_id),
-			CONSTRAINT fk_bucket_site_id FOREIGN KEY(site_id) REFERENCES exp_sites(site_id),
-			CONSTRAINT uk_site_id_bucket_name UNIQUE (site_id, bucket_name))";
+				bucket_id int(10) unsigned NOT NULL auto_increment,
+				site_id int(5) unsigned NOT NULL default 1,
+				bucket_name varchar(255) NOT NULL,
+				bucket_items_cache_date int(10) unsigned NOT NULL default 0,
+				CONSTRAINT pk_buckets PRIMARY KEY(bucket_id),
+				CONSTRAINT fk_bucket_site_id FOREIGN KEY(site_id) REFERENCES exp_sites(site_id),
+				CONSTRAINT uk_site_id_bucket_name UNIQUE (site_id, bucket_name))
+			ENGINE = {$engine}";
 		
 		$sql[] = "CREATE TABLE IF NOT EXISTS exp_bucketlist_items (
-			item_id int(10) unsigned NOT NULL auto_increment,
-			site_id int(2) unsigned NOT NULL default 1,
-			bucket_id int(10) unsigned NOT NULL,
-			item_path varchar(1000) NOT NULL,
-			item_name varchar(255) NOT NULL,
-			item_is_folder char(1) NOT NULL default 'n',
-			item_size int(10) unsigned NOT NULL,
-			item_extension varchar(10) NOT NULL,
-			CONSTRAINT pk_items PRIMARY KEY(item_id),
-			CONSTRAINT fk_item_site_id FOREIGN KEY(site_id) REFERENCES exp_sites(site_id),
-			CONSTRAINT fk_item_bucket_id FOREIGN KEY(bucket_id) REFERENCES exp_bucketlist_buckets(bucket_id))";
+				item_id int(10) unsigned NOT NULL auto_increment,
+				site_id int(5) unsigned NOT NULL default 1,
+				bucket_id int(10) unsigned NOT NULL,
+				item_path varchar(1000) NOT NULL,
+				item_name varchar(255) NOT NULL,
+				item_is_folder char(1) NOT NULL default 'n',
+				item_size int(10) unsigned NOT NULL,
+				item_extension varchar(10) NOT NULL,
+				CONSTRAINT pk_items PRIMARY KEY(item_id),
+				CONSTRAINT fk_item_site_id FOREIGN KEY(site_id) REFERENCES exp_sites(site_id),
+				CONSTRAINT fk_item_bucket_id FOREIGN KEY(bucket_id) REFERENCES exp_bucketlist_buckets(bucket_id))
+			ENGINE = {$engine}";
 		
 		foreach ($sql AS $query)
 		{
