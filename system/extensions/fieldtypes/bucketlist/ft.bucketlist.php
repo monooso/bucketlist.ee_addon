@@ -9,7 +9,7 @@ if ( ! defined('EXT'))
  * Seamlessly integrate Amazon S3 with your ExpressionEngine website.
  *
  * @package   	BucketList
- * @version   	1.1.3
+ * @version   	1.1.4
  * @author    	Stephen Lewis <addons@experienceinternet.co.uk>
  * @copyright 	Copyright (c) 2009, Stephen Lewis
  * @link      	http://experienceinternet.co.uk/bucketlist/
@@ -27,7 +27,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 */
 	public $info = array(
 		'name'				=> 'BucketList',
-		'version'			=> '1.1.3',
+		'version'			=> '1.1.4',
 		'desc'				=> 'Seamlessly integrate Amazon S3 with your ExpressionEngine site.',
 		'docs_url'			=> 'http://experienceinternet.co.uk/bucketlist/',
 		'versions_xml_url'	=> 'http://experienceinternet.co.uk/addon-versions.xml'
@@ -768,16 +768,34 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		// Make the call to Amazon.
 		$s3 = new S3($this->site_settings['access_key_id'], $this->site_settings['secret_access_key'], FALSE);
 		
-		if ( ! $s3_items = @$s3->getBucket($bucket_name))
-		{
-			return FALSE;
-		}
+		
+		/**
+		 * @since 1.1.4
+		 * The bucket items deletion, and bucket cache date update need to happen regardless of
+		 * whether the call to Amazon returned any items.
+		 *
+		 * This prevents problems with previously-populated buckets that have since been emptied,
+		 * and return zero items (i.e. FALSE).
+		 */
 		
 		// Delete any existing bucket items from the database.
 		$DB->query("DELETE FROM exp_bucketlist_items
 			WHERE bucket_id = {$bucket['bucket_id']}
 			AND site_id = {$this->site_id}");
 			
+		// Update the bucket cache date.
+		$DB->query($DB->update_string(
+			'exp_bucketlist_buckets',
+			array('bucket_items_cache_date' => time()),
+			"bucket_id = {$bucket['bucket_id']}"
+		));
+		
+		
+		if ( ! $s3_items = @$s3->getBucket($bucket_name))
+		{
+			return FALSE;
+		}
+		
 		// Parse the data returned from Amazon.
 		$new_items = array();
 		
@@ -821,13 +839,6 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		{
 			$DB->query(sprintf($base_insert_sql, implode('), (', $new_items)));
 		}
-		
-		// Update the cache date.
-		$DB->query($DB->update_string(
-			'exp_bucketlist_buckets',
-			array('bucket_items_cache_date' => time()),
-			"bucket_id = {$bucket['bucket_id']}"
-		));
 		
 		return TRUE;
 		
