@@ -315,6 +315,11 @@ $.fn.bucketlist = function(options) {
 						return false;
 					});
 					
+					// Is there a currently-selected file? If not, automatically select the new arrival.
+					if ($branchRoot.closest('.eepro-co-uk').find('li.selected').length == 0) {
+						$listItem.addClass('selected');
+					}
+					
 					// Insert the item, and animate its arrival.
 					$listItem.slideDown(350);
 				}
@@ -496,7 +501,7 @@ $.fn.bucketlist = function(options) {
 					
 				} else {
 					
-					// Deselect and other selected elements.
+					// Deselect any other selected elements.
 					$target
 						.closest('.eepro-co-uk')
 						.find('li.selected')
