@@ -9,7 +9,7 @@ if ( ! defined('EXT'))
  * Seamlessly integrate Amazon S3 with your ExpressionEngine website.
  *
  * @package   	BucketList
- * @version   	1.1.4
+ * @version   	1.1.5
  * @author    	Stephen Lewis <addons@experienceinternet.co.uk>
  * @copyright 	Copyright (c) 2009, Stephen Lewis
  * @link      	http://experienceinternet.co.uk/bucketlist/
@@ -27,7 +27,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 */
 	public $info = array(
 		'name'				=> 'BucketList',
-		'version'			=> '1.1.4',
+		'version'			=> '1.1.5',
 		'desc'				=> 'Seamlessly integrate Amazon S3 with your ExpressionEngine site.',
 		'docs_url'			=> 'http://experienceinternet.co.uk/bucketlist/',
 		'versions_xml_url'	=> 'http://experienceinternet.co.uk/addon-versions.xml'
@@ -929,6 +929,8 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 */
 	function _upload_file_to_s3($field_id = '', $bucket_name = '', $item_path = '')
 	{
+		global $EXT;
+		
 		// Idiot check.
 		if ( ! $field_id OR ! isset($_FILES[$field_id]) OR ! $bucket_name)
 		{
@@ -948,6 +950,21 @@ class Bucketlist extends Fieldframe_Fieldtype {
 			
 		// The destination.
 		$uri = $item_path ? $item_path .'/' .$file['name'] : $file['name'];
+		
+		// Build the extension data array.
+		$ext_data = array(
+			'bucket_name'	=> $bucket_name,
+			'file'			=> $file,
+			'uri'			=> $uri
+		);
+		
+		// Call the bucketlist_s3_upload_start hook.
+		$ext_data = $EXT->call_extension('bucketlist_s3_upload_start', $ext_data);
+		
+		if ($EXT->end_script === TRUE)
+		{
+			return;
+		}
 			
 		// Retrieve the Amazon account credentials.
 		$access_key = $this->site_settings['access_key_id'];
@@ -957,10 +974,10 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		$s3 = new S3($access_key, $secret_key, FALSE);
 
 		// Generate the input array for our file.
-		$input = $s3->inputFile($file['tmp_name']);	
+		$input = $s3->inputFile($ext_data['file']['tmp_name']);	
 		
 		// Upload the file.
-		return $s3->putObject($input, $bucket_name, $uri, S3::ACL_PUBLIC_READ);
+		return $s3->putObject($input, $ext_data['bucket_name'], $ext_data['uri'], S3::ACL_PUBLIC_READ);
 		
 	}
 	
@@ -1487,7 +1504,7 @@ _HTML_;
 	 */
 	public function sessions_start(&$session)
 	{
-		global $IN;
+		global $IN, $SESS;
 		
 		// Initialise the cache.
 		if ( ! array_key_exists($this->namespace, $session->cache))
@@ -1497,6 +1514,20 @@ _HTML_;
 		
 		$session->cache[$this->namespace][$this->lower_class] = array();
 		$session->cache[$this->namespace][$this->lower_class]['updated_from_s3'] = FALSE;
+		
+		/**
+		 * @since: 1.1.5
+		 * For some reason, there are time when the $SESS object doesn't exist here.
+		 * This only appears to affect FieldFrame 1.4, although I'm not 100% sure that's
+		 * where the problem lies.
+		 *
+		 * This seems to be a reasonable workaround, for the time being.
+		 */
+		
+		if ( ! isset($SESS))
+		{
+			$SESS = $session;
+		}
 		
 		if ($IN->GBL('ajax', 'POST') == 'y' && $IN->GBL('addon_id', 'POST') == $this->lower_class)
 		{
