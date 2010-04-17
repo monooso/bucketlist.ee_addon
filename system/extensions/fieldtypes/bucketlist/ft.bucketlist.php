@@ -9,7 +9,7 @@ if ( ! defined('EXT'))
  * Seamlessly integrate Amazon S3 with your ExpressionEngine website.
  *
  * @package   	BucketList
- * @version   	1.1.5
+ * @version   	1.2.0b1
  * @author    	Stephen Lewis <addons@experienceinternet.co.uk>
  * @copyright 	Copyright (c) 2009, Stephen Lewis
  * @link      	http://experienceinternet.co.uk/bucketlist/
@@ -27,7 +27,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 */
 	public $info = array(
 		'name'				=> 'BucketList',
-		'version'			=> '1.1.5',
+		'version'			=> '1.2.0b1',
 		'desc'				=> 'Seamlessly integrate Amazon S3 with your ExpressionEngine site.',
 		'docs_url'			=> 'http://experienceinternet.co.uk/bucketlist/',
 		'versions_xml_url'	=> 'http://experienceinternet.co.uk/addon-versions.xml'
@@ -959,11 +959,14 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		);
 		
 		// Call the bucketlist_s3_upload_start hook.
-		$ext_data = $EXT->call_extension('bucketlist_s3_upload_start', $ext_data);
-		
-		if ($EXT->end_script === TRUE)
+		if ($EXT->active_hook('bucketlist_s3_upload_start') === TRUE)
 		{
-			return;
+			$ext_data = $EXT->call_extension('bucketlist_s3_upload_start', $ext_data);
+
+			if ($EXT->end_script === TRUE)
+			{
+				return;
+			}
 		}
 			
 		// Retrieve the Amazon account credentials.
@@ -1266,8 +1269,7 @@ _HTML_;
 	 */
 	function _process_upload()
 	{
-		global $IN, $LANG, $SESS;
-		
+		global $DB, $IN, $LANG, $SESS;
 		
 		/**
 		 * This is being called from the sessions_start method, so the
@@ -1312,7 +1314,7 @@ _HTML_;
 		 * the encoding one iota, just so that we can easily decode it here.
 		 */
 		
-		$full_path 	= rawurldecode($IN->GBL('path', 'POST'));
+		$full_path = rawurldecode($IN->GBL('path', 'POST'));
 		$bucket_and_path = $this->_split_bucket_and_path_string($full_path, TRUE);
 		
 		
@@ -1356,6 +1358,19 @@ _HTML_;
 		// Add our item to the database.
 		$database_result = $this->_add_bucket_item_to_db($item_info, $bucket_and_path['bucket']);
 		
+		// Record the member ID of the user that uploaded this file.
+		if (isset($SESS->userdata['member_id']))
+		{
+			$DB->query($DB->insert_string(
+				'exp_bucketlist_uploads',
+				array(
+					'item_path'	=> $uri,
+					'member_id'	=> $SESS->userdata['member_id'],
+					'site_id'	=> $this->site_id
+				)
+			));
+		}
+		
 		/**
 		 * Whether the operation failed, or no items were added, we do
 		 * the same thing at the moment. If this changes in the future,
@@ -1373,6 +1388,8 @@ _HTML_;
 				<a href="#" rel="' .rawurlencode($bucket_and_path['bucket'] .'/'
 				.$item_info['item_path']) .'">' .$item_info['item_name'] .'</a></li>';
 		}
+		
+		$list_item = '<li class="file"><a href="#">' .print_r($SESS->userdata, TRUE) .'</a></li>';
 		
 		
 		// Output the return document.
@@ -1404,6 +1421,7 @@ _HTML_;
 		$sql[] = 'DROP TABLE IF EXISTS exp_bucketlist_buckets';
 		$sql[] = 'DROP TABLE IF EXISTS exp_bucketlist_files';		// Pre-0.8.0 hangover.
 		$sql[] = 'DROP TABLE IF EXISTS exp_bucketlist_items';
+		$sql[] = 'DROP TABLE IF EXISTS exp_bucketlist_uploads';
 		
 		/**
 		 * @since 1.1.3
@@ -1414,18 +1432,26 @@ _HTML_;
 		 * or we can determine the engine, and explicitly specify it. We do the latter.
 		 */
 		
-		$db_engine = $DB->query("SELECT `ENGINE` AS `engine`
-			FROM information_schema.TABLES
-			WHERE TABLE_SCHEMA =  '" .$PREFS->ini('db_name') ."'
-			AND TABLE_NAME =  'exp_sites'
-			LIMIT 1");
-			
-		if ($db_engine->num_rows !== 1)
+		if (version_compare(mysql_get_server_info(), '5.0.0', '<'))
 		{
-			exit('Unable to determine your database engine.');
+			// We take a punt.
+			$engine = 'MyISAM';
 		}
-		
-		$engine = $db_engine->row['engine'];
+		else
+		{
+			$db_engine = $DB->query("SELECT `ENGINE` AS `engine`
+				FROM information_schema.TABLES
+				WHERE TABLE_SCHEMA =  '" .$PREFS->ini('db_name') ."'
+				AND TABLE_NAME = 'exp_sites'
+				LIMIT 1");
+
+			if ($db_engine->num_rows !== 1)
+			{
+				exit('Unable to determine your database engine.');
+			}
+
+			$engine = $db_engine->row['engine'];
+		}
 		
 		$sql[] = "CREATE TABLE IF NOT EXISTS exp_bucketlist_buckets (
 				bucket_id int(10) unsigned NOT NULL auto_increment,
@@ -1450,12 +1476,48 @@ _HTML_;
 				CONSTRAINT fk_item_site_id FOREIGN KEY(site_id) REFERENCES exp_sites(site_id),
 				CONSTRAINT fk_item_bucket_id FOREIGN KEY(bucket_id) REFERENCES exp_bucketlist_buckets(bucket_id))
 			ENGINE = {$engine}";
+			
+		$sql[] = "CREATE TABLE IF NOT EXISTS exp_bucketlist_uploads (
+				upload_id int(10) unsigned NOT NULL auto_increment,
+				site_id int(5) unsigned NOT NULL default 1,
+				member_id int(10) unsigned NOT NULL,
+				item_path varchar(1000) NOT NULL,
+				CONSTRAINT pk_uploads PRIMARY KEY(upload_id),
+				CONSTRAINT fk_upload_site_id FOREIGN KEY(site_id) REFERENCES exp_sites(site_id),
+				CONSTRAINT fk_upload_member_id FOREIGN KEY(member_id) REFERENCES exp_members(member_id))
+			ENGINE = {$engine}";
 		
 		foreach ($sql AS $query)
 		{
 			$DB->query($query);
 		}
 	}
+	
+	
+	/**
+	 * Retrieves the ID of the currently logged-in member. Extracted into a separate
+	 * method because there are times when the $SESS object isn't instantiated, and we
+	 * need to do a bit more work.
+	 *
+	 * @access	private
+	 * @return	string
+	 */
+	private function _get_member_id()
+	{
+		global $SESS;
+		
+		if (isset($SESS->userdata['member_id']))
+		{
+			
+		}
+		else
+		{
+			
+		}
+	}
+
+
+	
 	
 	
 	
