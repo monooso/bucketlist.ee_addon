@@ -11,7 +11,7 @@ if ( ! defined('EXT'))
  * @package   	BucketList
  * @version   	1.2.0b1
  * @author    	Stephen Lewis <addons@experienceinternet.co.uk>
- * @copyright 	Copyright (c) 2009, Stephen Lewis
+ * @copyright 	Copyright (c) 2009-2010, Stephen Lewis
  * @link      	http://experienceinternet.co.uk/bucketlist/
  */
 
@@ -232,6 +232,66 @@ class Bucketlist extends Fieldframe_Fieldtype {
 			&& $this->site_settings['access_key_id'] !== ''
 			&& isset($this->site_settings['secret_access_key'])
 			&& $this->site_settings['secret_access_key'] !== '');
+	}
+	
+	
+	/**
+	 * Retrieves the member ID. Required because when sessions_start runs,
+	 * the Session object hasn't been properly initialised.
+	 *
+	 * @access	private
+	 * @return	string
+	 */
+	private function _get_member_id()
+	{
+		global $DB, $IN, $SESS;
+		
+		$member_id	= '';
+		
+		if (isset($SESS->userdata['member_id']))
+		{
+			$member_id = $SESS->userdata['member_id'];
+		}
+		else
+		{
+			$ip 	= $DB->escape_str($IN->IP);
+			$agent	= $DB->escape_str(substr($IN->AGENT, 0, 50));
+		
+			/**
+			 * Retrieve the Session ID, either from a cookie,
+			 * or from GET data.
+			 */
+		
+			if ( ! $session_id = $IN->GBL('sessionid', 'COOKIE'))
+			{
+				if ( ! $session_id = $IN->GBL('S', 'GET'))
+				{
+					if ($IN->SID != '')
+					{
+						$session_id = $IN->SID;
+					}
+				}
+			}
+		
+			// Retrieve the member ID.
+			if ($session_id)
+			{
+				$db_member = $DB->query("SELECT member_id
+					FROM exp_sessions
+					WHERE session_id = '" .$DB->escape_str($session_id) ."'
+					AND ip_address = '{$ip}'
+					AND user_agent = '{$agent}'
+					AND site_id = '{$this->site_id}'"
+				);
+				
+				if ($db_member->num_rows == 1)
+				{
+					$member_id = $db_member->row['member_id'];
+				}
+			}
+		}
+		
+		return $member_id;
 	}
 	
 	
@@ -1358,18 +1418,6 @@ _HTML_;
 		// Add our item to the database.
 		$database_result = $this->_add_bucket_item_to_db($item_info, $bucket_and_path['bucket']);
 		
-		// Record the member ID of the user that uploaded this file.
-		if (isset($SESS->userdata['member_id']))
-		{
-			$DB->query($DB->insert_string(
-				'exp_bucketlist_uploads',
-				array(
-					'item_path'	=> $uri,
-					'member_id'	=> $SESS->userdata['member_id'],
-					'site_id'	=> $this->site_id
-				)
-			));
-		}
 		
 		/**
 		 * Whether the operation failed, or no items were added, we do
@@ -1387,9 +1435,23 @@ _HTML_;
 			$list_item = '<li class="file ext_' .strtolower($item_info['item_extension']) .'">
 				<a href="#" rel="' .rawurlencode($bucket_and_path['bucket'] .'/'
 				.$item_info['item_path']) .'">' .$item_info['item_name'] .'</a></li>';
+				
+			
+			// Record the member ID of the user that uploaded this file.
+			if (($bucket = $this->_load_bucket_from_db($bucket_and_path['bucket']))
+				&& ($member_id = $this->_get_member_id()))
+			{
+				$DB->query($DB->insert_string(
+					'exp_bucketlist_uploads',
+					array(
+						'bucket_id'	=> $DB->escape_str($bucket['bucket_id']),
+						'item_path'	=> $uri,
+						'member_id'	=> $member_id,
+						'site_id'	=> $this->site_id
+					)
+				));
+			}
 		}
-		
-		$list_item = '<li class="file"><a href="#">' .print_r($SESS->userdata, TRUE) .'</a></li>';
 		
 		
 		// Output the return document.
@@ -1481,10 +1543,12 @@ _HTML_;
 				upload_id int(10) unsigned NOT NULL auto_increment,
 				site_id int(5) unsigned NOT NULL default 1,
 				member_id int(10) unsigned NOT NULL,
+				bucket_id int(10) unsigned NOT NULL,
 				item_path varchar(1000) NOT NULL,
 				CONSTRAINT pk_uploads PRIMARY KEY(upload_id),
 				CONSTRAINT fk_upload_site_id FOREIGN KEY(site_id) REFERENCES exp_sites(site_id),
-				CONSTRAINT fk_upload_member_id FOREIGN KEY(member_id) REFERENCES exp_members(member_id))
+				CONSTRAINT fk_upload_member_id FOREIGN KEY(member_id) REFERENCES exp_members(member_id),
+				CONSTRAINT fk_upload_bucket_id FOREIGN KEY(bucket_id) REFERENCES exp_bucketlist_buckets(bucket_id))
 			ENGINE = {$engine}";
 		
 		foreach ($sql AS $query)
@@ -1492,32 +1556,6 @@ _HTML_;
 			$DB->query($query);
 		}
 	}
-	
-	
-	/**
-	 * Retrieves the ID of the currently logged-in member. Extracted into a separate
-	 * method because there are times when the $SESS object isn't instantiated, and we
-	 * need to do a bit more work.
-	 *
-	 * @access	private
-	 * @return	string
-	 */
-	private function _get_member_id()
-	{
-		global $SESS;
-		
-		if (isset($SESS->userdata['member_id']))
-		{
-			
-		}
-		else
-		{
-			
-		}
-	}
-
-
-	
 	
 	
 	
@@ -1561,7 +1599,7 @@ _HTML_;
 	 * Handles AJAX requests.
 	 *
 	 * @access		public
-	 * @param 		object		$session	The current Session class.
+	 * @param 		object		$session	The current Session object.
 	 * @return		void
 	 */
 	public function sessions_start(&$session)
@@ -1578,7 +1616,7 @@ _HTML_;
 		$session->cache[$this->namespace][$this->lower_class]['updated_from_s3'] = FALSE;
 		
 		/**
-		 * @since: 1.1.5
+		 * @since: 1.2.0
 		 * For some reason, there are time when the $SESS object doesn't exist here.
 		 * This only appears to affect FieldFrame 1.4, although I'm not 100% sure that's
 		 * where the problem lies.
@@ -1590,6 +1628,7 @@ _HTML_;
 		{
 			$SESS = $session;
 		}
+		
 		
 		if ($IN->GBL('ajax', 'POST') == 'y' && $IN->GBL('addon_id', 'POST') == $this->lower_class)
 		{
