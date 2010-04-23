@@ -18,7 +18,11 @@ if ( ! defined('EXT'))
 require_once 'resources/S3.php';
 
 class Bucketlist extends Fieldframe_Fieldtype {
-  
+	
+	/* --------------------------------------------------------------
+	 * PUBLIC PROPERTIES
+	 * ------------------------------------------------------------ */
+	
 	/**
 	 * Basic fieldtype information.
 	 *
@@ -67,13 +71,18 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		'custom_url'		=> 'n'
 	);
 	
+	
+	/* --------------------------------------------------------------
+	 * PRIVATE PROPERTIES
+	 * ------------------------------------------------------------ */
+	
 	/**
 	 * The site ID.
 	 *
 	 * @access	private
 	 * @var 	string
 	 */
-	private $site_id = '';
+	private $_site_id = '';
 	
 	/**
 	 * The class name.
@@ -81,7 +90,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 * @access	private
 	 * @var 	string
 	 */
-	private $class = '';
+	private $_class = '';
 	
 	/**
 	 * Lower-class classname.
@@ -89,7 +98,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 * @access	private
 	 * @var 	string
 	 */
-	private $lower_class = '';
+	private $_lower_class = '';
 	
 	/**
 	 * The Session namespace.
@@ -97,7 +106,16 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 * @access	private
 	 * @var 	string
 	 */
-	private $namespace = '';
+	private $_namespace = '';
+	
+	/**
+	 * Basic member information. Used when processing an AJAX call,
+	 * because the $SESS->userdata variable hasn't been populated.
+	 *
+	 * @access	private
+	 * @var 	array
+	 */
+	private $_member_data = array();
 	
 	/**
 	 * Demo mode doesn't actually upload the files to Amazon S3.
@@ -105,7 +123,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 * @access  private
 	 * @var   	bool
 	 */
-	private $demo = FALSE;
+	private $_demo = FALSE;
 
 
 	/**
@@ -251,66 +269,6 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	
 	
 	/**
-	 * Retrieves the member ID. Required because when sessions_start runs,
-	 * the Session object hasn't been properly initialised.
-	 *
-	 * @access	private
-	 * @return	string
-	 */
-	private function _get_member_id()
-	{
-		global $DB, $IN, $SESS;
-		
-		$member_id	= '';
-		
-		if (isset($SESS->userdata['member_id']))
-		{
-			$member_id = $SESS->userdata['member_id'];
-		}
-		else
-		{
-			$ip 	= $DB->escape_str($IN->IP);
-			$agent	= $DB->escape_str(substr($IN->AGENT, 0, 50));
-		
-			/**
-			 * Retrieve the Session ID, either from a cookie,
-			 * or from GET data.
-			 */
-		
-			if ( ! $session_id = $IN->GBL('sessionid', 'COOKIE'))
-			{
-				if ( ! $session_id = $IN->GBL('S', 'GET'))
-				{
-					if ($IN->SID != '')
-					{
-						$session_id = $IN->SID;
-					}
-				}
-			}
-		
-			// Retrieve the member ID.
-			if ($session_id)
-			{
-				$db_member = $DB->query("SELECT member_id
-					FROM exp_sessions
-					WHERE session_id = '" .$DB->escape_str($session_id) ."'
-					AND ip_address = '{$ip}'
-					AND user_agent = '{$agent}'
-					AND site_id = '{$this->site_id}'"
-				);
-				
-				if ($db_member->num_rows == 1)
-				{
-					$member_id = $db_member->row['member_id'];
-				}
-			}
-		}
-		
-		return $member_id;
-	}
-	
-	
-	/**
 	 * Checks whether the specified item exists on the S3 server.
 	 *
 	 * @access	private
@@ -337,6 +295,84 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		$s3 = new S3($this->site_settings['access_key_id'], $this->site_settings['secret_access_key'], FALSE);
 		return @$s3->getObjectInfo($bucket_and_path['bucket'], $bucket_and_path['item_path'], FALSE);
 		
+	}
+	
+	
+	/**
+	 * Retrieves the member info. Required because when sessions_start runs,
+	 * the Session object hasn't been properly initialised.
+	 *
+	 * @access	private
+	 * @return	void
+	 */
+	private function _load_member_info()
+	{
+		global $DB, $IN, $SESS;
+		
+		if ($this->_member_data)
+		{
+			return;
+		}
+		
+		$member = array(
+			'group_id' => '0',
+			'member_id' => '0'
+		);
+		
+		if (isset($SESS->userdata['member_id']) && isset($SESS->userdata['group_id']))
+		{
+			$member = array(
+				'group_id'	=> $SESS->userdata['group_id'],
+				'member_id'	=> $SESS->userdata['member_id']
+			);
+		}
+		else
+		{
+			$ip 	= $DB->escape_str($IN->IP);
+			$agent	= $DB->escape_str(substr($IN->AGENT, 0, 50));
+		
+			/**
+			 * Retrieve the Session ID, either from a cookie,
+			 * or from GET data.
+			 */
+		
+			if ( ! $session_id = $IN->GBL('sessionid', 'COOKIE'))
+			{
+				if ( ! $session_id = $IN->GBL('S', 'GET'))
+				{
+					if ($IN->SID != '')
+					{
+						$session_id = $IN->SID;
+					}
+				}
+			}
+		
+			// Retrieve the member ID.
+			if ($session_id)
+			{
+				$db_member = $DB->query("SELECT
+						m.member_id,
+						m.group_id
+					FROM exp_sessions AS s
+					INNER JOIN exp_members AS m
+					ON m.member_id = s.member_id
+					WHERE s.session_id = '" .$DB->escape_str($session_id) ."'
+					AND s.ip_address = '{$ip}'
+					AND s.user_agent = '{$agent}'
+					AND s.site_id = '{$this->_site_id}'"
+				);
+				
+				if ($db_member->num_rows == 1)
+				{
+					$member = array(
+						'group_id'	=> $db_member->row['group_id'],
+						'member_id'	=> $db_member->row['member_id']
+					);
+				}
+			}
+		}
+		
+		$this->_member_data = $member;
 	}
 	
 	
@@ -542,7 +578,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		$sql = "SELECT
 				bucket_id, bucket_items_cache_date, bucket_name, site_id
 			FROM exp_bucketlist_buckets
-			WHERE site_id = '{$this->site_id}'";
+			WHERE site_id = '{$this->_site_id}'";
 			
 		$sql .= is_array($filter) ? " AND bucket_name IN('" .implode("', '", $filter) ."')" : '';
 		$sql .= ' ORDER BY bucket_name ASC';
@@ -589,7 +625,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 				bucket_id, bucket_items_cache_date, bucket_name, site_id
 			FROM exp_bucketlist_buckets
 			WHERE bucket_name = '" .$DB->escape_str($bucket_name) ."'
-			AND site_id = '{$this->site_id}'
+			AND site_id = '{$this->_site_id}'
 			LIMIT 1");
 			
 		return ($this->_validate_bucket($db_bucket->row));
@@ -633,7 +669,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		$db_item = $DB->query("SELECT item_id
 			FROM exp_bucketlist_items
 			WHERE bucket_id = '" .$DB->escape_str($bucket['bucket_id']) ."'
-			AND site_id = '{$this->site_id}'
+			AND site_id = '{$this->_site_id}'
 			AND item_name = '" .$DB->escape_str($valid_item['item_name']) ."'
 			AND item_path = '" .$DB->escape_str($valid_item['item_path']) ."'
 			LIMIT 1");
@@ -645,7 +681,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 
 		// Add a couple of extra bits to the $valid_item array.
 		$valid_item['bucket_id'] = $DB->escape_str($bucket['bucket_id']);
-		$valid_item['site_id'] = $this->site_id;
+		$valid_item['site_id'] = $this->_site_id;
 		
 		// Add the item to the database.
 		$DB->query($DB->insert_string('exp_bucketlist_items', $valid_item));
@@ -679,7 +715,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 				item_id, item_path, item_name, item_size, item_extension, item_is_folder
 			FROM exp_bucketlist_items
 			WHERE bucket_id = '" .$DB->escape_str($bucket['bucket_id']) ."'
-			AND site_id = '{$this->site_id}'
+			AND site_id = '{$this->_site_id}'
 			ORDER BY item_name ASC");
 			
 		if ($db_items->num_rows == 0)
@@ -799,7 +835,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 			
 			foreach ($missing_bucket_names AS $missing)
 			{
-				$missing_buckets[] = "{$this->site_id}, '{$missing}', {$old_cache}";
+				$missing_buckets[] = "{$this->_site_id}, '{$missing}', {$old_cache}";
 			}
 			
 			// Build the SQL.
@@ -856,7 +892,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		// Delete any existing bucket items from the database.
 		$DB->query("DELETE FROM exp_bucketlist_items
 			WHERE bucket_id = {$bucket['bucket_id']}
-			AND site_id = {$this->site_id}");
+			AND site_id = {$this->_site_id}");
 			
 		// Update the bucket cache date.
 		$DB->query($DB->update_string(
@@ -905,7 +941,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 					.", '" .$DB->escape_str($item['item_name']) ."'"
 					.", '" .$DB->escape_str($item['item_path']) ."'"
 					.", '" .$DB->escape_str($item['item_size']) ."'"
-					.", {$this->site_id}";
+					.", {$this->_site_id}";
 			}
 		}
 		
@@ -929,8 +965,6 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 */
 	function _load_bucket_items($bucket_name = '')
 	{
-		global $DB, $SESS;
-		
 		// Be reasonable.
 		if ( ! $bucket_name OR ( ! $bucket = $this->_load_bucket_from_db($bucket_name)))
 		{
@@ -967,7 +1001,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		
 		$db_cp_groups = $DB->query("SELECT mg.group_id, mg.group_title
 			FROM exp_member_groups AS mg
-			WHERE mg.site_id = '{$this->site_id}'
+			WHERE mg.site_id = '{$this->_site_id}'
 			AND mg.can_access_cp = 'y'
 			AND (mg.can_access_publish = 'y' OR mg.can_access_edit = 'y')
 			ORDER BY mg.group_title ASC");
@@ -976,7 +1010,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 			FROM exp_member_groups AS mg
 			INNER JOIN exp_weblog_member_groups AS wmg
 			ON wmg.group_id = mg.group_id
-			WHERE mg.site_id = '{$this->site_id}'
+			WHERE mg.site_id = '{$this->_site_id}'
 			AND (mg.can_access_cp <> 'y' OR (mg.can_access_publish <> 'y' AND mg.can_access_edit <> 'y')) 
 			GROUP BY mg.group_id
 			ORDER BY mg.group_title ASC");
@@ -1072,7 +1106,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		}
 		
 		// If we're in demonstration mode, just return TRUE.
-		if ($this->demo)
+		if ($this->_demo)
 		{
 			return TRUE;
 		}
@@ -1135,7 +1169,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 */
 	function _build_root_ui($settings = array())
 	{	
-		global $LANG;
+		global $LANG, $SESS;
 		
 		/**
 		 * This method is called from sessions_start, which runs before
@@ -1151,9 +1185,12 @@ class Bucketlist extends Fieldframe_Fieldtype {
 			$LANG = new Language();
 		}
 		
-		$LANG->fetch_language_file($this->lower_class);
+		$LANG->fetch_language_file($this->_lower_class);
 		
-		$available_buckets = isset($settings['available_buckets']) ? $settings['available_buckets'] : array();
+		// Determine which buckets are available.
+		$available_buckets = isset($settings['member_groups'][$SESS->userdata['group_id']]['available_buckets'])
+			? $settings['member_groups'][$SESS->userdata['group_id']]['available_buckets']
+			: array();
 		
 		/**
 		 * Note that we're explicitly loading the buckets from the database.
@@ -1204,9 +1241,10 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 *
 	 * @access	private
 	 * @param	string		$tree_path		The path from the root of the tree.
+	 * @param	string		$field_id		The BucketList field ID.
 	 * @return	string
 	 */
-	function _build_branch_ui($tree_path = '')
+	function _build_branch_ui($tree_path = '', $field_id = '')
 	{
 		global $LANG;
 		
@@ -1224,24 +1262,64 @@ class Bucketlist extends Fieldframe_Fieldtype {
 			$LANG = new Language();
 		}
 		
-		$LANG->fetch_language_file($this->lower_class);
-		
+		$LANG->fetch_language_file($this->_lower_class);
 		
 		// Initialise the return HTML.
 		$html = '';
 		
+		// Be reasonable, or get out.
+		if ( ! $tree_path OR ! $field_id)
+		{
+			$html .= '<ul class="bucketlist-tree" style="display : none;">';
+			$html .= '<li class="empty">' .$LANG->line('invalid_path') .'</li>';
+			$html .= '</ul>';
+			
+			return $html;
+		}
+		
+		// Retrieve the field or cell settings.
+		$field_settings = $this->_load_field_settings($field_id);
+		
+		// Determine the member's privileges.
+		$member_privileges = $this->_extract_member_privileges($field_settings);
 		
 		// Extract the bucket name from the tree path.
 		$bucket_name = substr($tree_path, 0, strpos($tree_path, '/'));
 		
-		
 		// Extract the item path (the full tree path, minus the bucket).
 		$item_path = substr($tree_path, strlen($bucket_name) + 1);
 		
-		
 		// Retrieve the bucket items.
-		if ($items = $this->_load_bucket_items($bucket_name))
+		if ($items = $this->_load_bucket_items($bucket_name, $field_id))
 		{
+			/**
+			 * Is the member permitted to see files that he hasn't personally uploaded?
+			 * If not, we've got some filtering to do.
+			 */
+			if ($member_privileges['restrict_browse'])
+			{
+				$member_files = array();
+				
+				// Retrieve an array of the member's uploaded files.
+				$member_uploads = $this->_load_member_uploads();
+				
+				// Filter the available files against the member's uploads.
+				foreach ($items['files'] AS $f)
+				{
+					foreach ($member_uploads AS $m)
+					{
+						if ($m['item_path'] == $f['item_path']
+							&& $m['bucket_name'] == $bucket_name)
+						{
+							$member_files[] = $f;
+							break;
+						}
+					}
+				}
+				
+				$items['files'] = $member_files;
+			}
+			
 			// Merge the files and folders, so we can process them in a single loop.
 			$files_and_folders = array_merge($items['folders'], $items['files']);
 			
@@ -1284,13 +1362,13 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		}
 		
 		// If we have no items to display, and uploading is not allowed, display an 'empty' message.
-		if ( ! $html && $this->site_settings['allow_upload'] != 'y')
+		if ( ! $html && ! $member_privileges['allow_upload'])
 		{
 			$html .= '<li class="empty">' .$LANG->line('no_items') .'</li></ul>';
 		}
 		
 		// Include upload link?
-		if ($this->site_settings['allow_upload'] == 'y')
+		if ($member_privileges['allow_upload'])
 		{
 			$html = '<li class="upload"><a href="#">' .$LANG->line('upload_here') .'</a></li>' .$html;
 		}
@@ -1304,13 +1382,151 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	
 	
 	/**
+	 * Extracts the current member's privileges from the supplied settings.
+	 *
+	 * @access	private
+	 * @param	array		$settings		Field or cell settings.
+	 * @return	array
+	 */
+	private function _extract_member_privileges($settings = '')
+	{
+		global $SESS;
+		
+		// Locked-down by default.
+		$privileges = array(
+			'allow_upload'		=> FALSE,
+			'allow_browse'		=> FALSE,
+			'restrict_browse'	=> TRUE
+		);
+		
+		$member_group_id = isset($SESS->userdata['group_id'])
+			? $SESS->userdata['group_id']
+			: isset($this->_member_data['group_id']) ? $this->_member_data['group_id'] : '';
+		
+		if ($member_group_id && isset($settings['member_groups']) && isset($settings['member_groups'][$member_group_id]))
+		{
+			// Extract the member group settings.
+			$member_settings = $settings['member_groups'][$member_group_id];
+		
+			// Update the default privileges.
+			$privileges['allow_upload'] = isset($member_settings['allow_upload'])
+				? ($member_settings['allow_upload'] == 'y')
+				: FALSE;
+			
+			$privileges['allow_browse'] = isset($member_settings['allow_browse'])
+				? ($member_settings['allow_browse'] == 'y')
+				: FALSE;
+			
+			$privileges['restrict_browse'] = isset($member_settings['restrict_browse'])
+				? ($member_settings['restrict_browse'] == 'y')
+				: TRUE;
+		}
+		
+		return $privileges;
+	}
+	
+	
+	/**
+	 * Loads the field or cell settings from the database, and parses them into an array.
+	 *
+	 * @access	private
+	 * @param	string		$full_field_id		The ID of the field or cell, in the form field_id_99[1][2].
+	 * @return	array
+	 */
+	private function _load_field_settings($full_field_id = '')
+	{
+		global $DB;
+		
+		// All you ever do's initialize, sing it with me now.
+		$settings 	= array();
+		$field_id 	= '';
+		$row_id		= '';
+		$cell_id 	= '';
+		
+		if (preg_match('/field_id_([0-9]+)(\[([0-9]+)\]\[([0-9]+)\])?/i', $full_field_id, $matches))
+		{
+			$field_id 	= $matches[1];
+			$row_id		= isset($matches[2]) ? $matches[2] : '';
+			$cell_id 	= isset($matches[3]) ? $matches[3] : '';
+		}
+		
+		if ($field_id)
+		{
+			// Load the field settings.
+			$db_settings = $DB->query("SELECT ff_settings
+				FROM exp_weblog_fields
+				WHERE field_id = '{$field_id}'
+				AND site_id = '{$this->_site_id}'
+				LIMIT 1");
+			
+			if ($db_settings->num_rows === 1)
+			{
+				$settings = $this->_unserialize($db_settings->row['ff_settings']);
+				
+				// If this is a cell, extract the cell settings.
+				if ($row_id && $cell_id
+					&& isset($settings[$row_id])
+					&& isset($settings[$row_id][$cell_id]))
+				{
+					$settings = $settings[$row_id][$cell_id];
+				}
+			}
+		}
+		
+		return $settings;
+	}
+	
+	
+	/**
+	 * Loads the uploaded files for the specified member.
+	 *
+	 * @access	private
+	 * @param 	string		$member_id		The member ID.
+	 * @return	array
+	 */
+	private function _load_member_uploads($member_id = '')
+	{
+		global $DB, $SESS;
+		
+		$uploads = array();
+		
+		$member_id = isset($SESS->userdata['member_id'])
+			? $SESS->userdata['member_id']
+			: isset($this->_member_data['member_id']) ? $this->_member_data['member_id'] : '';
+		
+		$db_uploads = $DB->query("SELECT u.upload_id, u.bucket_id, b.bucket_name, u.item_path
+			FROM exp_bucketlist_uploads AS u
+			INNER JOIN exp_bucketlist_buckets AS b
+			ON b.bucket_id = u.bucket_id
+			WHERE u.site_id = '{$this->_site_id}'
+			AND u.member_id = '" .$DB->escape_str($member_id) ."'"
+		);
+		
+		if ($db_uploads->num_rows > 0)
+		{
+			foreach ($db_uploads->result AS $db_upload)
+			{
+				$uploads[] = array(
+					'bucket_id'		=> $db_upload['bucket_id'],
+					'bucket_name'	=> $db_upload['bucket_name'],
+					'item_path'		=> $db_upload['item_path'],
+					'upload_id'		=> $db_upload['upload_id']
+				);
+			}
+		}
+		
+		return $uploads;
+	}
+	
+	
+	/**
 	 * Retrieves the requested branch, and returns it.
 	 *
 	 * @access	private
-	 * @param 	string		$tree_path		The path from the root of the tree.
+	 * @param	string		$html		The branch HTML.
 	 * @return	void
 	 */
-	function _output_branch_ui($tree_path = '')
+	function _output_branch_ui($html = '')
 	{
 		global $PREFS;
 		
@@ -1329,7 +1545,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		header('Cache-Control: no-cache, must-revalidate');
 		header('Content-Type: text/html; charset=' .$PREFS->ini('charset'));
 		
-		exit($this->_build_branch_ui($tree_path));
+		exit($html);
 	}
 	
 	
@@ -1355,7 +1571,8 @@ class Bucketlist extends Fieldframe_Fieldtype {
 			'status'		=>	'failure',
 			'message'		=>	$LANG->line('upload_failure'),
 			'upload_id'		=> '',
-			'list_item'		=> '');
+			'list_item'		=> ''
+		);
 			
 		$message_data = array_merge($default_data, $message_data);
 		
@@ -1390,7 +1607,7 @@ _HTML_;
 		// Output the return document.
 		header('Content-type: text/html; charset=' .$PREFS->ini('charset'));
 		exit($html);
-
+		
 	}
 	
 	
@@ -1416,7 +1633,7 @@ _HTML_;
 			$LANG = new Language();
 		}
 		
-		$LANG->fetch_language_file($this->lower_class);
+		$LANG->fetch_language_file($this->_lower_class);
 		
 		
 		// Retrieve the upload ID.
@@ -1509,19 +1726,18 @@ _HTML_;
 			$list_item = '<li class="file ext_' .strtolower($item_info['item_extension']) .'">
 				<a href="#" rel="' .rawurlencode($bucket_and_path['bucket'] .'/'
 				.$item_info['item_path']) .'">' .$item_info['item_name'] .'</a></li>';
-				
 			
 			// Record the member ID of the user that uploaded this file.
 			if (($bucket = $this->_load_bucket_from_db($bucket_and_path['bucket']))
-				&& ($member_id = $this->_get_member_id()))
+				&& ($this->_member_data['member_id']))
 			{
 				$DB->query($DB->insert_string(
 					'exp_bucketlist_uploads',
 					array(
 						'bucket_id'	=> $DB->escape_str($bucket['bucket_id']),
 						'item_path'	=> $uri,
-						'member_id'	=> $member_id,
-						'site_id'	=> $this->site_id
+						'member_id'	=> $this->_member_data['member_id'],
+						'site_id'	=> $this->_site_id
 					)
 				));
 			}
@@ -1648,10 +1864,10 @@ _HTML_;
 	{
 		global $DB, $IN, $PREFS;
 		
-		$this->site_id 		= $DB->escape_str($PREFS->ini('site_id'));
-		$this->class 		= get_class($this);
-		$this->lower_class 	= strtolower($this->class);
-		$this->namespace	= 'sl';
+		$this->_site_id 	= $DB->escape_str($PREFS->ini('site_id'));
+		$this->_class 		= get_class($this);
+		$this->_lower_class 	= strtolower($this->_class);
+		$this->_namespace	= 'sl';
 		
 		
 		/**
@@ -1681,13 +1897,13 @@ _HTML_;
 		global $IN, $SESS;
 		
 		// Initialise the cache.
-		if ( ! array_key_exists($this->namespace, $session->cache))
+		if ( ! array_key_exists($this->_namespace, $session->cache))
 		{
-			$session->cache[$this->namespace] = array();
+			$session->cache[$this->_namespace] = array();
 		}
 		
-		$session->cache[$this->namespace][$this->lower_class] = array();
-		$session->cache[$this->namespace][$this->lower_class]['updated_from_s3'] = FALSE;
+		$session->cache[$this->_namespace][$this->_lower_class] = array();
+		$session->cache[$this->_namespace][$this->_lower_class]['updated_from_s3'] = FALSE;
 		
 		/**
 		 * @since: 1.2.0
@@ -1704,15 +1920,19 @@ _HTML_;
 		}
 		
 		
-		if ($IN->GBL('ajax', 'POST') == 'y' && $IN->GBL('addon_id', 'POST') == $this->lower_class)
+		if ($IN->GBL('ajax', 'POST') == 'y' && $IN->GBL('addon_id', 'POST') == $this->_lower_class)
 		{
+			// Load the member info.
+			$this->_load_member_info();
+			
 			// We're either being summoned by the file tree, or the uploader. Which is it?
 			$request = $IN->GBL('request', 'POST');
 			
 			switch ($request)
 			{
 				case 'tree':
-					$this->_output_branch_ui(urldecode($IN->GBL('dir', 'POST')));
+					$branch_html = $this->_build_branch_ui(urldecode($IN->GBL('dir', 'POST')), $IN->GBL('field_id', 'POST'));
+					$this->_output_branch_ui($branch_html);
 					break;
 					
 				case 'upload':
@@ -1747,7 +1967,7 @@ _HTML_;
 		}
 		
 		// Retrieve the correct language file.
-		$LANG->fetch_language_file($this->lower_class);
+		$LANG->fetch_language_file($this->_lower_class);
 		
 		/**
 		 * Add some JavaScript and CSS to the header.
@@ -1791,7 +2011,7 @@ _HTML_;
 			}
 			
 			// Update everything from S3, if required. Only need to do this once.
-			if ( ! $SESS->cache[$this->namespace][$this->lower_class]['updated_from_s3'])
+			if ( ! $SESS->cache[$this->_namespace][$this->_lower_class]['updated_from_s3'])
 			{
 				$this->_update_buckets_from_s3();
 				
@@ -1801,7 +2021,7 @@ _HTML_;
 					$this->_update_bucket_items_from_s3($bucket['bucket_name']);
 				}
 				
-				$SESS->cache[$this->namespace][$this->lower_class]['updated_from_s3'] = TRUE;
+				$SESS->cache[$this->_namespace][$this->_lower_class]['updated_from_s3'] = TRUE;
 			}
 			
 			// Open the UI wrapper.
@@ -2105,7 +2325,7 @@ _HTML_;
 			// Determine the BucketList fieldtype ID.
 			$db_bucketlist_ft = $DB->query("SELECT fieldtype_id
 				FROM exp_ff_fieldtypes
-				WHERE class = '{$this->lower_class}'
+				WHERE class = '{$this->_lower_class}'
 				LIMIT 1");
 				
 			// Determine the FF Matrix fieldtype ID.
@@ -2177,7 +2397,7 @@ _HTML_;
 						
 						foreach ($matrix_settings['cols'] AS $col_key => $col_val)
 						{
-							if (isset($col_val['type']) && $col_val['type'] == $this->lower_class)
+							if (isset($col_val['type']) && $col_val['type'] == $this->_lower_class)
 							{
 								$update_matrix = TRUE;
 								$col_val['settings'] = array('available_buckets' => $field_buckets);

@@ -52,6 +52,7 @@ $L = array(
 
 'loading' 				=> 'Loading&hellip;',
 'no_items'				=> 'No available items.',
+'missing_path'			=> 'Missing or invalid path.',
 
 // Uploading.
 'upload_failure'	=> 'Upload failed.',

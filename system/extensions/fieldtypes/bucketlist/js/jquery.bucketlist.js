@@ -6,9 +6,9 @@
  * by Cory S.N. LaViska (http://abeautifulsite.net).
  *
  * @package		BucketList
- * @author 		Stephen Lewis (http://eepro.co.uk/)
- * @copyright 	Copyright (c) 2009, Stephen Lewis
- * @link 		http://eepro.co.uk/bucketlist/
+ * @author 		Stephen Lewis <addons@experienceinternet.co.uk>
+ * @copyright 	Copyright (c) 2009-2010, Stephen Lewis
+ * @link 		http://experienceinternet.co.uk/bucketlist/
  */
 
 (function($) {
@@ -567,6 +567,9 @@ $.fn.bucketlist = function(options) {
 			var $li		= localParams.$root;
 			var path	= decodeURIComponent(localParams.path);
 			
+			// Determine the field that this item belongs to.
+			field_id = $li.closest('.eepro-co-uk').find('> input:hidden').attr('id');
+			
 			// Hold up, butt.
 			$li.addClass('wait');
 
@@ -577,6 +580,7 @@ $.fn.bucketlist = function(options) {
 					addon_id	: 'bucketlist',
 					ajax		: 'y',
 					dir			: path,
+					field_id	: field_id,
 					request		: 'tree'
 				},
 				function(htmlFragment) {
