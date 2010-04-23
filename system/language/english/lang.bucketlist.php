@@ -5,7 +5,7 @@
  *
  * @package   	BucketList
  * @author    	Stephen Lewis <addons@experienceinternet.co.uk>
- * @copyright 	Copyright (c) 2009, Stephen Lewis
+ * @copyright 	Copyright (c) 2009-2010, Stephen Lewis
  * @link      	http://experienceinternet.co.uk/bucketlist/
  */
 
@@ -39,7 +39,12 @@ $L = array(
 '480_min'				=> '8 hours',
 
 // Field settings.
+'member_group'			=> 'Member Group',
+'privileges'			=> 'Privileges',
 'available_buckets'		=> 'Available Buckets',
+'allow_upload'			=> 'Allow upload',
+'allow_browse'			=> 'Allow browsing',
+'restrict_browse'		=> 'Only display member&rsquo;s own uploads',
 
 'missing_credentials'	=> 'Please enter your Amazon S3 account details on the extension settings screen.',
 'no_buckets'			=> 'There are no available buckets for this account.',

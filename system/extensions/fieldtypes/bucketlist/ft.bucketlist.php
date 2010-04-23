@@ -236,6 +236,21 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	
 	
 	/**
+	 * Builds an array of field settings, based on the supplied saved
+	 * settings, and the site-wide settings.
+	 *
+	 * @access	private
+	 * @param	array		$saved_settings		Previously-saved field settings.
+	 * @return	array
+	 */
+	private function _get_field_settings($saved_settings = array())
+	{
+		$default_settings = array_merge(array('member_groups' => array()), $this->site_settings);
+		return array_merge($default_settings, $saved_settings);
+	}
+	
+	
+	/**
 	 * Retrieves the member ID. Required because when sessions_start runs,
 	 * the Session object hasn't been properly initialised.
 	 *
@@ -933,6 +948,65 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		 */
 		
 		return $this->_load_bucket_items_from_db($bucket_name);
+	}
+	
+	
+	/**
+	 * Loads all the 'admin' member groups from the database, and parses them
+	 * into an array. Admin member groups are defined here as an member group
+	 * that can:
+	 * 1. Access the CP and the publish or edit pages; or
+	 * 2. Post to a weblog (which covers SAEF usage)
+	 *
+	 * @access	private
+	 * @return	array
+	 */
+	private function _load_admin_member_groups()
+	{
+		global $DB;
+		
+		$db_cp_groups = $DB->query("SELECT mg.group_id, mg.group_title
+			FROM exp_member_groups AS mg
+			WHERE mg.site_id = '{$this->site_id}'
+			AND mg.can_access_cp = 'y'
+			AND (mg.can_access_publish = 'y' OR mg.can_access_edit = 'y')
+			ORDER BY mg.group_title ASC");
+			
+		$db_saef_groups = $DB->query("SELECT mg.group_id, mg.group_title
+			FROM exp_member_groups AS mg
+			INNER JOIN exp_weblog_member_groups AS wmg
+			ON wmg.group_id = mg.group_id
+			WHERE mg.site_id = '{$this->site_id}'
+			AND (mg.can_access_cp <> 'y' OR (mg.can_access_publish <> 'y' AND mg.can_access_edit <> 'y')) 
+			GROUP BY mg.group_id
+			ORDER BY mg.group_title ASC");
+		
+		// Parse the results.
+		$member_groups = array();
+		
+		if ($db_cp_groups->num_rows > 0)
+		{
+			foreach ($db_cp_groups->result AS $db_cp_group)
+			{
+				$member_groups[$db_cp_group['group_id']] = array(
+					'group_id'		=> $db_cp_group['group_id'],
+					'group_title'	=> $db_cp_group['group_title']
+				);
+			}
+		}
+		
+		if ($db_saef_groups->num_rows > 0)
+		{
+			foreach ($db_saef_groups->result AS $db_saef_group)
+			{
+				$member_groups[$db_saef_group['group_id']] = array(
+					'group_id'		=> $db_saef_group['group_id'],
+					'group_title'	=> $db_saef_group['group_title']
+				);
+			}
+		}
+		
+		return $member_groups;
 	}
 	
 	
@@ -1820,27 +1894,27 @@ _HTML_;
 			'14400' => '240_min',
 			'21600' => '360_min',
 			'28800' => '480_min'
-			);
+		);
 			
 		$ret .= $sd->row(array(
 			$sd->label('cache_duration', 'cache_duration_hint'),
 			$sd->select('cache_duration', $settings['cache_duration'], $options)
-			));
+		));
 		
 		$options = array(
 			'y' => 'yes',
 			'n' => 'no'
-			);
+		);
 			
 		$ret .= $sd->row(array(
 			$sd->label('allow_upload', 'allow_upload_hint'),
 			$sd->select('allow_upload', $settings['allow_upload'], $options)
-			));
+		));
 			
 		$ret .= $sd->row(array(
 			$sd->label('custom_url', 'custom_url_hint'),
 			$sd->select('custom_url', $settings['custom_url'], $options)
-			));
+		));
 			
 		// Close the settings block.
 		$ret .= $sd->block_c();
@@ -1860,44 +1934,141 @@ _HTML_;
 	 */
 	public function display_field_settings($field_settings = array(), $is_cell = FALSE)
 	{
-		global $LANG;
+		global $DB, $LANG;
 		
-		$SD = new Fieldframe_SettingsDisplay();
+		$sd = new Fieldframe_SettingsDisplay();
 		
 		$html = '<div class="bucketlist-settings '
 			.($is_cell ? 'cell' : '')
 			.'">';
 			
-		$html .= '<label class="defaultBold">' .$LANG->line('available_buckets') .'</label>';
-		
-		$saved_buckets = isset($field_settings['available_buckets'])
-			? $field_settings['available_buckets']
-			: array();
+		$current_settings = $this->_get_field_settings($field_settings);
+		$current_settings = $current_settings['member_groups'];
 		
 		// Update the buckets cache from S3.
 		$this->_update_buckets_from_s3();
 		
 		// Load the buckets from the database.
-		if ( ! $buckets = $this->_load_all_buckets_from_db())
+		$buckets = $this->_load_all_buckets_from_db();
+		
+		// Load the member groups from the database.
+		$member_groups = $this->_load_admin_member_groups();
+		
+		// We need buckets and member groups to continue.
+		if ( ! $buckets OR ! $member_groups)
 		{
 			$html .= '<p>' .$LANG->line('no_buckets') .'</p>';
 		}
 		else
 		{
-			foreach ($buckets AS $bucket)
+			// BucketList configuration.
+			$html .= '<div class="defaultBold">BucketList Configuration</div>';
+			$html .= '<div class="itemWrapper">Some instructional information.</div>';
+			
+			$html .= '<table cellpadding="0" cellspacing="0">';
+			$html .= '<thead>';
+			$html .= '<tr>';
+			$html .= "<th>{$LANG->line('member_group')}</th>";
+			$html .= "<th>{$LANG->line('privileges')}</th>";
+			$html .= "<th>{$LANG->line('available_buckets')}</th>";
+			$html .= '</tr>';
+			$html .= '</thead>';
+			$html .= '<tbody>';
+			
+			// Settings are now assigned on a member group basis.
+			$row_count = 0;
+			foreach ($member_groups AS $member_group)
 			{
-				$checked = in_array($bucket['bucket_name'], $saved_buckets) ? 'checked="checked"' : '';
+				// Convenience variables.
+				$group_id = $member_group['group_id'];
+				$group_title = $member_group['group_title'];
 				
-				$html .= '<label>'
-					.'<input '. $checked .' name="available_buckets[]" type="checkbox" value="' .$bucket['bucket_name'] .'">'
-					.$bucket['bucket_name']
-					.'</label>';
+				/**
+				 * Extract the saved settings.
+				 */
+				
+				// Allow uploads by default.
+				$allow_upload = isset($current_settings[$group_id]['allow_upload'])
+					? $current_settings[$group_id]['allow_upload']
+					: 'y';
+					
+				$allow_browse = isset($current_settings[$group_id]['allow_browse'])
+					? $current_settings[$group_id]['allow_browse']
+					: 'y';
+					
+				$restrict_browse = isset($current_settings[$group_id]['restrict_browse'])
+					? $current_settings[$group_id]['restrict_browse']
+					: 'n';
+					
+				$available_buckets = isset($current_settings[$group_id]['available_buckets'])
+					? $current_settings[$group_id]['available_buckets']
+					: array();
+				
+				$html .= '<tr class="' .($row_count++ % 2 ? 'even' : 'odd') .'">';
+				$html .= "<td>{$group_title}</td>";
+				
+				// Privileges.
+				$options = array('y' => 'yes', 'n' => 'no');
+				
+				$html .= '<td class="nested">';
+				$html .= '<table cellpadding="0" cellspacing="0">';
+				$html .= '<tbody>';
+				
+				// - Upload.
+				$html .= '<tr>';
+				$html .= "<td><label>{$LANG->line('allow_upload')}</label></td>";
+				$html .= '<td>' .$sd->select('member_groups[' .$group_id .'][allow_upload]', $allow_upload, $options) .'</td>';
+				$html .= '</tr>';
+				
+				// - Browse.
+				$html .= '<tr>';
+				$html .= "<td><label>{$LANG->line('allow_browse')}</label></td>";
+				$html .= '<td>' .$sd->select('member_groups[' .$group_id .'][allow_browse]', $allow_browse, $options) .'</td>';
+				$html .= '</tr>';
+				
+				// - Restrict to own uploads.
+				$html .= '<tr>';
+				$html .= "<td><label>{$LANG->line('restrict_browse')}</label></td>";
+				$html .= '<td>' .$sd->select('member_groups[' .$group_id .'][restrict_browse]', $restrict_browse, $options) .'</td>';
+				$html .= '</tr>';
+
+				$html .= '</tbody>';
+				$html .= '</table>';
+				$html .= '</td><!-- /privileges -->';
+				
+				// Buckets and folders.
+				$html .= '<td class="nested">';
+				$html .= '<table cellpadding="0" cellspacing="0">';
+				$html .= '<tbody>';
+				
+				foreach ($buckets AS $bucket)
+				{
+					$checked = in_array($bucket['bucket_name'], $available_buckets)
+						? "checked='checked'"
+						: '';
+						
+					$html .= '<tr><td><label>';
+					$html .= "<input {$checked} name='member_groups[{$group_id}][available_buckets][]' type='checkbox' value='{$bucket['bucket_name']}' /> ";
+					$html .= $bucket['bucket_name'];
+					$html .= '</label></td></tr>';
+				}
+				
+				$html .= '</tbody>';
+				$html .= '</table>';
+				$html .= '</td><!-- /buckets -->';
+				
+				$html .= '</tr>';
 			}
+			
+			$html .= '</tbody>';
+			$html .= '</table>';
 		}
 		
 		$html .= '</div>';
 		
-		return array('cell2' => $html);
+		return array(
+			'rows' => array(array($html))
+		);
 	}
 	
 	
@@ -1911,7 +2082,7 @@ _HTML_;
 	public function display_cell_settings($cell_settings = array())
 	{
 		$settings = $this->display_field_settings($cell_settings, TRUE);
-		return isset($settings['cell2']) ? $settings['cell2'] : '';
+		return isset($settings['rows']) ? $settings['rows'][0][0] : '';
 	}
 	
 	

@@ -3,40 +3,90 @@
  *
  * @package		BucketList
  * @author 		Stephen Lewis <addons@experienceinternet.co.uk>
- * @copyright 	Copyright (c) 2009, Stephen Lewis
+ * @copyright 	Copyright (c) 2009-2010, Stephen Lewis
  * @link 		http://experienceinternet.co.uk/bucketlist/
  */
 
-/* Settings page styles */
-.bucketlist-settings label {
-display : block;
-float : left;
-margin-bottom : 3px;
-margin-right : 2.5%;
-width : 45.5%;
-}
+/* --------------------------------------------------------------
+ * Field / cell settings
+ * ------------------------------------------------------------ */
 
+/* =field settings
+ -------------------------------------------------------------*/
 .bucketlist-settings label input[type="checkbox"] {
 margin-right : 5px;
 width : auto !important;
 }
 
-.bucketlist-settings > label:first-child {
-float : none;
-margin-bottom : 5px;
-margin-right : 0;
-width : auto;
+.bucketlist-settings table {
+border-left : 1px solid rgb(204, 204, 204);
+border-right : 1px solid rgb(204, 204, 204);
+border-collapse : collapse;
+width : 100%;
 }
 
-/* Cell settings. */
-.bucketlist-settings.cell label {
-float : none;
-margin-right : 0;
-width : auto;
+.bucketlist-settings > table {margin : 10px 0;}
+
+.bucketlist-settings th,
+.bucketlist-settings td {
+border-bottom : 1px solid rgb(204, 204, 204);
+padding : 7px 19px 7px 9px;
+text-align : left;
+vertical-align : top;
 }
 
+.bucketlist-settings thead th {
+background-color : #BEC3C7;
+background-image : -webkit-gradient(linear, left bottom, left top, from(rgba(0, 0, 0, 0.15)), to(rgba(0, 0, 0, 0)));
+background-image : -moz-linear-gradient(bottom, rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0));
+border-top : 1px solid rgb(204, 204, 204);
+color : #000;
+cursor : pointer;
+padding-right : 9px;
+text-shadow : 0 1px 0 rgba(255, 255, 255, 0.5);
+}
 
-/* Publish / Edit page styles */
+.bucketlist-settings tbody th {width : 35%;}
+
+.bucketlist-settings .odd th,
+.bucketlist-settings .odd td {background : #EEF4F9;}
+
+/* Nested tables */
+.bucketlist-settings .nested {padding : 0 9px;}
+
+.bucketlist-settings .nested table {border : none;}
+
+.bucketlist-settings .nested th,
+.bucketlist-settings .nested td {
+border-style : dotted;
+padding-left : 0;
+padding-right : 0;
+}
+
+.bucketlist-settings .nested table > tbody > tr:last-child th,
+.bucketlist-settings .nested table > tbody > tr:last-child td {border-bottom : none;}
+
+
+/* =cell settings
+ -------------------------------------------------------------*/
+.bucketlist-settings.cell {min-width : 500px;}
+
+.bucketlist-settings.cell table,
+.bucketlist-settings.cell th,
+.bucketlist-settings.cell td {
+border-color : rgba(255, 255, 255, 0.1);
+border-left : none;
+border-right : none;
+}
+
+.bucketlist-settings.cell .odd th,
+.bucketlist-settings.cell .odd td {background-color : transparent;}
+
+
+
+/* --------------------------------------------------------------
+ * Publish / Edit page
+ * ------------------------------------------------------------ */
 .eepro-co-uk .hidden {display : none;}
 
 .eepro-co-uk {
@@ -183,7 +233,7 @@ z-index : 1;
 
 #bucketload-status {
 background : #F4F4F4 url(../img/uploads-bg.jpg) repeat-x 0 100%;
-border-top : 1px solid #CCC;
+border-top : 1px solid rgb(204, 204, 204);
 bottom : -150px;
 box-shadow : 0 -1px 3px rgba(0, 0, 0, 0.15);
 left : 0%;
@@ -219,7 +269,7 @@ background-image : url(../img/icons/spinner.gif);
 background-position : 10px 50%;
 background-repeat : no-repeat;
 border : 1px solid #EEE;
-border-top-color : #CCC;
+border-top-color : rgb(204, 204, 204);
 border-bottom-color : #F4F4F4;
 float : left;
 font : normal 11px/20px "Lucida Grande", Tahoma, Verdana, sans-serif;
