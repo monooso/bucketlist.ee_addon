@@ -406,6 +406,16 @@ $.fn.bucketlist = function(options) {
 				$form.find('#request').remove();
 				$form.find('#upload_id').remove();
 				
+				/**
+				 * TRICKY:
+				 * We need to clear the file value, otherwise if somebody attempts
+				 * to upload the same file again, the 'change' event won't fire.
+				 *
+				 * Changing the value here does not trigger the change event.
+				 */
+				
+				$file.val('');
+				
 			}, 1);
 			
 		}; /* fileChange */
