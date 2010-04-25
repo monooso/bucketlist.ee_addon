@@ -14,7 +14,7 @@
 /* =bl-wrapper
  -------------------------------------------------------------*/
 .bl-wrapper {
-background : rgb(238, 244, 249) url(../img/finder-bg.gif) repeat 0 0;
+background : transparent url(../img/finder-bg.gif) repeat 0 0;
 border : 1px solid rgb(202, 208, 213);
 color : rgb(51, 51, 51);
 font : normal 11px/20px "Lucida Grande", Tahoma, Verdana, sans-serif;
@@ -25,6 +25,24 @@ min-height : 20px;
 overflow-x : hidden;
 overflow-y : auto;
 position : relative;
+width : 100%;
+}
+
+/* Custom scrollbars, just for kicks. */
+.bl-wrapper::-webkit-scrollbar {
+background : none;
+height : 0;
+width : 6px;
+}
+
+.bl-wrapper::-webkit-scrollbar-track {display : none;}
+
+/* The left and right arrows */
+.bl-wrapper::-webkit-scrollbar-button {display : none;}
+
+.bl-wrapper::-webkit-scrollbar-thumb {
+-webkit-border-radius : 3px;
+background-color : rgba(0, 0, 0, 0.15);
 }
 
 .bl-wrapper ul {
@@ -121,18 +139,14 @@ padding : 0 !important;
 width : 25%;
 }
 
-.bucketlist .bl-wrapper {
+td.bucketlist .bl-wrapper {
 background : none;
 border : none;
 margin-bottom : 0;
-width : 100%;
 }
 
-.bucketlist.tableCellTwo .bl-alert,
-.bucketlist.tableCellTwo .bl-error,
-.bucketlist.tableCellTwo .bl-empty {background-color : rgb(255, 255, 255);}
-
-.bucketlist .bl-wrapper a {
+td.bucketlist .bl-wrapper a {
+color : rgb(51, 51, 51);
 font-size : 11px;
 line-height : 20px;
 }
@@ -316,6 +330,8 @@ font-weight : bold;
  * SETTINGS
  * ------------------------------------------------------------ */
 
+/* =bl-settings
+ -------------------------------------------------------------*/
 .bl-settings table {
 border-left : 1px solid rgb(204, 204, 204);
 border-right : 1px solid rgb(204, 204, 204);
@@ -331,7 +347,7 @@ text-align : left;
 vertical-align : top;
 }
 
-.bl-settings td {border-left : 1px dotted rgb(204, 204, 204);}
+.bl-settings td + td {border-left : 1px dotted rgb(204, 204, 204);}
 
 .bl-settings thead th {
 background-color : rgb(190, 195, 199);
@@ -339,7 +355,6 @@ background-image : -webkit-gradient(linear, left bottom, left top, from(rgba(0, 
 background-image : -moz-linear-gradient(bottom, rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0));
 border-top : 1px solid rgb(204, 204, 204);
 color : rgb(0, 0, 0);
-cursor : pointer;
 padding-right : 9px;
 text-shadow : 0 1px 0 rgba(255, 255, 255, 0.5);
 }
@@ -353,6 +368,7 @@ text-shadow : 0 1px 0 rgba(255, 255, 255, 0.5);
 background-image : url(../img/finder-bg-alt.gif);
 border : none;
 margin-bottom : 0;
+padding-bottom : 1px;
 }
 
 .bl-settings .odd .bl-wrapper {background-image : url(../img/finder-bg.gif);}
@@ -363,7 +379,7 @@ position : relative;
 }
 
 /* The buckets are not currently clickable. */
-.bl-wrapper li span {
+.bl-settings li span {
 background : transparent url(../img/icons/setting-bucket-closed.png) no-repeat 6px 50%;
 color : rgb(51, 51, 51);
 display : block;
@@ -372,8 +388,9 @@ text-decoration : none;
 }
 
 .bl-settings li > a {
-background-position : 3px 1px;
+background-position : 3px 0;
 height : 16px;
+outline : none;
 padding : 0 3px;
 position : absolute;
 text-indent : -9999em;
@@ -382,7 +399,7 @@ width : 16px;
 }
 
 .bl-settings .bl-disabled a,
-.bl-settings a.bl-disabled {background-position : -27px 1px !important;}
+.bl-settings a.bl-disabled {background-position : -27px 0 !important;}
 
 .bl-settings .bl-disabled span {
 background-position : -2474px 50%;
@@ -405,4 +422,42 @@ right : 50px;
 }
 
 
+/* =bl-ffmatrix
+ -------------------------------------------------------------*/
+.bl-ffmatrix {min-width : 400px;}
 
+.bl-ffmatrix table {border : none;}
+
+.bl-ffmatrix tbody {
+border-left : 1px solid rgb(29, 35, 38);
+border-right : 1px solid rgb(29, 35, 38);
+}
+
+.bl-ffmatrix th,
+.bl-ffmatrix td,
+.bl-ffmatrix td + td {border-color : rgb(29, 35, 38);}
+
+.bl-ffmatrix thead th {
+background-color : rgb(61, 68, 71);
+border-top-color : rgb(86, 93, 96);
+color : rgb(153, 153, 153);
+text-shadow : 0 -1px 0 rgba(0, 0, 0, 0.85);
+}
+
+.bl-ffmatrix th,
+.bl-ffmatrix td {background : rgb(44, 50, 53);}
+
+.bl-ffmatrix .odd th,
+.bl-ffmatrix .odd td {background : rgb(34, 40, 43);}
+
+.bl-ffmatrix .bl-wrapper,
+.bl-ffmatrix .odd .bl-wrapper {background-image : none;}
+
+.bl-ffmatrix li span {color : rgb(153, 153, 153);}
+
+.bl-ffmatrix li > a {background-position : 3px -16px;}
+
+.bl-ffmatrix .bl-disabled a,
+.bl-ffmatrix a.bl-disabled {background-position : -27px -16px !important;}
+
+.bl-ffmatrix .bl-disabled span {color : rgb(70, 70, 70);}
