@@ -187,13 +187,13 @@ $.fn.bucketlist = function(options) {
 		
 		
 		/**
-		 * Handles the Amazon response.
+		 * Handles the upload response.
 		 *
 		 * @access	private
 		 * @param 	object		e		The jQuery event object.
 		 * @return 	void
 		 */
-		function amazonResponse(e) {
+		function uploadResponse(e) {
 			
 			// Shorthand.
 			var $iframe = $(e.target);
@@ -344,7 +344,7 @@ $.fn.bucketlist = function(options) {
 
 			e.target.src = "javascript: false;";
 			
-		}; /* amazonResponse */
+		}; /* uploadResponse */
 		
 		
 		/**
@@ -388,7 +388,7 @@ $.fn.bucketlist = function(options) {
 				$form.attr('target', iframeId).submit();
 				
 				// Add a callback handler to the iframe.
-				$iframe.bind('load', amazonResponse);
+				$iframe.bind('load', uploadResponse);
 				
 				// Make a note of the uploadId, and its location.
 				uploads[uploadId] = $form.closest('ul');

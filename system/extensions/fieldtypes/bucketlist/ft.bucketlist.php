@@ -64,7 +64,6 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 */
 	public $default_site_settings = array(
 		'access_key_id'		=> '',
-		'allow_upload'		=> 'y',
 		'secret_access_key'	=> '',
 		'cache_duration' 	=> '3600',		// 60 minutes
 		'use_ssl' 			=> 'n',
@@ -2171,11 +2170,6 @@ _HTML_;
 			'y' => 'yes',
 			'n' => 'no'
 		);
-			
-		$ret .= $sd->row(array(
-			$sd->label('allow_upload', 'allow_upload_hint'),
-			$sd->select('allow_upload', $settings['allow_upload'], $options)
-		));
 			
 		$ret .= $sd->row(array(
 			$sd->label('custom_url', 'custom_url_hint'),
