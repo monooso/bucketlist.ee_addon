@@ -587,15 +587,6 @@ $.fn.bucketlist = function(options) {
 				},
 				function(htmlFragment) {
 					
-					// Remove the initial "loading" message.
-					if (initialLoad == true) {
-						$('.bl-initial-load', $this).fadeOut(function() {
-							$(this).remove();
-						});
-						
-						initialLoad = false;
-					}
-					
 					// Remove the loading animation.
 					$li.find('.bl-start').html('');
 					$li.removeClass('bl-wait').append(htmlFragment);
