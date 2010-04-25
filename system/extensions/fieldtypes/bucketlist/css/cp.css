@@ -8,92 +8,17 @@
  */
 
 /* --------------------------------------------------------------
- * Field / cell settings
+ * BUCKETLIST TREE
  * ------------------------------------------------------------ */
 
-/* =field settings
+/* =bl-wrapper
  -------------------------------------------------------------*/
-.bucketlist-settings label input[type="checkbox"] {
-margin-right : 5px;
-width : auto !important;
-}
-
-.bucketlist-settings table {
-border-left : 1px solid rgb(204, 204, 204);
-border-right : 1px solid rgb(204, 204, 204);
-border-collapse : collapse;
-width : 100%;
-}
-
-.bucketlist-settings > table {margin : 10px 0;}
-
-.bucketlist-settings th,
-.bucketlist-settings td {
-border-bottom : 1px solid rgb(204, 204, 204);
-padding : 7px 19px 7px 9px;
-text-align : left;
-vertical-align : top;
-}
-
-.bucketlist-settings thead th {
-background-color : #BEC3C7;
-background-image : -webkit-gradient(linear, left bottom, left top, from(rgba(0, 0, 0, 0.15)), to(rgba(0, 0, 0, 0)));
-background-image : -moz-linear-gradient(bottom, rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0));
-border-top : 1px solid rgb(204, 204, 204);
-color : #000;
-cursor : pointer;
-padding-right : 9px;
-text-shadow : 0 1px 0 rgba(255, 255, 255, 0.5);
-}
-
-.bucketlist-settings tbody th {width : 35%;}
-
-.bucketlist-settings .odd th,
-.bucketlist-settings .odd td {background : #EEF4F9;}
-
-/* Nested tables */
-.bucketlist-settings .nested {padding : 0 9px;}
-
-.bucketlist-settings .nested table {border : none;}
-
-.bucketlist-settings .nested th,
-.bucketlist-settings .nested td {
-border-style : dotted;
-padding-left : 0;
-padding-right : 0;
-}
-
-.bucketlist-settings .nested table > tbody > tr:last-child th,
-.bucketlist-settings .nested table > tbody > tr:last-child td {border-bottom : none;}
-
-
-/* =cell settings
- -------------------------------------------------------------*/
-.bucketlist-settings.cell {min-width : 500px;}
-
-.bucketlist-settings.cell table,
-.bucketlist-settings.cell th,
-.bucketlist-settings.cell td {
-border-color : rgba(255, 255, 255, 0.1);
-border-left : none;
-border-right : none;
-}
-
-.bucketlist-settings.cell .odd th,
-.bucketlist-settings.cell .odd td {background-color : transparent;}
-
-
-
-/* --------------------------------------------------------------
- * Publish / Edit page
- * ------------------------------------------------------------ */
-.eepro-co-uk .hidden {display : none;}
-
-.eepro-co-uk {
-background : #EEF4F9 url(../img/finder-bg.gif) repeat 0 0;
-border : 1px solid #CAD0D5;
-color : #333;
+.bl-wrapper {
+background : rgb(238, 244, 249) url(../img/finder-bg.gif) repeat 0 0;
+border : 1px solid rgb(202, 208, 213);
+color : rgb(51, 51, 51);
 font : normal 11px/20px "Lucida Grande", Tahoma, Verdana, sans-serif;
+height : 100%;
 margin-bottom : 1em;
 max-height : 200px;
 min-height : 20px;
@@ -102,102 +27,55 @@ overflow-y : auto;
 position : relative;
 }
 
-.eepro-co-uk .error,
-.eepro-co-uk .alert {
-background-color : #EEF4F9;
-background-position : 6px 4px;
-background-repeat : no-repeat;
-margin : 0;
-padding : 2px 5px 2px 28px;
-}
-
-.eepro-co-uk .alert {background-image : url(../img/icons/exclamation-hard.png);}
-
-.bucketlist-ui .empty {
-background-color : #EEF4F9;
-background-position : 6px 1px;
-background-repeat : no-repeat;
-}
-
-.eepro-co-uk .error,
-.bucketlist-ui .empty {
-background-image : url(../img/icons/exclamation-soft.png);
-color : #666;
-padding-left : 28px;
-}
-
-.bucketlist-ui .initial-load {
-background : transparent url(../img/icons/spinner.gif) no-repeat 6px 1px;
-left : 0;
-line-height : 20px;
-margin : 0;
-padding-left : 28px;
-position : absolute;
-top : 0;
-}
-
-.bucketlist-ui .bucketlist-tree {
+.bl-wrapper ul {
 list-style : none;
 margin : 0;
 padding : 0;
 }
 
-.bucketlist-ui .bucketlist-tree li {margin-bottom : 0;}
+.bl-wrapper ul ul {margin-left : 18px;}
 
-.bucketlist-ui .bucketlist-tree ul {margin-left : 18px;}
+.bl-wrapper li {margin-bottom : 0;}
 
-.bucketlist-ui .bucketlist-tree a {
+html > body .bl-wrapper li {*zoom : 1;}		/* IE7 fix */
+
+.bl-wrapper li a {
 background-position : 6px 1px;
 background-repeat : no-repeat;
-color : #333;
+color : rgb(51, 51, 51);
 display : block;
 padding-left : 28px;
 text-decoration : none;
 }
 
-.bucketlist-ui .bucketlist-tree .selected > a {
-background-color : #3875D7;
-color : #FFF;
+.bl-wrapper .bl-selected > a {
+background-color : rgb(56, 117, 215);
+color : rgb(255, 255, 255);
 text-shadow : 0 1px 0 rgba(0, 0, 0, 0.35);
 }
 
-/* FF Matrix styles. */
-td.bucketlist {
-background : transparent url(../img/finder-bg.gif) repeat 0 0;
-padding : 0 !important;
-width : 25%;
-}
 
-.bucketlist .eepro-co-uk {
-border : none;
-margin-bottom : 0;
-width : 100%;
-}
-
-.bucketlist .eepro-co-uk {background : none;}
-
-.bucketlist.tableCellTwo .eepro-co-uk .alert,
-.bucketlist.tableCellTwo .eepro-co-uk .error,
-.bucketlist.tableCellTwo .eepro-co-uk .empty {background-color : #FFF;}
-
-.bucketlist .bucketlist-ui a {
-font-size : 11px;
-line-height : 20px;
-}
-
-/* Upload styles. */
-.bucketlist-ui .bucketlist-tree .upload {
-border-bottom : 1px dotted #B1B6D2;
+/* =bl-upload
+ -------------------------------------------------------------*/
+.bl-upload {
+border-bottom : 1px dotted rgb(117, 182, 210);
 margin-right : 5px;
 margin-top : -1px;
 position : relative;
 }
 
-html > body .bucketlist-ui .bucketlist-tree li {*zoom : 1;}		/* IE7 fix */
+.bl-upload:last-child {border-bottom : none;}
 
-.bucketlist-ui .bucketlist-tree .upload:last-child {border-bottom : none;}
+.bl-upload a {
+background-image : url(../img/icons/file-upload.png);
+background-position : 6px 2px;
+color : rgb(102, 102, 102);
+}
 
-.bucketlist-ui .bucketload {
+
+/* =bl-upload-form
+ -------------------------------------------------------------*/
+.bl-upload-form {
 cursor : pointer;
 display : block;
 height : 20px;
@@ -205,16 +83,16 @@ overflow : hidden;
 width : 100%;
 }
 
-html > body .bucketlist-ui .bucketload {*position : relative;}	/* IE7 overflow fix */
+html > body .bl-upload-form {*position : relative;}	/* IE7 overflow fix */
 
-.bucketlist-ui .bucketload form {
+.bl-upload-form form {
 margin : 0;
 padding : 0;
 height : 100%;
 }
 
-.bucketlist-ui .bucketload input[type='file'] {
-border : none;					/* Otherwise Opera ignore opacity */
+.bl-upload-form input[type='file'] {
+border : none;					/* Otherwise Opera ignores opacity */
 cursor : pointer;
 filter : alpha(opacity='0');	/* God I hate you IE */
 height : 100%;
@@ -224,27 +102,167 @@ width : auto;
 z-index : 2;
 }
 
-.bucketlist-ui .bucketload a {
+.bl-upload-form a {
 left : 0;
 position : absolute;
 top : 0;
 z-index : 1;
 }
 
-#bucketload-status {
+
+
+/* --------------------------------------------------------------
+ * FF MATRIX
+ * ------------------------------------------------------------ */
+
+td.bucketlist {
+background : transparent url(../img/finder-bg.gif) repeat 0 0;
+padding : 0 !important;
+width : 25%;
+}
+
+.bucketlist .bl-wrapper {
+background : none;
+border : none;
+margin-bottom : 0;
+width : 100%;
+}
+
+.bucketlist.tableCellTwo .bl-alert,
+.bucketlist.tableCellTwo .bl-error,
+.bucketlist.tableCellTwo .bl-empty {background-color : rgb(255, 255, 255);}
+
+.bucketlist .bl-wrapper a {
+font-size : 11px;
+line-height : 20px;
+}
+
+
+/* --------------------------------------------------------------
+ * FILE ICONS
+ * ------------------------------------------------------------ */
+
+.bl-directory > a {background-image : url(../img/icons/folder-closed.png);}
+
+.bl-expanded > a {background-image : url(../img/icons/folder-open.png);}
+
+.bl-file > a {background-image : url(../img/icons/file-generic.png);}
+
+.bl-wait > a {background-image : url(../img/icons/spinner.gif);}
+
+.bl-ext-3gp > a, .bl-ext-avi > a,
+.bl-ext-mov > a, .bl-ext-mp4 > a,
+.bl-ext-mpg > a, .bl-ext-mpeg > a,
+.bl-ext-wmv > a {background-image : url(../img/icons/file-film.png);}
+
+.bl-ext-afp > a, .bl-ext-afpa > a,
+.bl-ext-asp > a, .bl-ext-aspx > a,
+.bl-ext-c > a, .bl-ext-cfm > a,
+.bl-ext-cgi > a, .bl-ext-cpp > a,
+.bl-ext-css > a, .bl-ext-h > a,
+.bl-ext-htm > a, .bl-ext-html > a,
+.bl-ext-jar > a, .bl-ext-lasso > a,
+.bl-ext-markdown > a, .bl-ext-php > a,
+.bl-ext-rb > a, .bl-ext-rbx > a,
+.bl-ext-rhtml > a, .bl-ext-ruby > a,
+.bl-ext-shtml > a, .bl-ext-vb > a,
+.bl-ext-xml > a {background-image : url(../img/icons/file-code.png);}
+
+.bl-ext-bmp > a, .bl-ext-gif > a,
+.bl-ext-jpg > a, .bl-ext-jpeg > a,
+.bl-ext-pcx > a, .bl-ext-png > a,
+.bl-ext-tif > a, .bl-ext-tiff {background-image : url(../img/icons/file-image.png);}
+
+.bl-ext-aiff > a, .bl-ext-m4a > a,
+.bl-ext-m4p > a, .bl-ext-mp3 > a,
+.bl-ext-ogg > a, .bl-ext-wav > a {background-image : url(../img/icons/file-music.png);}
+
+.bl-ext-bat > a, .bl-ext-com > a,
+.bl-ext-exe > a {background-image : url(../img/icons/file-application.png);}
+
+.bl-ext-fla > a,	.bl-ext-swf > a {background-image : url(../img/icons/file-flash.png);}
+
+.bl-ext-js > a, .bl-ext-pl > a,
+.bl-ext-py > a, .bl-ext-sql > a {background-image : url(../img/icons/file-script.png);}
+
+.bl-ext-log > a, .bl-ext-pages > a,
+.bl-ext-txt > a {background-image : url(../img/icons/file-text.png);}
+
+.bl-ext-pdf > a {background-image : url(../img/icons/file-pdf.png);}
+
+.bl-ext-ppt > a {background-image : url(../img/icons/file-ppt.png);}
+
+.bl-ext-psd > a {background-image : url(../img/icons/file-psd.png);}
+
+.bl-ext-doc > a {background-image : url(../img/icons/file-doc.png);}
+
+.bl-ext-csv > a, .bl-ext-xls > a {background-image : url(../img/icons/file-xls.png);}
+
+.bl-ext-zip > a {background-image : url(../img/icons/file-zip.png);}
+
+
+
+/* --------------------------------------------------------------
+ * ODDMENTS
+ * ------------------------------------------------------------ */
+
+.bl-hidden {display : none;}
+
+.bl-error,
+.bl-alert {
+background-color : rgb(238, 244, 249);
+background-position : 6px 4px;
+background-repeat : no-repeat;
+margin : 0;
+padding : 2px 5px 2px 28px;
+}
+
+.bl-alert {background-image : url(../img/icons/exclamation-hard.png);}
+
+.bl-empty {
+background-position : 6px 1px;
+background-repeat : no-repeat;
+}
+
+.bl-error,
+.bl-empty {
+background-image : url(../img/icons/exclamation-soft.png);
+color : rgb(102, 102, 102);
+padding-left : 28px;
+}
+
+/*
+.bl-initial-load {
+background : transparent url(../img/icons/spinner.gif) no-repeat 6px 1px;
+left : 0;
+line-height : 20px;
+margin : 0;
+padding-left : 28px;
+position : absolute;
+top : 0;
+}
+*/
+
+
+
+/* --------------------------------------------------------------
+ * UPLOAD STATUS
+ * ------------------------------------------------------------ */
+
+#bl-status {
+-moz-box-shadow : 0 -1px 3px rgba(0, 0, 0, 0.15);
+-webkit-box-shadow : 0 -1px 3px rgba(0, 0, 0, 0.15);
 background : #F4F4F4 url(../img/uploads-bg.jpg) repeat-x 0 100%;
 border-top : 1px solid rgb(204, 204, 204);
 bottom : -150px;
 box-shadow : 0 -1px 3px rgba(0, 0, 0, 0.15);
 left : 0%;
--moz-box-shadow : 0 -1px 3px rgba(0, 0, 0, 0.15);
 position : fixed;
--webkit-box-shadow : 0 -1px 3px rgba(0, 0, 0, 0.15);
 width : 100%;
 z-index : 2147483583;		/* Maximum z-index supported by Opera. */
 }
 
-#bucketload-status ul {
+#bl-status ul {
 border-top : 1px solid #FFF;
 list-style : none;
 margin : 0;
@@ -252,7 +270,7 @@ min-height : 42px;
 padding : 10px 0 10px 10px;
 }
 
-#bucketload-status ul:after {
+#bl-status ul:after {
 clear : both;
 display : block;
 height : 0;
@@ -260,10 +278,12 @@ visibility : hidden;
 content : ".";
 }
 
-html > body #bucketload-status ul {*zoom : 1;}	/* IE7 :after fix */
+html > body #bl-status ul {*zoom : 1;}	/* IE7 :after fix */
 
 /* Ditch the rgba border colours to keep IE7 happy. And then ditched the rgba background-color too. */
-#bucketload-status li {
+#bl-status li {
+-moz-border-radius : 3px;
+-webkit-border-radius : 3px;
 background-color : #F2F2F2;
 background-image : url(../img/icons/spinner.gif);
 background-position : 10px 50%;
@@ -275,112 +295,114 @@ float : left;
 font : normal 11px/20px "Lucida Grande", Tahoma, Verdana, sans-serif;
 height : 20px;
 margin : 0 10px 0 0;
--moz-border-radius : 3px;
 overflow : hidden;
 padding : 10px 10px 10px 30px;
 text-shadow : 0 1px 0 rgba(255, 255, 255, 0.5);
 white-space : nowrap;
--webkit-border-radius : 3px;
 }
 
-#bucketload-status .complete {background-image : url(../img/icons/tick.png);}
+#bl-status .bl-complete {background-image : url(../img/icons/tick.png);}
 
-#bucketload-status .error {
-background-color : #FFF;
-color : #900;
+#bl-status .bl-error {
+background-color : rgb(255, 255, 255);
+color : rgb(153, 0, 0);
 background-image : url(../img/icons/exclamation-hard.png);
 font-weight : bold;
 }
 
 
-/* File tree icons. */
-.bucketlist-ui .bucketlist-tree .directory > a {background-image : url(../img/icons/folder-closed.png);}
 
-.bucketlist-ui .bucketlist-tree .expanded > a {background-image : url(../img/icons/folder-open.png);}
+/* --------------------------------------------------------------
+ * SETTINGS
+ * ------------------------------------------------------------ */
 
-.bucketlist-ui .bucketlist-tree .file > a {background-image : url(../img/icons/file-generic.png);}
-
-.bucketlist-ui .bucketlist-tree .wait > a {background-image : url(../img/icons/spinner.gif);}
-
-.bucketlist-ui .bucketlist-tree .upload a {
-background-image : url(../img/icons/file-upload.png);
-background-position : 6px 2px;
-color : #666;
+.bl-settings table {
+border-left : 1px solid rgb(204, 204, 204);
+border-right : 1px solid rgb(204, 204, 204);
+border-collapse : collapse;
+width : 100%;
 }
 
-.bucketlist-ui .bucketlist-tree .ext_3gp > a,
-.bucketlist-ui .bucketlist-tree .ext_avi > a,
-.bucketlist-ui .bucketlist-tree .ext_mov > a,
-.bucketlist-ui .bucketlist-tree .ext_mp4 > a,
-.bucketlist-ui .bucketlist-tree .ext_mpg > a,
-.bucketlist-ui .bucketlist-tree .ext_mpeg > a,
-.bucketlist-ui .bucketlist-tree .ext_wmv > a {background-image : url(../img/icons/file-film.png);}
+.bl-settings th,
+.bl-settings td {
+border-bottom : 1px solid rgb(204, 204, 204);
+padding : 7px 19px 7px 9px;
+text-align : left;
+vertical-align : top;
+}
 
-.bucketlist-ui .bucketlist-tree .ext_afp > a,
-.bucketlist-ui .bucketlist-tree .ext_afpa > a,
-.bucketlist-ui .bucketlist-tree .ext_asp > a,
-.bucketlist-ui .bucketlist-tree .ext_aspx > a,
-.bucketlist-ui .bucketlist-tree .ext_c > a,
-.bucketlist-ui .bucketlist-tree .ext_cfm > a,
-.bucketlist-ui .bucketlist-tree .ext_cgi > a,
-.bucketlist-ui .bucketlist-tree .ext_cpp > a,
-.bucketlist-ui .bucketlist-tree .ext_css > a,
-.bucketlist-ui .bucketlist-tree .ext_h > a,
-.bucketlist-ui .bucketlist-tree .ext_htm > a,
-.bucketlist-ui .bucketlist-tree .ext_html > a,
-.bucketlist-ui .bucketlist-tree .ext_jar > a,
-.bucketlist-ui .bucketlist-tree .ext_lasso > a,
-.bucketlist-ui .bucketlist-tree .ext_markdown > a,
-.bucketlist-ui .bucketlist-tree .ext_php > a,
-.bucketlist-ui .bucketlist-tree .ext_rb > a,
-.bucketlist-ui .bucketlist-tree .ext_rbx > a,
-.bucketlist-ui .bucketlist-tree .ext_rhtml > a,
-.bucketlist-ui .bucketlist-tree .ext_ruby > a,
-.bucketlist-ui .bucketlist-tree .ext_shtml > a,
-.bucketlist-ui .bucketlist-tree .ext_vb > a,
-.bucketlist-ui .bucketlist-tree .ext_xml > a {background-image : url(../img/icons/file-code.png);}
+.bl-settings td {border-left : 1px dotted rgb(204, 204, 204);}
 
-.bucketlist-ui .bucketlist-tree .ext_bmp > a,
-.bucketlist-ui .bucketlist-tree .ext_gif > a,
-.bucketlist-ui .bucketlist-tree .ext_jpg > a,
-.bucketlist-ui .bucketlist-tree .ext_jpeg > a,
-.bucketlist-ui .bucketlist-tree .ext_pcx > a,
-.bucketlist-ui .bucketlist-tree .ext_png > a,
-.bucketlist-ui .bucketlist-tree .ext_tif > a,
-.bucketlist-ui .bucketlist-tree .ext_tiff {background-image : url(../img/icons/file-image.png);}
+.bl-settings thead th {
+background-color : rgb(190, 195, 199);
+background-image : -webkit-gradient(linear, left bottom, left top, from(rgba(0, 0, 0, 0.15)), to(rgba(0, 0, 0, 0)));
+background-image : -moz-linear-gradient(bottom, rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0));
+border-top : 1px solid rgb(204, 204, 204);
+color : rgb(0, 0, 0);
+cursor : pointer;
+padding-right : 9px;
+text-shadow : 0 1px 0 rgba(255, 255, 255, 0.5);
+}
 
-.bucketlist-ui .bucketlist-tree .ext_aiff > a,
-.bucketlist-ui .bucketlist-tree .ext_m4a > a,
-.bucketlist-ui .bucketlist-tree .ext_m4p > a,
-.bucketlist-ui .bucketlist-tree .ext_mp3 > a,
-.bucketlist-ui .bucketlist-tree .ext_ogg > a,
-.bucketlist-ui .bucketlist-tree .ext_wav > a {background-image : url(../img/icons/file-music.png);}
+.bl-settings tbody th {width : 35%;}
 
-.bucketlist-ui .bucketlist-tree .ext_bat > a,
-.bucketlist-ui .bucketlist-tree .ext_com > a,
-.bucketlist-ui .bucketlist-tree .ext_exe > a {background-image : url(../img/icons/file-application.png);}
+.bl-settings .odd th,
+.bl-settings .odd td {background : rgb(238, 244, 249);}
 
-.bucketlist-ui .bucketlist-tree .ext_fla > a,
-.bucketlist-ui .bucketlist-tree .ext_swf > a {background-image : url(../img/icons/file-flash.png);}
+.bl-settings .bl-wrapper {
+background-image : url(../img/finder-bg-alt.gif);
+border : none;
+margin-bottom : 0;
+}
 
-.bucketlist-ui .bucketlist-tree .ext_js > a,
-.bucketlist-ui .bucketlist-tree .ext_pl > a,
-.bucketlist-ui .bucketlist-tree .ext_py > a,
-.bucketlist-ui .bucketlist-tree .ext_sql > a {background-image : url(../img/icons/file-script.png);}
+.bl-settings .odd .bl-wrapper {background-image : url(../img/finder-bg.gif);}
 
-.bucketlist-ui .bucketlist-tree .ext_log > a,
-.bucketlist-ui .bucketlist-tree .ext_pages > a,
-.bucketlist-ui .bucketlist-tree .ext_txt > a {background-image : url(../img/icons/file-text.png);}
+.bl-settings li {
+padding-right : 80px;
+position : relative;
+}
 
-.bucketlist-ui .bucketlist-tree .ext_pdf > a {background-image : url(../img/icons/file-pdf.png);}
+/* The buckets are not currently clickable. */
+.bl-wrapper li span {
+background : transparent url(../img/icons/setting-bucket-closed.png) no-repeat 6px 50%;
+color : rgb(51, 51, 51);
+display : block;
+padding-left : 28px;
+text-decoration : none;
+}
 
-.bucketlist-ui .bucketlist-tree .ext_ppt > a {background-image : url(../img/icons/file-ppt.png);}
+.bl-settings li > a {
+background-position : 3px 1px;
+height : 16px;
+padding : 0 3px;
+position : absolute;
+text-indent : -9999em;
+top : 1px;
+width : 16px;
+}
 
-.bucketlist-ui .bucketlist-tree .ext_psd > a {background-image : url(../img/icons/file-psd.png);}
+.bl-settings .bl-disabled a,
+.bl-settings a.bl-disabled {background-position : -27px 1px !important;}
 
-.bucketlist-ui .bucketlist-tree .ext_doc > a {background-image : url(../img/icons/file-doc.png);}
+.bl-settings .bl-disabled span {
+background-position : -2474px 50%;
+color : rgb(170, 170, 170);
+}
 
-.bucketlist-ui .bucketlist-tree .ext_csv > a,
-.bucketlist-ui .bucketlist-tree .ext_xls > a {background-image : url(../img/icons/file-xls.png);}
+.bl-settings .bl-toggle-show {
+background-image : url(../img/icons/setting-show.png);
+right : 0;
+}
 
-.bucketlist-ui .bucketlist-tree .ext_zip > a {background-image : url(../img/icons/file-zip.png);}
+.bl-settings .bl-toggle-upload {
+background-image : url(../img/icons/setting-upload.png);
+right : 25px;
+}
+
+.bl-settings .bl-toggle-all-files {
+background-image : url(../img/icons/setting-all-files.png);
+right : 50px;
+}
+
+
+

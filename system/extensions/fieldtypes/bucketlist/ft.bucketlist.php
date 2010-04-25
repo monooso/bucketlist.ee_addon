@@ -109,13 +109,22 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	private $_namespace = '';
 	
 	/**
-	 * Basic member information. Used when processing an AJAX call,
-	 * because the $SESS->userdata variable hasn't been populated.
+	 * Basic member information.
 	 *
 	 * @access	private
 	 * @var 	array
 	 */
 	private $_member_data = array();
+	
+	/** 
+	 * Saved field settings. Note that we can't use the variable
+	 * $_field_settings, as that overwrites a private FieldFrame
+	 * property, and breaks everything.
+	 *
+	 * @access	private
+	 * @var 	array
+	 */
+	private $_saved_field_settings = array();
 	
 	/**
 	 * Demo mode doesn't actually upload the files to Amazon S3.
@@ -254,17 +263,35 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	
 	
 	/**
-	 * Builds an array of field settings, based on the supplied saved
-	 * settings, and the site-wide settings.
+	 * Extracts the field settings for the specified member group from
+	 * the $this->_saved_field_settings array.
 	 *
 	 * @access	private
-	 * @param	array		$saved_settings		Previously-saved field settings.
+	 * @param	string		$group_id		The member group ID.
 	 * @return	array
 	 */
-	private function _get_field_settings($saved_settings = array())
+	private function _get_group_field_settings($group_id = '')
 	{
-		$default_settings = array_merge(array('member_groups' => array()), $this->site_settings);
-		return array_merge($default_settings, $saved_settings);
+		$group_settings = array();
+		
+		if ( ! $group_id
+			OR ! $this->_saved_field_settings
+			OR ! isset($this->_saved_field_settings['member_groups'][$group_id]))
+		{
+			return $group_settings;
+		}
+		
+		foreach ($this->_saved_field_settings['member_groups'][$group_id] AS $path_settings)
+		{
+			$group_settings[$path_settings['path']] = array(
+				'all_files'		=> $path_settings['all_files'],
+				'allow_upload'	=> $path_settings['allow_upload'],
+				'path'			=> $path_settings['path'],
+				'show'			=> $path_settings['show']
+			);
+		}
+		
+		return $group_settings;
 	}
 	
 	
@@ -299,32 +326,28 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	
 	
 	/**
-	 * Retrieves the member info. Required because when sessions_start runs,
-	 * the Session object hasn't been properly initialised.
+	 * Retrieves the member data. Called from sessions_start.
 	 *
 	 * @access	private
-	 * @return	void
+	 * @return	array
 	 */
-	private function _load_member_info()
+	private function _load_member_data()
 	{
 		global $DB, $IN, $SESS;
 		
 		if ($this->_member_data)
 		{
-			return;
+			return $this->_member_data;
 		}
 		
-		$member = array(
+		$member_data = array(
 			'group_id' => '0',
 			'member_id' => '0'
 		);
 		
 		if (isset($SESS->userdata['member_id']) && isset($SESS->userdata['group_id']))
 		{
-			$member = array(
-				'group_id'	=> $SESS->userdata['group_id'],
-				'member_id'	=> $SESS->userdata['member_id']
-			);
+			$member_data = $SESS->userdata;
 		}
 		else
 		{
@@ -364,7 +387,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 				
 				if ($db_member->num_rows == 1)
 				{
-					$member = array(
+					$member_data = array(
 						'group_id'	=> $db_member->row['group_id'],
 						'member_id'	=> $db_member->row['member_id']
 					);
@@ -372,7 +395,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 			}
 		}
 		
-		$this->_member_data = $member;
+		return $member_data;
 	}
 	
 	
@@ -1188,9 +1211,16 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		$LANG->fetch_language_file($this->_lower_class);
 		
 		// Determine which buckets are available.
-		$available_buckets = isset($settings['member_groups'][$SESS->userdata['group_id']]['available_buckets'])
-			? $settings['member_groups'][$SESS->userdata['group_id']]['available_buckets']
-			: array();
+		$group_settings = $this->_get_group_field_settings($this->_member_data['group_id']);
+		
+		$available_buckets = array();
+		foreach ($group_settings AS $path_settings)
+		{
+			if ($path_settings['show'] == 'y')
+			{
+				$available_buckets[] = $path_settings['path'];
+			}
+		}
 		
 		/**
 		 * Note that we're explicitly loading the buckets from the database.
@@ -1209,15 +1239,15 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		
 		if ( ! $buckets = $this->_load_all_buckets_from_db($available_buckets))
 		{
-			$html = '<ul class="bucketlist-tree"><li class="empty">' .$LANG->line('no_buckets') .'</li></ul>';
+			$html = '<p class="bl-alert">' .$LANG->line('no_buckets') .'</p>';
 		}
 		else
 		{
-			$html = '<ul class="bucketlist-tree">';
+			$html = '<ul>';
 		
 			foreach ($buckets AS $bucket)
 			{
-				$html .= '<li class="directory bucket collapsed">';
+				$html .= '<li class="bl-directory bl-bucket bl-collapsed">';
 				
 				/**
 				 * Note the addition of a forward slash after the bucket name.
@@ -1234,6 +1264,25 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		
 		return $html;
 	}
+	
+	
+	/**
+	 * Returns the default member group bucket or folder settings.
+	 *
+	 * @access	private
+	 * @return	array
+	 */
+	private function _get_default_path_settings()
+	{
+		return array(
+			'all_files'		=> 'y',
+			'allow_upload'	=> 'y',
+			'show'			=> 'y'
+		);
+	}
+
+
+	
 	
 	
 	/**
@@ -1270,24 +1319,26 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		// Be reasonable, or get out.
 		if ( ! $tree_path OR ! $field_id)
 		{
-			$html .= '<ul class="bucketlist-tree" style="display : none;">';
-			$html .= '<li class="empty">' .$LANG->line('invalid_path') .'</li>';
+			$html .= '<ul style="display : none;">';
+			$html .= '<li class="bl-empty">' .$LANG->line('invalid_path') .'</li>';
 			$html .= '</ul>';
 			
 			return $html;
 		}
-		
-		// Retrieve the field or cell settings.
-		$field_settings = $this->_load_field_settings($field_id);
-		
-		// Determine the member's privileges.
-		$member_privileges = $this->_extract_member_privileges($field_settings);
 		
 		// Extract the bucket name from the tree path.
 		$bucket_name = substr($tree_path, 0, strpos($tree_path, '/'));
 		
 		// Extract the item path (the full tree path, minus the bucket).
 		$item_path = substr($tree_path, strlen($bucket_name) + 1);
+		
+		// Determine the member group settings.
+		$group_settings = $this->_get_group_field_settings($this->_member_data['group_id']);
+		
+		// Do we have settings for this bucket / path?
+		$path_settings = array_key_exists($bucket_name, $group_settings)
+			? $group_settings[$bucket_name]
+			: $this->_get_default_path_settings();
 		
 		// Retrieve the bucket items.
 		if ($items = $this->_load_bucket_items($bucket_name, $field_id))
@@ -1296,7 +1347,8 @@ class Bucketlist extends Fieldframe_Fieldtype {
 			 * Is the member permitted to see files that he hasn't personally uploaded?
 			 * If not, we've got some filtering to do.
 			 */
-			if ($member_privileges['restrict_browse'])
+			
+			if ($path_settings['all_files'] != 'y')
 			{
 				$member_files = array();
 				
@@ -1347,12 +1399,12 @@ class Bucketlist extends Fieldframe_Fieldtype {
 					// Add items to our folders or files lists.
 					if ($f['item_is_folder'] == 'y')
 					{
-						$folders_html .= "<li class='directory collapsed'>
+						$folders_html .= "<li class='bl-collapsed bl-directory'>
 							<a href='#' rel='{$f['item_path']}'>{$item_name}</a></li>";
 					}
 					else
 					{
-						$files_html .= "<li class='file ext_{$f['item_extension']}'>
+						$files_html .= "<li class='bl-ext-{$f['item_extension']} bl-file'>
 							<a href='#' rel='{$f['item_path']}'>{$item_name}</a></li>";
 					}
 				}
@@ -1362,19 +1414,19 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		}
 		
 		// If we have no items to display, and uploading is not allowed, display an 'empty' message.
-		if ( ! $html && ! $member_privileges['allow_upload'])
+		if ( ! $html && $path_settings['allow_upload'] != 'y')
 		{
-			$html .= '<li class="empty">' .$LANG->line('no_items') .'</li></ul>';
+			$html .= '<li class="bl-empty">' .$LANG->line('no_items') .'</li></ul>';
 		}
 		
 		// Include upload link?
-		if ($member_privileges['allow_upload'])
+		if ($path_settings['allow_upload'] == 'y')
 		{
-			$html = '<li class="upload"><a href="#">' .$LANG->line('upload_here') .'</a></li>' .$html;
+			$html = '<li class="bl-upload"><a href="#">' .$LANG->line('upload_here') .'</a></li>' .$html;
 		}
 		
 		// Wrap everything in a list.
-		$html = '<ul class="bucketlist-tree" style="display : none;">' .$html .'</ul>';
+		$html = '<ul style="display : none;">' .$html .'</ul>';
 		
 		return $html;
 		
@@ -1428,6 +1480,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	
 	/**
 	 * Loads the field or cell settings from the database, and parses them into an array.
+	 * Called from sessions_start.
 	 *
 	 * @access	private
 	 * @param	string		$full_field_id		The ID of the field or cell, in the form field_id_99[1][2].
@@ -1560,6 +1613,14 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	{
 		global $LANG, $PREFS;
 		
+		if ( ! isset($LANG))
+		{
+			require PATH_CORE .'core.language' .EXT;
+			$LANG = new Language();
+		}
+		
+		$LANG->fetch_language_file($this->_lower_class);
+		
 		// Fine, be like that, see what I care.
 		if ( ! is_array($message_data))
 		{
@@ -1635,13 +1696,25 @@ _HTML_;
 		
 		$LANG->fetch_language_file($this->_lower_class);
 		
-		
 		// Retrieve the upload ID.
 		$upload_id = $IN->GBL('upload_id', 'POST');
 		
+		/**
+		 * The path has been on a round trip from this class, contained in
+		 * a rel attribute, and then an input:hidden form element.
+		 *
+		 * During this entire glorious journey, the JS has not meddled with
+		 * the encoding one iota, just so that we can easily decode it here.
+		 */
 		
-		// Paranoia. Get out early.
-		if ($this->site_settings['allow_upload'] != 'y')
+		$full_path = rawurldecode($IN->GBL('path', 'POST'));
+		$bucket_and_path = $this->_split_bucket_and_path_string($full_path, TRUE);
+		
+		if ( ! $bucket_and_path['bucket']
+			OR ! isset($this->_member_data['group_id'])
+			OR ! $group_settings = $this->_get_group_field_settings($this->_member_data['group_id'])
+			OR ! array_key_exists($bucket_and_path['bucket'], $group_settings)
+			OR $group_settings[$bucket_and_path['bucket']]['allow_upload'] != 'y')
 		{
 			$status = 'failure';
 			$message = $LANG->line('upload_failure');
@@ -1656,22 +1729,8 @@ _HTML_;
 			return FALSE;
 		}
 		
-		
-		/**
-		 * The path has been on a round trip from this class, contained in
-		 * a rel attribute, and then an input:hidden form element.
-		 *
-		 * During this entire glorious journey, the JS has not meddled with
-		 * the encoding one iota, just so that we can easily decode it here.
-		 */
-		
-		$full_path = rawurldecode($IN->GBL('path', 'POST'));
-		$bucket_and_path = $this->_split_bucket_and_path_string($full_path, TRUE);
-		
-		
 		// Upload the file to S3.
-		if ( ! $bucket_and_path['bucket']
-			OR ! $this->_upload_file_to_s3('file', $bucket_and_path['bucket'], $bucket_and_path['item_path']))
+		if ( ! $this->_upload_file_to_s3('file', $bucket_and_path['bucket'], $bucket_and_path['item_path']))
 		{
 			$status = 'failure';
 			$message = $LANG->line('upload_failure');
@@ -1723,7 +1782,7 @@ _HTML_;
 		else
 		{
 			// Create the HTML for the new list item.
-			$list_item = '<li class="file ext_' .strtolower($item_info['item_extension']) .'">
+			$list_item = '<li class="bl-ext-' .strtolower($item_info['item_extension']) .' bl-file">
 				<a href="#" rel="' .rawurlencode($bucket_and_path['bucket'] .'/'
 				.$item_info['item_path']) .'">' .$item_info['item_name'] .'</a></li>';
 			
@@ -1866,7 +1925,7 @@ _HTML_;
 		
 		$this->_site_id 	= $DB->escape_str($PREFS->ini('site_id'));
 		$this->_class 		= get_class($this);
-		$this->_lower_class 	= strtolower($this->_class);
+		$this->_lower_class = strtolower($this->_class);
 		$this->_namespace	= 'sl';
 		
 		
@@ -1922,8 +1981,9 @@ _HTML_;
 		
 		if ($IN->GBL('ajax', 'POST') == 'y' && $IN->GBL('addon_id', 'POST') == $this->_lower_class)
 		{
-			// Load the member info.
-			$this->_load_member_info();
+			// Set the class variables.
+			$this->_saved_field_settings = $this->_load_field_settings($IN->GBL('field_id', 'POST'));
+			$this->_member_data = $this->_load_member_data();
 			
 			// We're either being summoned by the file tree, or the uploader. Which is it?
 			$request = $IN->GBL('request', 'POST');
@@ -1966,18 +2026,19 @@ _HTML_;
 			return '';
 		}
 		
+		// Set the class variables.
+		$this->_saved_field_settings = $field_settings;
+		$this->_member_data = $SESS->userdata;
+		
 		// Retrieve the correct language file.
 		$LANG->fetch_language_file($this->_lower_class);
 		
-		/**
-		 * Add some JavaScript and CSS to the header.
-		 */
-		
+		// Include CSS and JS.
 		$this->include_js('js/cp.js');
 		$this->include_js('js/jquery.bucketlist.js');
 		$this->include_css('css/cp.css');
 		
-		// Language strings, for use in the JS.
+		// Define some language strings for use in the JS.
 		$upload_failure = str_replace(array('"', '"'), '', $LANG->line('upload_failure'));
 		$confirm_exit	= addslashes($LANG->line('confirm_exit'));
 		
@@ -1993,13 +2054,13 @@ _HTML_;
 		 * Now on with the real work.
 		 */
 		
-		// Open the .eepro-co-uk wrapper element.
-		$html = '<div class="eepro-co-uk">';
+		// Open the wrapper element.
+		$html = '<div class="bl-wrapper">';
 		
 		// Can't do much without the S3 credentials.
 		if ( ! $this->_check_s3_credentials())
 		{
-			$html .= '<p class="alert">' .$LANG->line('missing_credentials'). '</p>';
+			$html .= '<p class="bl-alert">' .$LANG->line('missing_credentials'). '</p>';
 		}
 		else
 		{
@@ -2023,24 +2084,18 @@ _HTML_;
 				
 				$SESS->cache[$this->_namespace][$this->_lower_class]['updated_from_s3'] = TRUE;
 			}
-			
-			// Open the UI wrapper.
-			$html .= '<div class="bucketlist-ui">';
 
 			// Retrieve the tree root UI (i.e. the buckets).
 			$html .= $this->_build_root_ui($field_settings);
 			
-			// Close the UI wrapper.
-			$html .= '</div>';
-			
 			// Output a hidden field containing the field's value.
-			$html .= '<input class="hidden" id="' .$field_name .'" name="' .$field_name
+			$html .= '<input class="bl-hidden" id="' .$field_name .'" name="' .$field_name
 				.'" type="hidden" value="' .rawurlencode($field_data) .'" />';
 		
 		}
 		
-		// Close the .eepro-co-uk wrapper element.
-		$html .= '</div>';
+		// Close the wrapper element.
+		$html .= '</div><!-- /.bucketlist -->';
 		
 		return $html;
 		
@@ -2154,16 +2209,16 @@ _HTML_;
 	 */
 	public function display_field_settings($field_settings = array(), $is_cell = FALSE)
 	{
-		global $DB, $LANG;
+		global $DB, $LANG, $SESS;
 		
-		$sd = new Fieldframe_SettingsDisplay();
+		// Set the class variables.
+		$this->_saved_field_settings = $field_settings;
+		$this->_member_data = $SESS->userdata;
 		
-		$html = '<div class="bucketlist-settings '
-			.($is_cell ? 'cell' : '')
-			.'">';
-			
-		$current_settings = $this->_get_field_settings($field_settings);
-		$current_settings = $current_settings['member_groups'];
+		// Include the settings JS.
+		$this->include_js('js/settings.js');
+		
+		$html = '<div class="bl-settings ' .($is_cell ? 'bl-ffmatrix' : '') .'">';
 		
 		// Update the buckets cache from S3.
 		$this->_update_buckets_from_s3();
@@ -2189,94 +2244,82 @@ _HTML_;
 			$html .= '<thead>';
 			$html .= '<tr>';
 			$html .= "<th>{$LANG->line('member_group')}</th>";
-			$html .= "<th>{$LANG->line('privileges')}</th>";
-			$html .= "<th>{$LANG->line('available_buckets')}</th>";
+			$html .= "<th>{$LANG->line('settings')}</th>";
 			$html .= '</tr>';
 			$html .= '</thead>';
 			$html .= '<tbody>';
 			
-			// Settings are now assigned on a member group basis.
 			$row_count = 0;
+			$path_count = 0;
+			
+			// Settings are now assigned on a member group basis.
 			foreach ($member_groups AS $member_group)
 			{
-				// Convenience variables.
 				$group_id = $member_group['group_id'];
 				$group_title = $member_group['group_title'];
+				$group_settings = $this->_get_group_field_settings($group_id);
 				
-				/**
-				 * Extract the saved settings.
-				 */
-				
-				// Allow uploads by default.
-				$allow_upload = isset($current_settings[$group_id]['allow_upload'])
-					? $current_settings[$group_id]['allow_upload']
-					: 'y';
-					
-				$allow_browse = isset($current_settings[$group_id]['allow_browse'])
-					? $current_settings[$group_id]['allow_browse']
-					: 'y';
-					
-				$restrict_browse = isset($current_settings[$group_id]['restrict_browse'])
-					? $current_settings[$group_id]['restrict_browse']
-					: 'n';
-					
-				$available_buckets = isset($current_settings[$group_id]['available_buckets'])
-					? $current_settings[$group_id]['available_buckets']
-					: array();
-				
+				// Open member group row.
 				$html .= '<tr class="' .($row_count++ % 2 ? 'even' : 'odd') .'">';
 				$html .= "<td>{$group_title}</td>";
 				
-				// Privileges.
-				$options = array('y' => 'yes', 'n' => 'no');
-				
-				$html .= '<td class="nested">';
-				$html .= '<table cellpadding="0" cellspacing="0">';
-				$html .= '<tbody>';
-				
-				// - Upload.
-				$html .= '<tr>';
-				$html .= "<td><label>{$LANG->line('allow_upload')}</label></td>";
-				$html .= '<td>' .$sd->select('member_groups[' .$group_id .'][allow_upload]', $allow_upload, $options) .'</td>';
-				$html .= '</tr>';
-				
-				// - Browse.
-				$html .= '<tr>';
-				$html .= "<td><label>{$LANG->line('allow_browse')}</label></td>";
-				$html .= '<td>' .$sd->select('member_groups[' .$group_id .'][allow_browse]', $allow_browse, $options) .'</td>';
-				$html .= '</tr>';
-				
-				// - Restrict to own uploads.
-				$html .= '<tr>';
-				$html .= "<td><label>{$LANG->line('restrict_browse')}</label></td>";
-				$html .= '<td>' .$sd->select('member_groups[' .$group_id .'][restrict_browse]', $restrict_browse, $options) .'</td>';
-				$html .= '</tr>';
-
-				$html .= '</tbody>';
-				$html .= '</table>';
-				$html .= '</td><!-- /privileges -->';
-				
-				// Buckets and folders.
-				$html .= '<td class="nested">';
-				$html .= '<table cellpadding="0" cellspacing="0">';
-				$html .= '<tbody>';
+				// Settings.
+				$html .= '<td style="padding : 0"><div class="bl-wrapper">';
+				$html .= '<ul>';
 				
 				foreach ($buckets AS $bucket)
 				{
-					$checked = in_array($bucket['bucket_name'], $available_buckets)
-						? "checked='checked'"
-						: '';
+					$path_settings = array_key_exists($bucket['bucket_name'], $group_settings)
+						? $group_settings[$bucket['bucket_name']]
+						: $this->_get_default_path_settings();
+					
+					$html .= '<li class="bl-directory'
+						.($path_settings['show'] != 'y' ? ' bl-disabled' : '')
+						.'">';
+					
+					// UI.
+					$html .= '<span title="' .$bucket['bucket_name'] .'">' .$bucket['bucket_name'] .'</span>';
+					
+					$html .= '<a class="bl-toggle-show'
+						.($path_settings['show'] != 'y' ? ' bl-disabled' : '')
+						.'" href="#" title="' .$LANG->line('toggle_show') .'">'
+						.$LANG->line('toggle_show') .'</a>';
 						
-					$html .= '<tr><td><label>';
-					$html .= "<input {$checked} name='member_groups[{$group_id}][available_buckets][]' type='checkbox' value='{$bucket['bucket_name']}' /> ";
-					$html .= $bucket['bucket_name'];
-					$html .= '</label></td></tr>';
+					$html .= '<a class="bl-toggle-upload'
+						.($path_settings['allow_upload'] != 'y' ? ' bl-disabled' : '')
+						.'" href="#" title="' .$LANG->line('toggle_upload') .'">'
+						.$LANG->line('toggle_upload') .'</a>';
+						
+					$html .= '<a class="bl-toggle-all-files'
+						.($path_settings['all_files'] != 'y' ? ' bl-disabled' : '')
+						.'" href="#" title="' .$LANG->line('toggle_all_files') .'">'
+						.$LANG->line('toggle_all_files') .'</a>';
+					
+					// Hidden fields.
+					$html .= '<input
+						name="member_groups[' .$group_id .'][' .$path_count .'][path]"
+						type="hidden" value="' .$bucket['bucket_name'] .'" />';
+					
+					$html .= '<input
+						name="member_groups[' .$group_id .'][' .$path_count .'][show]"
+						type="hidden" value="' .$path_settings['show'] .'" />';
+						
+					$html .= '<input
+						name="member_groups[' .$group_id .'][' .$path_count .'][allow_upload]"
+						type="hidden" value="' .$path_settings['allow_upload'] .'" />';
+						
+					$html .= '<input
+						name="member_groups[' .$group_id .'][' .$path_count .'][all_files]"
+						type="hidden" value="' .$path_settings['all_files'] .'" />';
+					
+					$html .= '</li>';
+					$path_count++;
 				}
 				
-				$html .= '</tbody>';
-				$html .= '</table>';
-				$html .= '</td><!-- /buckets -->';
+				$html .= '</ul>';
+				$html .= '</div></td>';
 				
+				// Close member group row.
 				$html .= '</tr>';
 			}
 			

@@ -40,11 +40,10 @@ $L = array(
 
 // Field settings.
 'member_group'			=> 'Member Group',
-'privileges'			=> 'Privileges',
-'available_buckets'		=> 'Available Buckets',
-'allow_upload'			=> 'Allow upload',
-'allow_browse'			=> 'Allow browsing',
-'restrict_browse'		=> 'Only display member&rsquo;s own uploads',
+'settings'				=> 'Settings',
+'toggle_show'			=> 'Show / hide',
+'toggle_upload'			=> 'Allow / disallow upload',
+'toggle_all_files'		=> 'Show all files / show only my uploads',
 
 'missing_credentials'	=> 'Please enter your Amazon S3 account details on the extension settings screen.',
 'no_buckets'			=> 'There are no available buckets for this account.',

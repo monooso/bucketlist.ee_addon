@@ -80,8 +80,7 @@ $.fn.bucketlist = function(options) {
 		
 		
 		/**
-		 * Fixes *other* IE7 FF Matrix fields on the page. Not entirely happy
-		 * that the code belongs here, but here's the deal...
+		 * Fixes *other* IE7 FF Matrix fields on the page. Here's the deal...
 		 *
 		 * When any non-FF Matrix BucketList tree is clicked, all the FF Matrix
 		 * bucket trees disappear in IE7. *punches Bill Gates in the kidneys*
@@ -129,7 +128,7 @@ $.fn.bucketlist = function(options) {
 		 */
 		function initializeUpload($root, path) {
 			
-			var $uploadLink = $root.find('.upload a');
+			var $uploadLink = $root.find('.bl-upload a');
 			
 			if ($uploadLink.length == 0) {
 				// Nothing more we can do here.
@@ -137,7 +136,7 @@ $.fn.bucketlist = function(options) {
 			}
 
 			// Create the element wrapper, and append the file element.
-			$uploadLink.wrap('<div class="bucketload"></div>');
+			$uploadLink.wrap('<div class="bl-upload-form"></div>');
 			
 			// Create the form.
 			var formDecl = '<form accept-encoding="utf-8" action="' + localOptions.uploadFormAction + '"\
@@ -147,8 +146,11 @@ $.fn.bucketlist = function(options) {
 			// Add the file field.
 			$('<input name="file" type="file">').appendTo($form).bind('change', fileChange);
 			
-			// Add the hidden 'path' field.
+			// Add the hidden 'path' and 'field_id' fields.
+			fieldId = $root.closest('.bl-wrapper').find('> :hidden').attr('id');
+			
 			$form.append('<input id="path" name="path" type="hidden" value="' + path + '">');
+			$form.append('<input id="field_id" name="field_id" type="hidden" value="' + fieldId + '">');
 			
 			// Apend the form to the div.
 			$uploadLink.parent().append($form);	
@@ -288,14 +290,14 @@ $.fn.bucketlist = function(options) {
 					 */
 					
 					// Does the branch have any files at all?
-					if ($branchRoot.children('.file').length == 0) {
+					if ($branchRoot.children('.bl-file').length == 0) {
 						$listItem.appendTo($branchRoot);
 						
 					} else {
 						
 						var $successor = false;
 						
-						$branchRoot.find('> .file a').each(function(index) {
+						$branchRoot.find('> .bl-file a').each(function(index) {
 							if ($(this).text().toLowerCase() > listItemFileName) {
 								$successor = $(this);
 								return false;		// Stop the loop.
@@ -316,8 +318,8 @@ $.fn.bucketlist = function(options) {
 					});
 					
 					// Is there a currently-selected file? If not, automatically select the new arrival.
-					if ($branchRoot.closest('.eepro-co-uk').find('li.selected').length == 0) {
-						$listItem.addClass('selected');
+					if ($branchRoot.closest('.bl-wrapper').find('.bl-selected').length == 0) {
+						$listItem.addClass('bl-selected');
 					}
 					
 					// Insert the item, and animate its arrival.
@@ -376,7 +378,7 @@ $.fn.bucketlist = function(options) {
 			$form.append('<input id="upload_id" name="upload_id" type="hidden" value="' + uploadId + '">');
 			
 			// Create a new iframe for the upload.
-			var iframeId = 'bucketload-iframe-' + uploadId;
+			var iframeId = 'bl-iframe-' + uploadId;
 			var $iframe = $('<iframe id="' + iframeId + '" name="' + iframeId + '"></iframe>').appendTo('body').hide();
 			
 						
@@ -389,7 +391,7 @@ $.fn.bucketlist = function(options) {
 				$iframe.bind('load', amazonResponse);
 				
 				// Make a note of the uploadId, and its location.
-				uploads[uploadId] = $form.closest('ul.bucketlist-tree');
+				uploads[uploadId] = $form.closest('ul');
 
 				// Call the onStart handler.
 				localOptions.onUploadStart({fileName : $file.val(), uploadId : uploadId});
@@ -447,9 +449,9 @@ $.fn.bucketlist = function(options) {
 			
 			fix_ie7_matrices();		// Wait for the slow child.
 			
-			if ($target.parent().hasClass('directory')) {
+			if ($target.parent().hasClass('bl-directory')) {
 
-				if ($target.parent().hasClass('collapsed')) {
+				if ($target.parent().hasClass('bl-collapsed')) {
 
 					/**
 					 * Expand the tree. Only one branch of the tree can be
@@ -463,7 +465,7 @@ $.fn.bucketlist = function(options) {
 						$target.parent().parent().find('ul').slideUp({duration : 500});
 					}
 					
-					$target.parent().parent().find('.directory').removeClass('expanded').addClass('collapsed');
+					$target.parent().parent().find('.bl-directory').removeClass('bl-expanded').addClass('bl-collapsed');
 					
 					// Unbind any click handlers, and remove the branch.
 					$target.parent().find('li a').unbind('click');
@@ -474,7 +476,7 @@ $.fn.bucketlist = function(options) {
 						path	: $target.eq(0).attr('rel')
 					});
 
-					$target.parent().removeClass('collapsed').addClass('expanded');
+					$target.parent().removeClass('bl-collapsed').addClass('bl-expanded');
 
 				} else {
 					// Collapse the tree.
@@ -485,16 +487,16 @@ $.fn.bucketlist = function(options) {
 						$target.parent().find('ul').slideUp({duration : 500});
 					}
 					
-					$target.parent().removeClass('expanded').addClass('collapsed');
+					$target.parent().removeClass('bl-expanded').addClass('bl-collapsed');
 				}
 
 			} else {
 				
 				// Is this item already selected?
-				if ($target.parent().hasClass('selected')) {
+				if ($target.parent().hasClass('bl-selected')) {
 					
 					// Deselect the target element.
-					$target.parent().removeClass('selected');
+					$target.parent().removeClass('bl-selected');
 					
 					// Clear the target value.
 					field_value = '';
@@ -503,12 +505,12 @@ $.fn.bucketlist = function(options) {
 					
 					// Deselect any other selected elements.
 					$target
-						.closest('.eepro-co-uk')
-						.find('li.selected')
-						.removeClass('selected');
+						.closest('.bl-wrapper')
+						.find('.bl-selected')
+						.removeClass('bl-selected');
 						
 					// Select the target element.
-					$target.parent().addClass('selected');
+					$target.parent().addClass('bl-selected');
 					
 					// Record the target value.
 					field_value = $target.attr('rel');
@@ -516,7 +518,7 @@ $.fn.bucketlist = function(options) {
 				}
 				
 				// Update the hidden form field.
-				$target.closest('.eepro-co-uk').find('> input:hidden').val(field_value);
+				$target.closest('.bl-wrapper').find('> input:hidden').val(field_value);
 				
 				// Callback.
 				localOptions.onFileClick({$target : $target, fileName : $target.attr('rel')});
@@ -568,10 +570,10 @@ $.fn.bucketlist = function(options) {
 			var path	= decodeURIComponent(localParams.path);
 			
 			// Determine the field that this item belongs to.
-			field_id = $li.closest('.eepro-co-uk').find('> input:hidden').attr('id');
+			fieldId = $li.closest('.bl-wrapper').find('> :hidden').attr('id');
 			
 			// Hold up, butt.
-			$li.addClass('wait');
+			$li.addClass('bl-wait');
 
 			// Load the bucket contents via AJAX.
 			$.post(
@@ -580,14 +582,14 @@ $.fn.bucketlist = function(options) {
 					addon_id	: 'bucketlist',
 					ajax		: 'y',
 					dir			: path,
-					field_id	: field_id,
+					field_id	: fieldId,
 					request		: 'tree'
 				},
 				function(htmlFragment) {
 					
 					// Remove the initial "loading" message.
 					if (initialLoad == true) {
-						$('.initial-load', $this).fadeOut(function() {
+						$('.bl-initial-load', $this).fadeOut(function() {
 							$(this).remove();
 						});
 						
@@ -595,8 +597,8 @@ $.fn.bucketlist = function(options) {
 					}
 					
 					// Remove the loading animation.
-					$li.find('start').html('');
-					$li.removeClass('wait').append(htmlFragment);
+					$li.find('.bl-start').html('');
+					$li.removeClass('bl-wait').append(htmlFragment);
 					
 					// Add the click handlers to all branch links.
 					$('li a', $li).bind('click', function(e) {
@@ -637,7 +639,7 @@ $.fn.bucketlist = function(options) {
 							pathToLoad = pathToLoad.substring(0, pathToLoad.length - slash.length);
 						}
 						
-						treeClick($li.parents('.eepro-co-uk').find('[rel="' + pathToLoad + '"]'));
+						treeClick($li.closest('.bl-wrapper').find('[rel="' + pathToLoad + '"]'));
 						initialFileStep++;
 					}
 				}); /* $.get */

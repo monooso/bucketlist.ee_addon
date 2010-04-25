@@ -2,12 +2,11 @@
  * JavaScript for the BucketList FieldFrame field type.
  *
  * @package		BucketList
- * @author 		Stephen Lewis (http://eepro.co.uk/)
- * @copyright 	Copyright (c) 2009, Stephen Lewis
- * @link 		http://eepro.co.uk/bucketlist/
+ * @author 		Stephen Lewis <addons@experienceinternet.co.uk>
+ * @copyright 	Copyright (c) 2009-2010, Stephen Lewis
+ * @link 		http://experienceinternet.co.uk/bucketlist/
  */
 
-jQuery.noConflict();
 jQuery(document).ready(function($) {
 	
 	// Is the downloads status bar visible?
@@ -23,7 +22,7 @@ jQuery(document).ready(function($) {
 	function displayStatusBar(showStatus) {
 
 		// Enough with the typing.
-		$statusBar = $('#bucketload-status');
+		$statusBar = $('#bl-status');
 
 		// Where are we heading to?
 		targetBottom = (showStatus === false) ? -$statusBar.outerHeight(true) * 1.5 : 0;
@@ -42,16 +41,16 @@ jQuery(document).ready(function($) {
 	 * @param 	object		params		listItem, message, status, uploadId.
 	 */
 	function uploadSuccess(params) {
-		$('li#bucketload-status-' + params['uploadId'])
-			.removeClass('active')
-			.addClass('complete')
+		$('li#bl-status-' + params['uploadId'])
+			.removeClass('bl-active')
+			.addClass('bl-complete')
 			.html(params.message);
 
 		setTimeout(removeUpload, 1500);
 		
 		// Removes the uploaded item from the status bar.
 		function removeUpload() {
-			$item = $('#bucketload-status-' + params['uploadId']);
+			$item = $('#bl-status-' + params['uploadId']);
 
 			// Hide the item.
 			$item.animate({width : 'hide', opacity : 0}, 500, function() {
@@ -78,9 +77,9 @@ jQuery(document).ready(function($) {
 			params.message = languageStrings.uploadFailureGeneric;
 		}
 
-		$('#bucketload-status li#bucketload-status-' + params.uploadId)
-			.removeClass('active')
-			.addClass('error')
+		$('#bl-status li#bl-status-' + params.uploadId)
+			.removeClass('bl-active')
+			.addClass('bl-error')
 			.html(params.message);
 	}
 
@@ -97,8 +96,8 @@ jQuery(document).ready(function($) {
 		fileName = params.fileName.replace(/.*(\/|\\)/, '');
 
 		// Create the new item, append it to the list, and fade it in.
-		$li = $('<li class="active" id="bucketload-status-' + params.uploadId + '">' + fileName + '</li>');
-		$li.appendTo('#bucketload-status ul').hide().fadeIn('fast');
+		$li = $('<li class="bl-active" id="bl-status-' + params.uploadId + '">' + fileName + '</li>');
+		$li.appendTo('#bl-status ul').hide().fadeIn('fast');
 
 		// If the status bar is currently hidden, show it.
 		if (statusActive == false) {
@@ -115,7 +114,7 @@ jQuery(document).ready(function($) {
 	 * @param 	object		e		jQuery event object.
 	 */
 	function handleSubmit(e) {
-		pendingUploads = $('#bucketload-status li').length;
+		pendingUploads = $('#bl-status li').length;
 
 		if (typeof(pendingUploads) == 'number' && pendingUploads > 0) {
 			return confirm(languageStrings.confirmExit);
@@ -132,7 +131,7 @@ jQuery(document).ready(function($) {
 	 * @param 	object		e		Native browser event object (event not bound using jQuery)
 	 */
 	function handleNavigate(e) {
-		pendingUploads = $('#bucketload-status li').length;
+		pendingUploads = $('#bl-status li').length;
 
 		if (typeof(pendingUploads) == 'number' && pendingUploads > 0) {
 			return languageStrings.confirmExit;
@@ -165,7 +164,7 @@ jQuery(document).ready(function($) {
 	 */
 	
 	// Create the upload status bar.
-	$('body').append('<div id="bucketload-status"><ul></ul></div>');
+	$('body').append('<div id="bl-status"><ul></ul></div>');
 	
 	// Hide the status bar, in case it isn't already.
 	displayStatusBar(false);
@@ -179,8 +178,8 @@ jQuery(document).ready(function($) {
 	$.fn.bucketlist.defaults.onUploadSuccess	= uploadSuccess;
 	
 	// Initialise non-matrix file trees.
-	$('.ff-ft > .eepro-co-uk > .bucketlist-ui').each(function() {
-		$(this).bucketlist({initialFile : $(this).next(':hidden').val()});
+	$('.ff-ft > .bl-wrapper').each(function() {
+		$(this).bucketlist({initialFile : $(this).find(':hidden').val()});
 	});
 	
 	// Initialise matrix file trees.
@@ -205,11 +204,9 @@ jQuery(document).ready(function($) {
 		$.fn.ffMatrix.onDisplayCell.bucketlist = function(td, matrix) {
 			$td = $(td);
 			
-			if ($td.hasClass('.bucketlist-ready') == false) {
-				$td.addClass('bucketlist-ready').find('.bucketlist-ui').each(function() {
-					$(this).bucketlist({
-						initialFile : $(this).parents('.eepro-co-uk').find('input:hidden').val()
-					});
+			if ($td.hasClass('.bl-ready') == false) {
+				$td.addClass('bl-ready').find('.bl-wrapper').each(function() {
+					$(this).bucketlist({initialFile : $(this).find(':hidden').val()});
 				});
 			}
 		}
