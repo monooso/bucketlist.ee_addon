@@ -1499,8 +1499,8 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		if (preg_match('/field_id_([0-9]+)(\[([0-9]+)\]\[([0-9]+)\])?/i', $full_field_id, $matches))
 		{
 			$field_id 	= $matches[1];
-			$row_id		= isset($matches[2]) ? $matches[2] : '';
-			$cell_id 	= isset($matches[3]) ? $matches[3] : '';
+			$row_id		= isset($matches[3]) ? $matches[3] : '';
+			$col_id 	= isset($matches[4]) ? $matches[4] : '';
 		}
 		
 		if ($field_id)
@@ -1517,11 +1517,10 @@ class Bucketlist extends Fieldframe_Fieldtype {
 				$settings = $this->_unserialize($db_settings->row['ff_settings']);
 				
 				// If this is a cell, extract the cell settings.
-				if ($row_id && $cell_id
-					&& isset($settings[$row_id])
-					&& isset($settings[$row_id][$cell_id]))
+				if ($row_id !== '' && $col_id !== ''
+					&& isset($settings['cols'][$col_id]['settings']))
 				{
-					$settings = $settings[$row_id][$cell_id];
+					$settings = $settings['cols'][$col_id]['settings'];
 				}
 			}
 		}
@@ -1613,14 +1612,6 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	{
 		global $LANG, $PREFS;
 		
-		if ( ! isset($LANG))
-		{
-			require PATH_CORE .'core.language' .EXT;
-			$LANG = new Language();
-		}
-		
-		$LANG->fetch_language_file($this->_lower_class);
-		
 		// Fine, be like that, see what I care.
 		if ( ! is_array($message_data))
 		{
@@ -1638,9 +1629,9 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		$message_data = array_merge($default_data, $message_data);
 		
 		// Tidy see.
-		foreach ($message_data AS $field)
+		foreach ($message_data AS $key => $val)
 		{
-			$message_data[$field] = htmlspecialchars($message_data[$field], ENT_COMPAT, 'UTF-8');
+			$message_data[$key] = htmlspecialchars($val, ENT_COMPAT, 'UTF-8');
 		}
 
 		/**
