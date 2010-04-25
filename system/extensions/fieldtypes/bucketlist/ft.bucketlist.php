@@ -2010,9 +2010,11 @@ _HTML_;
 		$LANG->fetch_language_file($this->_lower_class);
 		
 		// Include CSS and JS.
-		$this->include_js('js/cp.js');
-		$this->include_js('js/jquery.bucketlist.js');
-		$this->include_css('css/cp.css');
+		$timestamp = time();
+		
+		$this->include_js('js/cp.js?' .$timestamp);
+		$this->include_js('js/jquery.bucketlist.js?' .$timestamp);
+		$this->include_css('css/cp.css?' .$timestamp);
 		
 		// Define some language strings for use in the JS.
 		$upload_failure = str_replace(array('"', '"'), '', $LANG->line('upload_failure'));
@@ -2185,9 +2187,6 @@ _HTML_;
 		// Set the class variables.
 		$this->_saved_field_settings = $field_settings;
 		$this->_member_data = $SESS->userdata;
-		
-		// Include the settings JS.
-		$this->include_js('js/settings.js');
 		
 		$html = '<div class="bl-settings ' .($is_cell ? 'bl-ffmatrix' : '') .'">';
 		
