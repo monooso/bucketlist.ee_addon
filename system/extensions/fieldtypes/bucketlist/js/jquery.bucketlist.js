@@ -235,7 +235,7 @@ $.fn.bucketlist = function(options) {
 			var status		= $status.length == 1 	? $status.text() 	: '';
 			var message		= $message.length == 1 	? $message.text() 	: '';
 			var uploadId	= $uploadId.length == 1 ? $uploadId.text() 	: '';
-			var listItem	= $listItem.length== 1 	? $listItem.html() 	: '';
+			var listItem	= $listItem.length == 1 ? $listItem.html() 	: '';
 
 			var params = {
 				listItem	: listItem,
@@ -266,10 +266,7 @@ $.fn.bucketlist = function(options) {
 					: localOptions.onUploadFailure(params);
 				
 				/**
-				 * Do we have a list item, and a branch? Some uploaded files will
-				 * be duplicates. At the moment we just ignore those, although a
-				 * visual indication that the file has been 'replaced' would be
-				 * nice.
+				 * Do we have a list item, and a branch?
 				 */
 				
 				if (uploads[uploadId] != 'undefined' && listItem != '') {
@@ -280,50 +277,57 @@ $.fn.bucketlist = function(options) {
 					// Create the (orphan) list item.
 					var $listItem = $(listItem).hide();
 					
-					// What is the list item's file name?
-					var listItemFileName = $listItem.find('a').text().toLowerCase();
-					
-					/**
-					 * Determine the point at which to insert the new item (alphabetically).
-					 * Admitted defeat after trying to achieve this with $.map. May return
-					 * to it, due to unhealthy stubborness.
-					 */
-					
-					// Does the branch have any files at all?
-					if ($branchRoot.children('.bl-file').length == 0) {
-						$listItem.appendTo($branchRoot);
+					if ($branchRoot.find('a[rel="' + $listItem.find('a').attr('rel') + '"]').length == 0) {
 						
-					} else {
+						/**
+						 * Create a new list item.
+						 */
 						
-						var $successor = false;
-						
-						$branchRoot.find('> .bl-file a').each(function(index) {
-							if ($(this).text().toLowerCase() > listItemFileName) {
-								$successor = $(this);
-								return false;		// Stop the loop.
+						// What is the list item's file name?
+						var listItemFileName = $listItem.find('a').text().toLowerCase();
+
+						/**
+						 * Determine the point at which to insert the new item (alphabetically).
+						 * Admitted defeat after trying to achieve this with $.map. May return
+						 * to it, due to unhealthy stubborness.
+						 */
+
+						// Does the branch have any files at all?
+						if ($branchRoot.children('.bl-file').length == 0) {
+							$listItem.appendTo($branchRoot);
+
+						} else {
+
+							var $successor = false;
+
+							$branchRoot.find('> .bl-file a').each(function(index) {
+								if ($(this).text().toLowerCase() > listItemFileName) {
+									$successor = $(this);
+									return false;		// Stop the loop.
+								}
+							});
+
+							if ($successor != false) {
+								$listItem.insertBefore($successor);
+							} else {
+								$listItem.appendTo($branchRoot);
 							}
+						}
+
+						// Bind a click handler to the new list item.
+						$listItem.bind('click', function(e) {
+							treeClick($(e.target));
+							return false;
 						});
 
-						if ($successor != false) {
-							$listItem.insertBefore($successor);
-						} else {
-							$listItem.appendTo($branchRoot);
+						// Is there a currently-selected file? If not, automatically select the new arrival.
+						if ($branchRoot.closest('.bl-wrapper').find('.bl-selected').length == 0) {
+							$listItem.addClass('bl-selected');
 						}
+
+						// Insert the item, and animate its arrival.
+						$listItem.slideDown(350);
 					}
-					
-					// Bind a click handler to the new list item.
-					$listItem.bind('click', function(e) {
-						treeClick($(e.target));
-						return false;
-					});
-					
-					// Is there a currently-selected file? If not, automatically select the new arrival.
-					if ($branchRoot.closest('.bl-wrapper').find('.bl-selected').length == 0) {
-						$listItem.addClass('bl-selected');
-					}
-					
-					// Insert the item, and animate its arrival.
-					$listItem.slideDown(350);
 				}
 				
 				/**

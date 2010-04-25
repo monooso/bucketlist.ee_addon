@@ -1628,10 +1628,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		$message_data = array_merge($default_data, $message_data);
 		
 		// Tidy see.
-		foreach ($message_data AS $key => $val)
-		{
-			$message_data[$key] = htmlspecialchars($val, ENT_COMPAT, 'UTF-8');
-		}
+		$message_data['message'] = htmlspecialchars($message_data['message'], ENT_COMPAT, 'UTF-8');
 
 		/**
 		 * Create and return the HTML document. Why, you may ask,
@@ -1753,43 +1750,34 @@ _HTML_;
 		);
 		
 		
-		// Add our item to the database.
-		$database_result = $this->_add_bucket_item_to_db($item_info, $bucket_and_path['bucket']);
-		
-		
 		/**
-		 * Whether the operation failed, or no items were added, we do
-		 * the same thing at the moment. If this changes in the future,
-		 * we'll need to do a strict === check here.
+		 * Add our item to the database.
+		 *
+		 * @since 1.2	: we no longer check the result of this operation, and just
+		 *				  return details of the list item.
 		 */
 		
-		if ( ! $database_result)
-		{
-			$list_item = '';
-		}
-		else
-		{
-			// Create the HTML for the new list item.
-			$list_item = '<li class="bl-ext-' .strtolower($item_info['item_extension']) .' bl-file">
-				<a href="#" rel="' .rawurlencode($bucket_and_path['bucket'] .'/'
-				.$item_info['item_path']) .'">' .$item_info['item_name'] .'</a></li>';
-			
-			// Record the member ID of the user that uploaded this file.
-			if (($bucket = $this->_load_bucket_from_db($bucket_and_path['bucket']))
-				&& ($this->_member_data['member_id']))
-			{
-				$DB->query($DB->insert_string(
-					'exp_bucketlist_uploads',
-					array(
-						'bucket_id'	=> $DB->escape_str($bucket['bucket_id']),
-						'item_path'	=> $uri,
-						'member_id'	=> $this->_member_data['member_id'],
-						'site_id'	=> $this->_site_id
-					)
-				));
-			}
-		}
+		$this->_add_bucket_item_to_db($item_info, $bucket_and_path['bucket']);
 		
+		// Create the HTML for the new list item.
+		$list_item = '<li class="bl-ext-' .strtolower($item_info['item_extension']) .' bl-file">
+			<a href="#" rel="' .rawurlencode($bucket_and_path['bucket'] .'/'
+			.$item_info['item_path']) .'">' .$item_info['item_name'] .'</a></li>';
+		
+		// Record the member ID of the user that uploaded this file.
+		if (($bucket = $this->_load_bucket_from_db($bucket_and_path['bucket']))
+			&& ($this->_member_data['member_id']))
+		{
+			$DB->query($DB->insert_string(
+				'exp_bucketlist_uploads',
+				array(
+					'bucket_id'	=> $DB->escape_str($bucket['bucket_id']),
+					'item_path'	=> $uri,
+					'member_id'	=> $this->_member_data['member_id'],
+					'site_id'	=> $this->_site_id
+				)
+			));
+		}
 		
 		// Output the return document.
 		$this->_output_upload_response(array(
