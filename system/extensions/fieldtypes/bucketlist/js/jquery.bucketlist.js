@@ -226,7 +226,7 @@ $.fn.bucketlist = function(options) {
 
 				return;
 			}
-
+			
 			var $status		= $iframe.contents().find('#status');
 			var $message	= $iframe.contents().find('#message');
 			var $uploadId	= $iframe.contents().find('#uploadId');

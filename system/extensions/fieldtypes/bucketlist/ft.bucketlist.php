@@ -1571,13 +1571,13 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	
 	
 	/**
-	 * Retrieves the requested branch, and returns it.
+	 * Outputs the supplied HTML with the appropriate headers.
 	 *
 	 * @access	private
-	 * @param	string		$html		The branch HTML.
+	 * @param	string		$html		The HTML to output.
 	 * @return	void
 	 */
-	function _output_branch_ui($html = '')
+	function _output_ajax_response($html = '')
 	{
 		global $PREFS;
 		
@@ -1656,9 +1656,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 _HTML_;
 
 		// Output the return document.
-		header('Content-type: text/html; charset=' .$PREFS->ini('charset'));
-		exit($html);
-		
+		$this->_output_ajax_response($html);
 	}
 	
 	
@@ -1982,7 +1980,7 @@ _HTML_;
 			{
 				case 'tree':
 					$branch_html = $this->_build_branch_ui(urldecode($IN->GBL('dir', 'POST')), $IN->GBL('field_id', 'POST'));
-					$this->_output_branch_ui($branch_html);
+					$this->_output_ajax_response($branch_html);
 					break;
 					
 				case 'upload':
