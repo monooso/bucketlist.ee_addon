@@ -315,16 +315,16 @@ $.fn.bucketlist = function(options) {
 						}
 
 						// Bind a click handler to the new list item.
-						$listItem.bind('click', function(e) {
+						$listItem.find('a').bind('click', function(e) {
 							treeClick($(e.target));
 							return false;
 						});
-
+						
 						// Is there a currently-selected file? If not, automatically select the new arrival.
 						if ($branchRoot.closest('.bl-wrapper').find('.bl-selected').length == 0) {
-							$listItem.addClass('bl-selected');
+							$listItem.find('a').click();
 						}
-
+						
 						// Insert the item, and animate its arrival.
 						$listItem.slideDown(350);
 					}
