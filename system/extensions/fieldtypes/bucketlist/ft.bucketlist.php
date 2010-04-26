@@ -844,6 +844,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 			}
 		}
 		
+		usort($member_groups, array($this, '_member_group_sort'));
 		return $member_groups;
 	}
 	
@@ -1205,6 +1206,28 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		}
 		
 		return $uploads;
+	}
+	
+	
+	/**
+	 * Custom sort function, used to order the member groups by title.
+	 *
+	 * @access	private
+	 * @param	array		$member_group_a		The first member group.
+	 * @param	array		$member_group_b		The second member group.
+	 * @return	int
+	 */
+	private function _member_group_sort($member_group_a = array(), $member_group_b = array())
+	{
+		if ( ! array_key_exists('group_title', $member_group_a)
+			OR ! array_key_exists('group_title', $member_group_b))
+		{
+			return 0;
+		}
+		else
+		{
+			return strcmp($member_group_a['group_title'], $member_group_b['group_title']);
+		}
 	}
 	
 	
