@@ -271,7 +271,8 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 */
 	private function _get_group_field_settings($group_id = '')
 	{
-		$group_settings = array();
+		// A basic shell, so other methods can rely on the paths key existing.
+		$group_settings = array('paths' => array());
 		
 		if ( ! $group_id
 			OR ! $this->_saved_field_settings
@@ -280,9 +281,14 @@ class Bucketlist extends Fieldframe_Fieldtype {
 			return $group_settings;
 		}
 		
-		foreach ($this->_saved_field_settings['member_groups'][$group_id] AS $path_settings)
+		foreach ($this->_saved_field_settings['member_groups'][$group_id]['paths'] AS $path_settings)
 		{
-			$group_settings[$path_settings['path']] = array(
+			/**
+			 * The paths array becomes key => value, to make it easier to check for the existence
+			 * of a path with array_key_exists.
+			 */
+			
+			$group_settings['paths'][$path_settings['path']] = array(
 				'all_files'		=> $path_settings['all_files'],
 				'allow_upload'	=> $path_settings['allow_upload'],
 				'path'			=> $path_settings['path'],
@@ -1141,17 +1147,17 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		// The destination.
 		$uri = $item_path ? $item_path .'/' .$file['name'] : $file['name'];
 		
-		// Build the extension data array.
-		$ext_data = array(
+		// Build the upload data array.
+		$upload_data = array(
 			'bucket_name'	=> $bucket_name,
 			'file'			=> $file,
 			'uri'			=> $uri
 		);
 		
 		// Call the bucketlist_s3_upload_start hook.
-		if ($EXT->active_hook('bucketlist_s3_upload_start') === TRUE)
+		if ($EXT->active_hook('bucketlist_remote_upload_start') === TRUE)
 		{
-			$ext_data = $EXT->call_extension('bucketlist_s3_upload_start', $ext_data);
+			$ext_data = $EXT->call_extension('bucketlist_remote_upload_start', $upload_data, $this->_member_data['member_id']);
 
 			if ($EXT->end_script === TRUE)
 			{
@@ -1213,7 +1219,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		$group_settings = $this->_get_group_field_settings($this->_member_data['group_id']);
 		
 		$available_buckets = array();
-		foreach ($group_settings AS $path_settings)
+		foreach ($group_settings['paths'] AS $path_settings)
 		{
 			if ($path_settings['show'] == 'y')
 			{
@@ -1263,25 +1269,6 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		
 		return $html;
 	}
-	
-	
-	/**
-	 * Returns the default member group bucket or folder settings.
-	 *
-	 * @access	private
-	 * @return	array
-	 */
-	private function _get_default_path_settings()
-	{
-		return array(
-			'all_files'		=> 'y',
-			'allow_upload'	=> 'y',
-			'show'			=> 'y'
-		);
-	}
-
-
-	
 	
 	
 	/**
@@ -1335,8 +1322,8 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		$group_settings = $this->_get_group_field_settings($this->_member_data['group_id']);
 		
 		// Do we have settings for this bucket / path?
-		$path_settings = array_key_exists($bucket_name, $group_settings)
-			? $group_settings[$bucket_name]
+		$path_settings = array_key_exists($bucket_name, $group_settings['paths'])
+			? $group_settings['paths'][$bucket_name]
 			: $this->_get_default_path_settings();
 		
 		// Retrieve the bucket items.
@@ -1474,6 +1461,22 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		}
 		
 		return $privileges;
+	}
+	
+	
+	/**
+	 * Returns the default member group bucket or folder settings.
+	 *
+	 * @access	private
+	 * @return	array
+	 */
+	private function _get_default_path_settings()
+	{
+		return array(
+			'all_files'		=> 'y',
+			'allow_upload'	=> 'y',
+			'show'			=> 'y'
+		);
 	}
 	
 	
@@ -1698,8 +1701,8 @@ _HTML_;
 		if ( ! $bucket_and_path['bucket']
 			OR ! isset($this->_member_data['group_id'])
 			OR ! $group_settings = $this->_get_group_field_settings($this->_member_data['group_id'])
-			OR ! array_key_exists($bucket_and_path['bucket'], $group_settings)
-			OR $group_settings[$bucket_and_path['bucket']]['allow_upload'] != 'y')
+			OR ! array_key_exists($bucket_and_path['bucket'], $group_settings['paths'])
+			OR $group_settings['paths'][$bucket_and_path['bucket']]['allow_upload'] != 'y')
 		{
 			$status = 'failure';
 			$message = $LANG->line('upload_failure');
@@ -2009,12 +2012,15 @@ _HTML_;
 		// Retrieve the correct language file.
 		$LANG->fetch_language_file($this->_lower_class);
 		
-		// Include CSS and JS.
-		$timestamp = time();
+		/**
+		 * Include CSS and JS.
+		 *
+		 * NOTE: Do not use a timestamp here. It causes the CSS & JS to be loaded twice.
+		 */
 		
-		$this->include_js('js/cp.js?' .$timestamp);
-		$this->include_js('js/jquery.bucketlist.js?' .$timestamp);
-		$this->include_css('css/cp.css?' .$timestamp);
+		$this->include_js('js/cp.js?' .$this->info['version']);
+		$this->include_js('js/jquery.bucketlist.js?' .$this->info['version']);
+		$this->include_css('css/cp.css?' .$this->info['version']);
 		
 		// Define some language strings for use in the JS.
 		$upload_failure = str_replace(array('"', '"'), '', $LANG->line('upload_failure'));
@@ -2239,8 +2245,8 @@ _HTML_;
 				
 				foreach ($buckets AS $bucket)
 				{
-					$path_settings = array_key_exists($bucket['bucket_name'], $group_settings)
-						? $group_settings[$bucket['bucket_name']]
+					$path_settings = array_key_exists($bucket['bucket_name'], $group_settings['paths'])
+						? $group_settings['paths'][$bucket['bucket_name']]
 						: $this->_get_default_path_settings();
 					
 					$html .= '<li class="bl-directory'
@@ -2267,19 +2273,19 @@ _HTML_;
 					
 					// Hidden fields.
 					$html .= '<input
-						name="member_groups[' .$group_id .'][' .$path_count .'][path]"
+						name="member_groups[' .$group_id .'][paths][' .$path_count .'][path]"
 						type="hidden" value="' .$bucket['bucket_name'] .'" />';
 					
 					$html .= '<input
-						name="member_groups[' .$group_id .'][' .$path_count .'][show]"
+						name="member_groups[' .$group_id .'][paths][' .$path_count .'][show]"
 						type="hidden" value="' .$path_settings['show'] .'" />';
 						
 					$html .= '<input
-						name="member_groups[' .$group_id .'][' .$path_count .'][allow_upload]"
+						name="member_groups[' .$group_id .'][paths][' .$path_count .'][allow_upload]"
 						type="hidden" value="' .$path_settings['allow_upload'] .'" />';
 						
 					$html .= '<input
-						name="member_groups[' .$group_id .'][' .$path_count .'][all_files]"
+						name="member_groups[' .$group_id .'][paths][' .$path_count .'][all_files]"
 						type="hidden" value="' .$path_settings['all_files'] .'" />';
 					
 					$html .= '</li>';

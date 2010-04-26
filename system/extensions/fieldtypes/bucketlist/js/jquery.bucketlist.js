@@ -442,9 +442,8 @@ $.fn.bucketlist = function(options) {
 			
 			// Are we auto-displaying an initial file?
 			if ($.isArray(initialFilePath) && initialFilePath) {
-					
 				pathToLoad = initialFilePath[0] + slash;
-				treeClick($this.find('[rel="' + pathToLoad + '"]'));
+				treeClick($this.find('a[rel="' + pathToLoad + '"]'));
 				
 				initialFileStep++;
 			}
@@ -463,9 +462,11 @@ $.fn.bucketlist = function(options) {
 			
 			fix_ie7_matrices();		// Wait for the slow child.
 			
-			if ($target.parent().hasClass('bl-directory')) {
+			$li = $target.parent('li');
+			
+			if ($li.hasClass('bl-directory')) {
 
-				if ($target.parent().hasClass('bl-collapsed')) {
+				if ($li.hasClass('bl-collapsed')) {
 
 					/**
 					 * Expand the tree. Only one branch of the tree can be
@@ -473,44 +474,45 @@ $.fn.bucketlist = function(options) {
 					 */
 					
 					if (isIE7()) {
-						$target.parent().parent().find('ul').hide();
+						$li.siblings('.bl-directory').find('> ul').hide();
 						fix_ie7_matrices();
 					} else {
-						$target.parent().parent().find('ul').slideUp({duration : 500});
+						$li.siblings('.bl-directory').find('> ul').slideUp({duration : 500});
 					}
 					
-					$target.parent().parent().find('.bl-directory').removeClass('bl-expanded').addClass('bl-collapsed');
+					// Set the collapsed / expanded classes.
+					$li.removeClass('bl-collapsed').addClass('bl-expanded');
+					$li.siblings('.bl-directory').removeClass('bl-expanded').addClass('bl-collapsed');
 					
 					// Unbind any click handlers, and remove the branch.
-					$target.parent().find('li a').unbind('click');
-					$target.parent().find('ul').remove();
+					$li.find('li a').unbind('click');
+					$li.find('ul').remove();
 					
 					showTree({
-						$root 	: $target.parent(),
-						path	: $target.eq(0).attr('rel')
+						$root 	: $li,
+						path	: $target.attr('rel')
 					});
-
-					$target.parent().removeClass('bl-collapsed').addClass('bl-expanded');
 
 				} else {
 					// Collapse the tree.
 					if (isIE7()) {
-						$target.parent().parent().find('ul').hide();
+						$li.find('ul').hide();
 						fix_ie7_matrices();
 					} else {
-						$target.parent().find('ul').slideUp({duration : 500});
+						$li.find('ul').slideUp({duration : 500});
 					}
 					
-					$target.parent().removeClass('bl-expanded').addClass('bl-collapsed');
+					// Set the class.
+					$li.removeClass('bl-expanded').addClass('bl-collapsed');
 				}
 
 			} else {
 				
 				// Is this item already selected?
-				if ($target.parent().hasClass('bl-selected')) {
+				if ($li.hasClass('bl-selected')) {
 					
 					// Deselect the target element.
-					$target.parent().removeClass('bl-selected');
+					$li.removeClass('bl-selected');
 					
 					// Clear the target value.
 					field_value = '';
@@ -524,7 +526,7 @@ $.fn.bucketlist = function(options) {
 						.removeClass('bl-selected');
 						
 					// Select the target element.
-					$target.parent().addClass('bl-selected');
+					$li.addClass('bl-selected');
 					
 					// Record the target value.
 					field_value = $target.attr('rel');
