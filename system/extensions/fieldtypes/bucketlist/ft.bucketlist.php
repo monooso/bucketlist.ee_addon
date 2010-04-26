@@ -1924,65 +1924,31 @@ _HTML_;
 	
 	
 	/**
-	 * Handles AJAX requests.
+	 * Displays the fieldtype in an FF Matrix.
 	 *
-	 * @access		public
-	 * @param 		object		$session	The current Session object.
-	 * @return		void
+	 * @access	public
+	 * @param	string		$cell_name			The cell ID.
+	 * @param	string		$cell_data			Previously saved cell data.
+	 * @param	array		$cell_settings		The cell settings.
+	 * @return	string
 	 */
-	public function sessions_start(&$session)
+	public function display_cell($cell_name, $cell_data, $cell_settings)
 	{
-		global $IN, $SESS;
-		
-		// Initialise the cache.
-		if ( ! array_key_exists($this->_namespace, $session->cache))
-		{
-			$session->cache[$this->_namespace] = array();
-		}
-		
-		$session->cache[$this->_namespace][$this->_lower_class] = array();
-		$session->cache[$this->_namespace][$this->_lower_class]['updated_from_s3'] = FALSE;
-		
-		/**
-		 * @since: 1.2.0
-		 * For some reason, there are time when the $SESS object doesn't exist here.
-		 * This only appears to affect FieldFrame 1.4, although I'm not 100% sure that's
-		 * where the problem lies.
-		 *
-		 * This seems to be a reasonable workaround, for the time being.
-		 */
-		
-		if ( ! isset($SESS))
-		{
-			$SESS = $session;
-		}
-		
-		
-		if ($IN->GBL('ajax', 'POST') == 'y' && $IN->GBL('addon_id', 'POST') == $this->_lower_class)
-		{
-			// Set the class variables.
-			$this->_saved_field_settings = $this->_load_field_settings($IN->GBL('field_id', 'POST'));
-			$this->_member_data = $this->_load_member_data();
-			
-			// We're either being summoned by the file tree, or the uploader. Which is it?
-			$request = $IN->GBL('request', 'POST');
-			
-			switch ($request)
-			{
-				case 'tree':
-					$branch_html = $this->_build_branch_ui(urldecode($IN->GBL('dir', 'POST')), $IN->GBL('field_id', 'POST'));
-					$this->_output_ajax_response($branch_html);
-					break;
-					
-				case 'upload':
-					$this->_process_upload();
-					break;
-					
-				default:
-					// No idea.
-					break;
-			}
-		}
+		return $this->display_field($cell_name, $cell_data, $cell_settings);
+	}
+	
+	
+	/**
+	 * Adds custom FF Matrix cell settings.
+	 *
+	 * @access	public
+	 * @param	array		$cell_settings		Previously saved cell settings.
+	 * @return	string
+	 */
+	public function display_cell_settings($cell_settings = array())
+	{
+		$settings = $this->display_field_settings($cell_settings, TRUE);
+		return isset($settings['rows']) ? $settings['rows'][0][0] : '';
 	}
 	
 	
@@ -2083,98 +2049,6 @@ _HTML_;
 		
 		return $html;
 		
-	}
-	
-	
-	/**
-	 * Displays the fieldtype in an FF Matrix.
-	 *
-	 * @access	public
-	 * @param	string		$cell_name			The cell ID.
-	 * @param	string		$cell_data			Previously saved cell data.
-	 * @param	array		$cell_settings		The cell settings.
-	 * @return	string
-	 */
-	public function display_cell($cell_name, $cell_data, $cell_settings)
-	{
-		return $this->display_field($cell_name, $cell_data, $cell_settings);
-	}
-	
-	
-	/**
-	 * Displays the site-wide fieldtype settings form.
-	 *
-	 * @access	public
-	 * @return	string
-	 */
-	public function display_site_settings()
-	{
-		// Initialise a new instance of the SettingsDisplay class.
-		$sd = new Fieldframe_SettingsDisplay();
-		
-		// Open the settings block.
-		$ret = $sd->block('site_settings_heading');
-		
-		// Retrieve the settings.
-		$settings = array_merge($this->default_site_settings, $this->site_settings);
-			
-		// Create the settings fields.
-		$ret .= $sd->row(array(
-			$sd->label('access_key_id'),
-			$sd->text('access_key_id', $settings['access_key_id'])
-			));
-			
-		$ret .= $sd->row(array(
-			$sd->label('secret_access_key'),
-			$sd->text('secret_access_key', $settings['secret_access_key'])
-			));
-		
-		/*	
-		$options = array(
-			'y' => 'yes',
-			'n' => 'no'
-			);
-			
-		$ret .= $sd->row(array(
-			$sd->label('use_ssl'),
-			$sd->select('use_ssl', $use_ssl, $options)
-			));
-		*/
-			
-		$options = array(
-			'300'	=> '5_min',
-			'600'	=> '10_min',
-			'900'	=> '15_min',
-			'1800'	=> '30_min',
-			'2700'	=> '45_min',
-			'3600'	=> '60_min',
-			'5400'	=> '90_min',
-			'7200' 	=> '120_min',
-			'14400' => '240_min',
-			'21600' => '360_min',
-			'28800' => '480_min'
-		);
-			
-		$ret .= $sd->row(array(
-			$sd->label('cache_duration', 'cache_duration_hint'),
-			$sd->select('cache_duration', $settings['cache_duration'], $options)
-		));
-		
-		$options = array(
-			'y' => 'yes',
-			'n' => 'no'
-		);
-			
-		$ret .= $sd->row(array(
-			$sd->label('custom_url', 'custom_url_hint'),
-			$sd->select('custom_url', $settings['custom_url'], $options)
-		));
-			
-		// Close the settings block.
-		$ret .= $sd->block_c();
-		
-		// Return the settings block.
-		return $ret;
 	}
 	
 	
@@ -2312,16 +2186,272 @@ _HTML_;
 	
 	
 	/**
-	 * Adds custom FF Matrix cell settings.
+	 * Displays the site-wide fieldtype settings form.
 	 *
 	 * @access	public
-	 * @param	array		$cell_settings		Previously saved cell settings.
 	 * @return	string
 	 */
-	public function display_cell_settings($cell_settings = array())
+	public function display_site_settings()
 	{
-		$settings = $this->display_field_settings($cell_settings, TRUE);
-		return isset($settings['rows']) ? $settings['rows'][0][0] : '';
+		// Initialise a new instance of the SettingsDisplay class.
+		$sd = new Fieldframe_SettingsDisplay();
+		
+		// Open the settings block.
+		$ret = $sd->block('site_settings_heading');
+		
+		// Retrieve the settings.
+		$settings = array_merge($this->default_site_settings, $this->site_settings);
+			
+		// Create the settings fields.
+		$ret .= $sd->row(array(
+			$sd->label('access_key_id'),
+			$sd->text('access_key_id', $settings['access_key_id'])
+			));
+			
+		$ret .= $sd->row(array(
+			$sd->label('secret_access_key'),
+			$sd->text('secret_access_key', $settings['secret_access_key'])
+			));
+		
+		/*	
+		$options = array(
+			'y' => 'yes',
+			'n' => 'no'
+			);
+			
+		$ret .= $sd->row(array(
+			$sd->label('use_ssl'),
+			$sd->select('use_ssl', $use_ssl, $options)
+			));
+		*/
+			
+		$options = array(
+			'300'	=> '5_min',
+			'600'	=> '10_min',
+			'900'	=> '15_min',
+			'1800'	=> '30_min',
+			'2700'	=> '45_min',
+			'3600'	=> '60_min',
+			'5400'	=> '90_min',
+			'7200' 	=> '120_min',
+			'14400' => '240_min',
+			'21600' => '360_min',
+			'28800' => '480_min'
+		);
+			
+		$ret .= $sd->row(array(
+			$sd->label('cache_duration', 'cache_duration_hint'),
+			$sd->select('cache_duration', $settings['cache_duration'], $options)
+		));
+		
+		$options = array(
+			'y' => 'yes',
+			'n' => 'no'
+		);
+			
+		$ret .= $sd->row(array(
+			$sd->label('custom_url', 'custom_url_hint'),
+			$sd->select('custom_url', $settings['custom_url'], $options)
+		));
+			
+		// Close the settings block.
+		$ret .= $sd->block_c();
+		
+		// Return the settings block.
+		return $ret;
+	}
+	
+	
+	/**
+	 * Outputs the basic file information (the URL to the file).
+	 *
+	 * @access	public
+	 * @param	array		$params				Array of tag parameters as key / value pairs.
+	 * @param	string		$tagdata			Content between the opening and closing tags (not used).
+	 * @param	string		$field_data			The field data.
+	 * @param	array		$field_settings		The field settings.
+	 * @return	string
+	 */
+	public function display_tag($params, $tagdata, $field_data, $field_settings)
+	{
+		$out = '';
+		$bucket_and_path = $this->_split_bucket_and_path_string($field_data);
+			
+		if ($bucket_and_path['bucket'] && $bucket_and_path['item_path'])
+		{
+			$out .= $this->site_settings['use_ssl'] == 'y' ? 'https://' : 'http://';
+			$out .= urlencode($bucket_and_path['bucket'])
+				.($this->site_settings['custom_url'] == 'y' ? '/' : '.s3.amazonaws.com/') .urlencode($bucket_and_path['item_path']);
+		}
+		
+		return $out;
+	}
+	
+	
+	/**
+	 * Outputs the file name.
+	 *
+	 * @access	public
+	 * @param	array		$params				Array of tag parameters as key / value pairs.
+	 * @param	string		$tagdata			Content between the opening and closing tags (not used).
+	 * @param	string		$field_data			The field data.
+	 * @param	array		$field_settings		The field settings.
+	 * @return	string
+	 */
+	public function file_name($params, $tagdata, $field_data, $field_settings)
+	{
+		$out = '';
+		
+		if ($item = $this->_load_item_using_field_data($field_data))
+		{
+			$out = $item['item_name'];
+		}
+		
+		return $out;
+	}
+	
+	
+	/**
+	 * Outputs the file size.
+	 *
+	 * @access	public
+	 * @param	array		$params				Array of tag parameters as key / value pairs.
+	 * @param	string		$tagdata			Content between the opening and closing tags (not used).
+	 * @param	string		$field_data			The field data.
+	 * @param	array		$field_settings		The field settings.
+	 * @return	string
+	 */
+	public function file_size($params, $tagdata, $field_data, $field_settings)
+	{
+		// Default parameters.
+		$params = array_merge(array('format' => 'auto'), $params);
+		
+		$out = '';
+		
+		if ($item = $this->_load_item_using_field_data($field_data))
+		{
+			switch ($params['format'])
+			{
+				case 'bytes':
+					$out = $item['item_size'];
+					break;
+				
+				case 'kilobytes':
+					$out = round($item['item_size'] / 1024, 2);
+					break;
+				
+				case 'megabytes':
+					$out = round($item['item_size'] / 1048576, 2);		// 1024 * 1024
+					break;
+				
+				case 'auto':
+				default:
+					if ($item['item_size'] < 1048567)
+					{
+						$out = round($item['item_size'] / 1024, 2) .'<abbr title="Kilobytes">KB</abbr>';
+					}
+					else
+					{
+						$out = round($item['item_size'] / 1048567, 2) .'<abbr title="Megabytes">MB</abbr>';
+					}
+					break;
+			}
+		}
+		
+		return $out;
+	}
+	
+	
+	/**
+	 * Modifies the cell's POST data before it's saved to the database.
+	 *
+	 * @access	public
+	 * @param	string		$cell_data			The POST data.
+	 * @param	array		$cell_settings		The cell settings.
+	 * @param 	mixed		$entry_id			Not used.
+	 * @return	string
+	 */
+	public function save_cell($cell_data = '', $cell_settings = array(), $entry_id = '')
+	{
+		return $this->save_field($cell_data, $cell_settings, $entry_id);
+	}
+	
+	
+	/**
+	 * Modifies the field's POST data before it's saved to the database.
+	 *
+	 * @access	public
+	 * @param	string		$field_data			The POST data.
+	 * @param	array		$field_settings		The field settings.
+	 * @param 	mixed		$entry_id			Not used.
+	 * @return	string
+	 */
+	public function save_field($field_data = '', $field_settings = array(), $entry_id = '')
+	{
+		return rawurldecode($field_data);
+	}
+	
+	
+	/**
+	 * Handles AJAX requests.
+	 *
+	 * @access		public
+	 * @param 		object		$session	The current Session object.
+	 * @return		void
+	 */
+	public function sessions_start(&$session)
+	{
+		global $IN, $SESS;
+		
+		// Initialise the cache.
+		if ( ! array_key_exists($this->_namespace, $session->cache))
+		{
+			$session->cache[$this->_namespace] = array();
+		}
+		
+		$session->cache[$this->_namespace][$this->_lower_class] = array();
+		$session->cache[$this->_namespace][$this->_lower_class]['updated_from_s3'] = FALSE;
+		
+		/**
+		 * @since: 1.2.0
+		 * For some reason, there are time when the $SESS object doesn't exist here.
+		 * This only appears to affect FieldFrame 1.4, although I'm not 100% sure that's
+		 * where the problem lies.
+		 *
+		 * This seems to be a reasonable workaround, for the time being.
+		 */
+		
+		if ( ! isset($SESS))
+		{
+			$SESS = $session;
+		}
+		
+		
+		if ($IN->GBL('ajax', 'POST') == 'y' && $IN->GBL('addon_id', 'POST') == $this->_lower_class)
+		{
+			// Set the class variables.
+			$this->_saved_field_settings = $this->_load_field_settings($IN->GBL('field_id', 'POST'));
+			$this->_member_data = $this->_load_member_data();
+			
+			// We're either being summoned by the file tree, or the uploader. Which is it?
+			$request = $IN->GBL('request', 'POST');
+			
+			switch ($request)
+			{
+				case 'tree':
+					$branch_html = $this->_build_branch_ui(urldecode($IN->GBL('dir', 'POST')), $IN->GBL('field_id', 'POST'));
+					$this->_output_ajax_response($branch_html);
+					break;
+					
+				case 'upload':
+					$this->_process_upload();
+					break;
+					
+				default:
+					// No idea.
+					break;
+			}
+		}
 	}
 	
 	
@@ -2437,138 +2567,7 @@ _HTML_;
 			}
 		}
 	}
-	
-	
-	/**
-	 * Modifies the field's POST data before it's saved to the database.
-	 *
-	 * @access	public
-	 * @param	string		$field_data			The POST data.
-	 * @param	array		$field_settings		The field settings.
-	 * @param 	mixed		$entry_id			Not used.
-	 * @return	string
-	 */
-	public function save_field($field_data = '', $field_settings = array(), $entry_id = '')
-	{
-		return rawurldecode($field_data);
-	}
-	
-	
-	/**
-	 * Modifies the cell's POST data before it's saved to the database.
-	 *
-	 * @access	public
-	 * @param	string		$cell_data			The POST data.
-	 * @param	array		$cell_settings		The cell settings.
-	 * @param 	mixed		$entry_id			Not used.
-	 * @return	string
-	 */
-	public function save_cell($cell_data = '', $cell_settings = array(), $entry_id = '')
-	{
-		return $this->save_field($cell_data, $cell_settings, $entry_id);
-	}
-	
-	
-	/**
-	 * Outputs the basic file information (the URL to the file).
-	 *
-	 * @access	public
-	 * @param	array		$params				Array of tag parameters as key / value pairs.
-	 * @param	string		$tagdata			Content between the opening and closing tags (not used).
-	 * @param	string		$field_data			The field data.
-	 * @param	array		$field_settings		The field settings.
-	 * @return	string
-	 */
-	public function display_tag($params, $tagdata, $field_data, $field_settings)
-	{
-		$out = '';
-		$bucket_and_path = $this->_split_bucket_and_path_string($field_data);
-			
-		if ($bucket_and_path['bucket'] && $bucket_and_path['item_path'])
-		{
-			$out .= $this->site_settings['use_ssl'] == 'y' ? 'https://' : 'http://';
-			$out .= urlencode($bucket_and_path['bucket'])
-				.($this->site_settings['custom_url'] == 'y' ? '/' : '.s3.amazonaws.com/') .urlencode($bucket_and_path['item_path']);
-		}
-		
-		return $out;
-	}
-	
-	
-	/**
-	 * Outputs the file name.
-	 *
-	 * @access	public
-	 * @param	array		$params				Array of tag parameters as key / value pairs.
-	 * @param	string		$tagdata			Content between the opening and closing tags (not used).
-	 * @param	string		$field_data			The field data.
-	 * @param	array		$field_settings		The field settings.
-	 * @return	string
-	 */
-	public function file_name($params, $tagdata, $field_data, $field_settings)
-	{
-		$out = '';
-		
-		if ($item = $this->_load_item_using_field_data($field_data))
-		{
-			$out = $item['item_name'];
-		}
-		
-		return $out;
-	}
-	
-	
-	/**
-	 * Outputs the file size.
-	 *
-	 * @access	public
-	 * @param	array		$params				Array of tag parameters as key / value pairs.
-	 * @param	string		$tagdata			Content between the opening and closing tags (not used).
-	 * @param	string		$field_data			The field data.
-	 * @param	array		$field_settings		The field settings.
-	 * @return	string
-	 */
-	public function file_size($params, $tagdata, $field_data, $field_settings)
-	{
-		// Default parameters.
-		$params = array_merge(array('format' => 'auto'), $params);
-		
-		$out = '';
-		
-		if ($item = $this->_load_item_using_field_data($field_data))
-		{
-			switch ($params['format'])
-			{
-				case 'bytes':
-					$out = $item['item_size'];
-					break;
-				
-				case 'kilobytes':
-					$out = round($item['item_size'] / 1024, 2);
-					break;
-				
-				case 'megabytes':
-					$out = round($item['item_size'] / 1048576, 2);		// 1024 * 1024
-					break;
-				
-				case 'auto':
-				default:
-					if ($item['item_size'] < 1048567)
-					{
-						$out = round($item['item_size'] / 1024, 2) .'<abbr title="Kilobytes">KB</abbr>';
-					}
-					else
-					{
-						$out = round($item['item_size'] / 1048567, 2) .'<abbr title="Megabytes">MB</abbr>';
-					}
-					break;
-			}
-		}
-		
-		return $out;
-	}
-	
-	
+
 }
 
 /* End of file	: ft.bucketlist.php */
