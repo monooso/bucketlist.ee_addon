@@ -76,6 +76,14 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 * ------------------------------------------------------------ */
 	
 	/**
+	 * Member groups with admin or SAEF-posting privileges.
+	 *
+	 * @access	private
+	 * @var 	array
+	 */
+	private $_admin_member_groups = array();
+	
+	/**
 	 * The class name.
 	 *
 	 * @access	private
@@ -2474,105 +2482,229 @@ _HTML_;
 		
 		$this->_force_update();
 		
-		if ($from && $from < '1.1')
+		// Refreshes the buckets list.
+		$this->_update_buckets_from_s3();
+		
+		/**
+		 * The BucketList fields and cells information is used in a couple of
+		 * the upgrade scripts below. Rather than repeating it for each one,
+		 * we do it once here.
+		 */
+		
+		if ($from && $from < '1.2')
 		{
-			$update_fields = $update_matrices = FALSE;
-			
+			$existing_bucketlist_fields = $existing_bucketlist_matrices = FALSE;
+
 			// Determine the BucketList fieldtype ID.
 			$db_bucketlist_ft = $DB->query("SELECT fieldtype_id
 				FROM exp_ff_fieldtypes
 				WHERE class = '{$this->_lower_class}'
 				LIMIT 1");
-				
+
 			// Determine the FF Matrix fieldtype ID.
 			$db_matrix_ft = $DB->query("SELECT fieldtype_id
 				FROM exp_ff_fieldtypes
 				WHERE class = 'ff_matrix'
 				LIMIT 1");
-				
+
 			if ($db_bucketlist_ft->num_rows === 1)
 			{
 				// Retrieve all the BucketList fields.
 				$db_fields = $DB->query("SELECT field_id, ff_settings
 					FROM exp_weblog_fields
 					WHERE field_type = 'ftype_id_" .$db_bucketlist_ft->row['fieldtype_id'] ."'");
-					
-				$update_fields = ($db_fields->num_rows > 0);
+
+				$existing_bucketlist_fields = ($db_fields->num_rows > 0);
 			}
-				
+
 			// Retrieve all the BucketList cells.
 			if ($db_matrix_ft->num_rows === 1)
 			{
 				$db_matrices = $DB->query("SELECT field_id, ff_settings
 					FROM exp_weblog_fields
 					WHERE field_type = 'ftype_id_" .$db_matrix_ft->row['fieldtype_id'] ."'");
-					
-				$update_matrices = ($db_matrices->num_rows > 0);
+
+				$existing_bucketlist_matrices = ($db_matrices->num_rows > 0);
+			}
+		}
+		
+		
+		/**
+		 * Upgrading from pre-1.1
+		 */
+		
+		if ($from && $from < '1.1' && ($existing_bucketlist_fields OR $existing_bucketlist_matrices))
+		{
+			// Construct the 'available_buckets' array.
+			$buckets = $this->_load_all_buckets_from_db();
+			$field_buckets = array();
+
+			foreach ($buckets AS $bucket)
+			{
+				$field_buckets[] = $bucket['bucket_name'];
 			}
 			
-			if ($db_fields OR $db_matrices)
+			$field_settings = $this->_serialize(array('available_buckets' => $field_buckets));
+			
+			// Update the fields.
+			if ($existing_bucketlist_fields)
 			{
-				$this->_update_buckets_from_s3();
-
-				$buckets 		= $this->_load_all_buckets_from_db();
-				$field_buckets 	= array();
-
-				foreach ($buckets AS $bucket)
+				foreach ($db_fields->result AS $db_field)
 				{
-					$field_buckets[] = $bucket['bucket_name'];
+					$DB->query($DB->update_string(
+						'exp_weblog_fields',
+						array('ff_settings' => $field_settings),
+						"field_id = '{$db_field['field_id']}'" 
+					));
 				}
-
-				$field_settings = $this->_serialize(array('available_buckets' => $field_buckets));
+			}
 				
-				// Update the fields.
-				if ($update_fields)
+			// Update the matrices.
+			if ($existing_bucketlist_matrices)
+			{
+				foreach($db_matrices->result AS $db_matrix)
 				{
-					foreach ($db_fields->result AS $db_field)
+					$update_matrix = FALSE;
+					$matrix_settings = $this->_unserialize($db_matrix['ff_settings']);
+					
+					// Update all the BucketList cell types.
+					if ( ! isset($matrix_settings['cols']))
+					{
+						continue;
+					}
+					
+					foreach ($matrix_settings['cols'] AS $col_key => $col_val)
+					{
+						if (isset($col_val['type']) && $col_val['type'] == $this->_lower_class)
+						{
+							$update_matrix = TRUE;
+							$col_val['settings'] = array('available_buckets' => $field_buckets);
+							$matrix_settings['cols'][$col_key] = $col_val;
+						}
+					}
+					
+					if ($update_matrix)
 					{
 						$DB->query($DB->update_string(
 							'exp_weblog_fields',
-							array('ff_settings' => $field_settings),
-							"field_id = '{$db_field['field_id']}'" 
+							array('ff_settings' => $this->_serialize($matrix_settings)),
+							"field_id = '{$db_matrix['field_id']}'" 
 						));
-					}
-				}
-				
-				// Update the matrices.
-				if ($update_matrices)
-				{
-					foreach($db_matrices->result AS $db_matrix)
-					{
-						$update_matrix = FALSE;
-						$matrix_settings = $this->_unserialize($db_matrix['ff_settings']);
-						
-						// Update all the BucketList cell types.
-						if ( ! isset($matrix_settings['cols']))
-						{
-							continue;
-						}
-						
-						foreach ($matrix_settings['cols'] AS $col_key => $col_val)
-						{
-							if (isset($col_val['type']) && $col_val['type'] == $this->_lower_class)
-							{
-								$update_matrix = TRUE;
-								$col_val['settings'] = array('available_buckets' => $field_buckets);
-								$matrix_settings['cols'][$col_key] = $col_val;
-							}
-						}
-						
-						if ($update_matrix)
-						{
-							$DB->query($DB->update_string(
-								'exp_weblog_fields',
-								array('ff_settings' => $this->_serialize($matrix_settings)),
-								"field_id = '{$db_matrix['field_id']}'" 
-							));
-						}
 					}
 				}
 			}
 		}
+		
+		
+		/**
+		 * Upgrading from pre-1.2
+		 */
+		
+		if ($from && $from < '1.2' && ($existing_bucketlist_fields OR $existing_bucketlist_matrices))
+		{
+			// Loop through the fields.
+			if ($existing_bucketlist_fields)
+			{
+				foreach ($db_fields->result AS $db_field)
+				{
+					$field_settings = $this->_build_update_settings($this->_unserialize($db_field['ff_settings']));
+					
+					$DB->query($DB->update_string(
+						'exp_weblog_fields',
+						array('ff_settings' => $field_settings),
+						"field_id = '{$db_field['field_id']}'" 
+					));
+				}
+			}
+			
+			// Loop through the matrices.
+			if ($existing_bucketlist_matrices)
+			{
+				foreach($db_matrices->result AS $db_matrix)
+				{
+					$update_matrix = FALSE;
+					$matrix_settings = $this->_unserialize($db_matrix['ff_settings']);
+					
+					if ( ! isset($matrix_settings['cols']))
+					{
+						continue;
+					}
+					
+					foreach ($matrix_settings['cols'] AS $col_key => $col_val)
+					{
+						if (isset($col_val['type']) && $col_val['type'] == $this->_lower_class)
+						{
+							$update_matrix = TRUE;
+							$col_val['settings'] = $this->_build_update_settings($col_val['settings']);
+							$matrix_settings['cols'][$col_key] = $col_val;
+						}
+					}
+					
+					if ($update_matrix)
+					{
+						$DB->query($DB->update_string(
+							'exp_weblog_fields',
+							array('ff_settings' => $this->_serialize($matrix_settings)),
+							"field_id = '{$db_matrix['field_id']}'" 
+						));
+					}
+				}
+			}
+		}
+		
+	} /* end of update */
+	
+	
+	/**
+	 * Builds the pre-1.2 update settings array for a single field or FF Matrix cell.
+	 *
+	 * @access	private
+	 * @param	array		$current_settings		The unserialised settings, pulled from the database.
+	 * @return	array
+	 */
+	private function _build_update_settings($current_settings = array())
+	{
+		$new_settings = array('member_groups' => array());
+		
+		// Determine the site-wide "allow upload" setting.
+		$allow_upload = array_key_exists('allow_upload', $this->site_settings)
+			? $this->site_settings['allow_upload']
+			: 'y';
+			
+		// Retrieve all the applicable member groups.
+		if ( ! $this->_admin_member_groups)
+		{
+			$this->_admin_member_groups = $this->_load_admin_member_groups();
+		}
+		
+		// Retrieve all the buckets.
+		$all_buckets = $this->_load_all_buckets_from_db();
+		
+		// Which buckets are available for this field?
+		$available_buckets = isset($current_settings['available_buckets']) && is_array($current_settings['available_buckets'])
+			? $current_settings['available_buckets']
+			: array();
+		
+		// Loop through all the member groups.
+		foreach ($this->_admin_member_groups AS $member_group)
+		{
+			$new_settings['member_groups'][$member_group['group_id']] = array('paths' => array());
+			
+			// Loop through all the buckets.
+			foreach ($all_buckets AS $bucket)
+			{
+				$path_settings = array(
+					'all_files'		=> 'y',
+					'allow_upload'	=> $allow_upload,
+					'path'			=> $bucket['bucket_name'],
+					'show'			=> in_array($bucket['bucket_name'], $available_buckets) ? 'y' : 'n'
+				);
+			}
+			
+			$new_settings['member_groups'][$member_group['group_id']]['paths'][] = $path_settings;
+		}
+		
+		return $new_settings;
 	}
 
 }
