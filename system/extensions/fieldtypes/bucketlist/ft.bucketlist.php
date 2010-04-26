@@ -1751,7 +1751,7 @@ _HTML_;
 		// Call the bucketlist_s3_upload_start hook.
 		if ($EXT->active_hook('bucketlist_remote_upload_start') === TRUE)
 		{
-			$ext_data = $EXT->call_extension('bucketlist_remote_upload_start', $upload_data, $this->_member_data['member_id']);
+			$upload_data = $EXT->call_extension('bucketlist_remote_upload_start', $upload_data, $this->_member_data['member_id']);
 
 			if ($EXT->end_script === TRUE)
 			{
@@ -1767,10 +1767,10 @@ _HTML_;
 		$s3 = new S3($access_key, $secret_key, FALSE);
 
 		// Generate the input array for our file.
-		$input = $s3->inputFile($ext_data['file']['tmp_name']);	
+		$input = $s3->inputFile($upload_data['file']['tmp_name']);	
 		
 		// Upload the file.
-		return $s3->putObject($input, $ext_data['bucket_name'], $ext_data['uri'], S3::ACL_PUBLIC_READ);
+		return $s3->putObject($input, $upload_data['bucket_name'], $upload_data['uri'], S3::ACL_PUBLIC_READ);
 		
 	}
 	
