@@ -53,6 +53,15 @@ $L = array(
 'no_items'				=> 'No available items.',
 'missing_path'			=> 'Missing or invalid path.',
 
+// Instructions.
+'instructions_title'	=> 'BucketList Configuration',
+'instructions_preamble'	=> 'Use the icons to control the member group settings for each bucket.',
+'instructions_link'		=> 'What do the icons mean?',
+
+'instructions_key_show'			=> 'Show or hide the bucket.',
+'instructions_key_upload'		=> 'Allow or disallow uploads.',
+'instructions_key_all_files'	=> 'Show all files, or only those files previously uploaded by the member.',
+
 // Uploading.
 'upload_failure'	=> 'Upload failed.',
 'upload_here'		=> 'Upload a file to this location',

@@ -2079,9 +2079,23 @@ _HTML_;
 		}
 		else
 		{
+			// Path to images.
+			$image_path = FT_URL .$this->_lower_class. '/img/icons/';
+			
 			// BucketList configuration.
-			$html .= '<div class="defaultBold">BucketList Configuration</div>';
-			$html .= '<div class="itemWrapper">Some instructional information.</div>';
+			$html .= '<div class="bl-instructions">';			
+			$html .= '<h3>' .$LANG->line('instructions_title') .'</h3>';
+			$html .= '<p>' .$LANG->line('instructions_preamble') .'</p>';
+			
+			$html .= '<div>';
+			$html .= '<p><a href="#" title="' .$LANG->line('instructions_link') .'">' .$LANG->line('instructions_link') .'</a></p>';
+			$html .= '<ul>';
+			$html .= '<li><img src="' .$image_path .'setting-show.png" /> ' .$LANG->line('instructions_key_show') .'</li>';
+			$html .= '<li><img src="' .$image_path .'setting-upload.png" /> ' .$LANG->line('instructions_key_upload') .'</li>';
+			$html .= '<li><img src="' .$image_path .'setting-all-files.png" /> ' .$LANG->line('instructions_key_all_files') .'</li>';
+			$html .= '</ul>';
+			$html .= '</div>';
+			$html .= '</div><!-- /.bl-instructions -->';
 			
 			$html .= '<table cellpadding="0" cellspacing="0">';
 			$html .= '<thead>';

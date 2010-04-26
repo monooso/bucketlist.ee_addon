@@ -219,6 +219,16 @@ jQuery(document).ready(function($) {
 	 * ------------------------------------------------------------------
 	 */
 	
+	$('.bl-instructions div a').live('click', function(e) {
+		$(this)
+			.toggleClass('bl-open')
+			.closest('div')
+			.find('ul')
+			.slideToggle('slow');
+			
+		return false;
+	});
+	
 	$('.bl-settings a[class*=bl-toggle]').live('click', function(e) {
 		
 		$this = $(this);

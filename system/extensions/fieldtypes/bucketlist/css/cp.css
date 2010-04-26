@@ -456,3 +456,78 @@ text-shadow : 0 -1px 0 rgba(0, 0, 0, 0.85);
 .bl-ffmatrix .bl-wrapper::-webkit-scrollbar-thumb {background-color : rgb(61, 68, 71);}
 
 .bl-ffmatrix .bl-wrapper::-webkit-scrollbar-thumb:hover {background-color : rgb(86, 93, 96);}
+
+
+/* --------------------------------------------------------------
+ * INSTRUCTIONS
+ * ------------------------------------------------------------ */
+
+.bl-instructions {
+font-size : 11px;
+line-height : 14px;
+padding-bottom : 1em;
+}
+
+.bl-instructions h3 {
+color : rgb(102, 102, 102);
+font-size : 1em;
+}
+
+.bl-instructions div {
+-moz-border-radius : 3px;
+-webkit-border-radius : 3px;
+border : 1px solid rgb(238, 238, 238);
+border-radius : 3px;
+}
+
+.bl-instructions div a {
+background : transparent url(../img/icons/instructions-disclosure-arrow.png) no-repeat 6px 6px;
+display : block;
+padding : 3px 6px 3px 18px;
+}
+
+.bl-instructions div a.bl-open {background-position : 6px -14px;}
+
+.bl-instructions ul {
+display : none;
+list-style : none;
+margin : 0 0 0 7px;
+padding : 0;
+}
+
+.bl-instructions li {
+border-top : 1px solid rgb(240, 240, 240);
+color : rgb(153, 153, 153);
+padding : 5px 6px 5px 22px;
+position : relative;
+}
+
+.bl-instructions li img {
+clip : rect(0, 16px, 16px, 0);
+left : 0;
+position : absolute;
+top : 4px;
+}
+
+/* =bl-ffmatrix
+ -------------------------------------------------------------*/
+.bl-ffmatrix .bl-instructions,
+.bl-ffmatrix .bl-instructions p {color : rgb(150, 150, 150);}
+
+.bl-ffmatrix .bl-instructions h3 {color : rgb(153, 153, 153);}
+
+.bl-ffmatrix .bl-instructions div {border : none;}
+
+.bl-ffmatrix .bl-instructions div a {
+background-position : 0 -36px;
+padding : 0 0 0 12px;
+}
+
+.bl-ffmatrix .bl-instructions div a.bl-open {background-position : 0 -56px;}
+
+.bl-ffmatrix .bl-instructions li {border-color : rgb(61, 68, 71);}
+
+.bl-ffmatrix .bl-instructions li img {
+clip : rect(16px, 16px, 32px, 0);
+top : -12px;
+}
