@@ -24,6 +24,28 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 * ------------------------------------------------------------ */
 	
 	/**
+	 * Default site settings.
+	 *
+	 * @access	public
+	 * @var 	array
+	 */
+	public $default_site_settings = array(
+		'access_key_id'		=> '',
+		'secret_access_key'	=> '',
+		'cache_duration' 	=> '3600',		// 60 minutes
+		'use_ssl' 			=> 'n',
+		'custom_url'		=> 'n'
+	);
+	
+	/**
+	 * Fieldtype extension hooks.
+	 *
+	 * @access	public
+	 * @var 	array
+	 */
+	public $hooks = array('sessions_start');
+	
+	/**
 	 * Basic fieldtype information.
 	 *
 	 * @access	public
@@ -47,41 +69,11 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		'ff'        => '1.3.4',
 		'cp_jquery' => '1.1'
 	);
-  
-	/**
-	 * Fieldtype extension hooks.
-	 *
-	 * @access	public
-	 * @var 	array
-	 */
-	public $hooks = array('sessions_start');
-  
-	/**
-	 * Default site settings.
-	 *
-	 * @access	public
-	 * @var 	array
-	 */
-	public $default_site_settings = array(
-		'access_key_id'		=> '',
-		'secret_access_key'	=> '',
-		'cache_duration' 	=> '3600',		// 60 minutes
-		'use_ssl' 			=> 'n',
-		'custom_url'		=> 'n'
-	);
 	
 	
 	/* --------------------------------------------------------------
 	 * PRIVATE PROPERTIES
 	 * ------------------------------------------------------------ */
-	
-	/**
-	 * The site ID.
-	 *
-	 * @access	private
-	 * @var 	string
-	 */
-	private $_site_id = '';
 	
 	/**
 	 * The class name.
@@ -92,6 +84,14 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	private $_class = '';
 	
 	/**
+	 * Demo mode doesn't actually upload the files to Amazon S3.
+	 *
+	 * @access  private
+	 * @var   	bool
+	 */
+	private $_demo = FALSE;
+	
+	/**
 	 * Lower-class classname.
 	 *
 	 * @access	private
@@ -100,20 +100,20 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	private $_lower_class = '';
 	
 	/**
-	 * The Session namespace.
-	 *
-	 * @access	private
-	 * @var 	string
-	 */
-	private $_namespace = '';
-	
-	/**
 	 * Basic member information.
 	 *
 	 * @access	private
 	 * @var 	array
 	 */
 	private $_member_data = array();
+	
+	/**
+	 * The Session namespace.
+	 *
+	 * @access	private
+	 * @var 	string
+	 */
+	private $_namespace = '';
 	
 	/** 
 	 * Saved field settings. Note that we can't use the variable
@@ -126,12 +126,12 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	private $_saved_field_settings = array();
 	
 	/**
-	 * Demo mode doesn't actually upload the files to Amazon S3.
+	 * The site ID.
 	 *
-	 * @access  private
-	 * @var   	bool
+	 * @access	private
+	 * @var 	string
 	 */
-	private $_demo = FALSE;
+	private $_site_id = '';
 
 
 	/**
@@ -139,526 +139,6 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 * PRIVATE METHODS
 	 * ----------------------------------------------------------------
 	 */
-	
-	/**
-	 * Duplicate of Fieldframe_Main->_array_ascii_to_entities. Reproduced here, as the
-	 * method is technically private.
-	 *
-	 * @see		http://pixelandtonic.com/fieldframe/
-	 * @access	private
-	 * @param 	mixed 		$vals		The value to convert.
-	 * @return 	string
-	 */
-	private function _array_ascii_to_entities($vals)
-	{
-		if (is_array($vals))
-		{
-			foreach ($vals as &$val)
-			{
-				$val = $this->_array_ascii_to_entities($val);
-			}
-		}
-		else
-		{
-			global $REGX;
-			$vals = $REGX->ascii_to_entities($vals);
-		}
-
-		return $vals;
-	}
-	
-	
-	/**
-	 * Duplicate of Fieldframe_Main->_array_entities_to_ascii. Reproduced here, as the
-	 * method is technically private.
-	 *
-	 * @see		http://pixelandtonic.com/fieldframe/
-	 * @access	private
-	 * @param 	mixed 		$vals		The value to convert.
-	 * @return 	string
-	 */
-	private function _array_entities_to_ascii($vals)
-	{
-		if (is_array($vals))
-		{
-			foreach ($vals as &$val)
-			{
-				$val = $this->_array_entities_to_ascii($val);
-			}
-		}
-		else
-		{
-			global $REGX;
-			$vals = $REGX->entities_to_ascii($vals);
-		}
-		
-		return $vals;
-	}
-	
-	
-	/**
-	 * Duplicate of the Fieldframe_Main->_serialize(). Reproduced here, as the method
-	 * is technically private.
-	 *
-	 * @see 	http://pixelandtonic.com/fieldframe/
-	 * @access	private
-	 * @param 	array 		$vals		The array to serialise.
-	 * @return 	string
-	 */
-	private function _serialize($vals = array())
-	{
-		global $PREFS;
-
-		if ($PREFS->ini('auto_convert_high_ascii') == 'y')
-		{
-			$vals = $this->_array_ascii_to_entities($vals);
-		}
-
-     	return addslashes(serialize($vals));
-	}
-	
-	
-	/**
-	 * Duplicate of Fieldframe_Main->_unserialize(). Reproduced here, as the method
-	 * is technically private.
-	 *
-	 * @see		http://pixelandtonic.com/fieldframe/
-	 * @access	private
-	 * @param 	string 		$vals		The string to unserialise.
-	 * @param 	bool		$convert	Convert high ASCII values, if the PREF is set to 'y'?
-	 * @return 	array
-	 */
-	private function _unserialize($vals, $convert = TRUE)
-	{
-		global $PREFS, $REGX;
-		
-		if (($tmp_vals = @unserialize($vals)) !== FALSE)
-		{
-			$vals = $REGX->array_stripslashes($tmp_vals);
-			
-			if ($convert && $PREFS->ini('auto_convert_high_ascii') == 'y')
-			{
-				$vals = $this->_array_entities_to_ascii($vals);
-			}
-		}
-		
-		return $vals;
-	}
-	
-	
-	/**
-	 * Checks that the S3 credentials have been set. Makes not attempt to check their validity.
-	 *
-	 * @access  private
-	 * @return  bool
-	 */
-	function _check_s3_credentials()
-	{
-		return (isset($this->site_settings['access_key_id'])
-			&& $this->site_settings['access_key_id'] !== ''
-			&& isset($this->site_settings['secret_access_key'])
-			&& $this->site_settings['secret_access_key'] !== '');
-	}
-	
-	
-	/**
-	 * Extracts the field settings for the specified member group from
-	 * the $this->_saved_field_settings array.
-	 *
-	 * @access	private
-	 * @param	string		$group_id		The member group ID.
-	 * @return	array
-	 */
-	private function _get_group_field_settings($group_id = '')
-	{
-		// A basic shell, so other methods can rely on the paths key existing.
-		$group_settings = array('paths' => array());
-		
-		if ( ! $group_id
-			OR ! $this->_saved_field_settings
-			OR ! isset($this->_saved_field_settings['member_groups'][$group_id]))
-		{
-			return $group_settings;
-		}
-		
-		foreach ($this->_saved_field_settings['member_groups'][$group_id]['paths'] AS $path_settings)
-		{
-			/**
-			 * The paths array becomes key => value, to make it easier to check for the existence
-			 * of a path with array_key_exists.
-			 */
-			
-			$group_settings['paths'][$path_settings['path']] = array(
-				'all_files'		=> $path_settings['all_files'],
-				'allow_upload'	=> $path_settings['allow_upload'],
-				'path'			=> $path_settings['path'],
-				'show'			=> $path_settings['show']
-			);
-		}
-		
-		return $group_settings;
-	}
-	
-	
-	/**
-	 * Checks whether the specified item exists on the S3 server.
-	 *
-	 * @access	private
-	 * @param	string		$item_name		The full item path and name, including the bucket.
-	 * @return	bool
-	 */
-	function _item_exists_on_s3($item_name = '')
-	{
-		// Clearly not, muppet.
-		if ( ! $item_name)
-		{
-			return FALSE;
-		}
-		
-		// Separate out the bucket name.
-		$bucket_and_path = $this->_split_bucket_and_path_string($item_name);
-		
-		if ( ! $bucket_and_path['bucket'])
-		{
-			return FALSE;
-		}
-		
-		// Make the call.
-		$s3 = new S3($this->site_settings['access_key_id'], $this->site_settings['secret_access_key'], FALSE);
-		return @$s3->getObjectInfo($bucket_and_path['bucket'], $bucket_and_path['item_path'], FALSE);
-		
-	}
-	
-	
-	/**
-	 * Retrieves the member data. Called from sessions_start.
-	 *
-	 * @access	private
-	 * @return	array
-	 */
-	private function _load_member_data()
-	{
-		global $DB, $IN, $SESS;
-		
-		if ($this->_member_data)
-		{
-			return $this->_member_data;
-		}
-		
-		$member_data = array(
-			'group_id' => '0',
-			'member_id' => '0'
-		);
-		
-		if (isset($SESS->userdata['member_id']) && isset($SESS->userdata['group_id']))
-		{
-			$member_data = $SESS->userdata;
-		}
-		else
-		{
-			$ip 	= $DB->escape_str($IN->IP);
-			$agent	= $DB->escape_str(substr($IN->AGENT, 0, 50));
-		
-			/**
-			 * Retrieve the Session ID, either from a cookie,
-			 * or from GET data.
-			 */
-		
-			if ( ! $session_id = $IN->GBL('sessionid', 'COOKIE'))
-			{
-				if ( ! $session_id = $IN->GBL('S', 'GET'))
-				{
-					if ($IN->SID != '')
-					{
-						$session_id = $IN->SID;
-					}
-				}
-			}
-		
-			// Retrieve the member ID.
-			if ($session_id)
-			{
-				$db_member = $DB->query("SELECT
-						m.member_id,
-						m.group_id
-					FROM exp_sessions AS s
-					INNER JOIN exp_members AS m
-					ON m.member_id = s.member_id
-					WHERE s.session_id = '" .$DB->escape_str($session_id) ."'
-					AND s.ip_address = '{$ip}'
-					AND s.user_agent = '{$agent}'
-					AND s.site_id = '{$this->_site_id}'"
-				);
-				
-				if ($db_member->num_rows == 1)
-				{
-					$member_data = array(
-						'group_id'	=> $db_member->row['group_id'],
-						'member_id'	=> $db_member->row['member_id']
-					);
-				}
-			}
-		}
-		
-		return $member_data;
-	}
-	
-	
-	/**
-	 * Validates the structure of an 'item' array. Returns a valid item array, with any extraneous
-	 * information stripped out, or FALSE.
-	 *
-	 * @access	private
-	 * @param 	array 			$item		The item to validate.
-	 * @return 	array|bool
-	 */
-	function _validate_item($item = array())
-	{
-		if ( ! $item OR ! is_array($item))
-		{
-			return FALSE;
-		}
-		
-		$default_item = array(
-			'item_extension'	=> '',
-			'item_is_folder'	=> '',
-			'item_name'			=> '',
-			'item_path'			=> '',
-			'item_size'			=> ''
-		);
-		
-		$item = array_merge($default_item, $item);
-		
-		/**
-		 * Item extension is optional in this first check, as folders don't have one.
-		 */
-		
-		$required_fields 	= array('item_is_folder', 'item_name', 'item_path', 'item_size');
-		$valid_item 		= array();
-		$missing_field		= FALSE;
-		
-		foreach ($required_fields AS $field_id)
-		{
-			if ($field_id != 'item_size' && ( ! is_string($item[$field_id]) OR $item[$field_id] == ''))
-			{
-				$missing_field = TRUE;
-				break;
-			}
-			
-			$valid_item[$field_id] = $item[$field_id];
-		}
-		
-		// One last check. Files need extension.
-		if (strtolower($valid_item['item_is_folder']) != 'y' && ( ! is_string($item['item_extension']) OR $item['item_extension'] == ''))
-		{
-			$missing_field = TRUE;
-		}
-		else
-		{
-			$valid_item['item_extension'] = strtolower($item['item_extension']);
-		}
-		
-		if ($missing_field)
-		{
-			return FALSE;
-		}
-		else
-		{
-			// Bit of cleaning up, and we'll be done.
-			$valid_item['item_is_folder'] 	= strtolower($valid_item['item_is_folder']);
-			$valid_item['item_size']		= intval($valid_item['item_size']);
-			
-			return $valid_item;
-		}
-	}
-	
-	
-	/**
-	 * Parses a single Amazon S3 item, representing a single item of content in a bucket.
-	 *
-	 * @access	private
-	 * @param	array		$s3_item	The S3 item to parse.
-	 * @return	array
-	 */
-	function _parse_item_s3_result($s3_item = array())
-	{
-		// Steady butt.
-		if ( ! $s3_item OR ! is_array($s3_item))
-		{
-			return array();
-		}
-		
-		// Do we have the required information?
-		$required_fields 	= array('name', 'time', 'size', 'hash');
-		$item 				= array();
-		$missing_field		= FALSE;
-		
-		foreach ($required_fields AS $field_id)
-		{
-			if ( ! array_key_exists($field_id, $s3_item) OR (is_string($s3_item[$field_id]) && $s3_item[$field_id] == ''))
-			{
-				$missing_field = TRUE;
-				break;
-			}
-		}
-		
-		if ($missing_field)
-		{
-			return array();
-		}
-		
-		// Extract the information we require.
-		$item = array(
-			'item_extension'	=> pathinfo($s3_item['name'], PATHINFO_EXTENSION),
-			'item_is_folder'	=> (substr($s3_item['name'], -1) == '/') ? 'y' : 'n',
-			'item_name'			=> pathinfo($s3_item['name'], PATHINFO_BASENAME),
-			'item_path'			=> $s3_item['name'],
-			'item_size'			=> intval($s3_item['size'])
-		);
-		
-		return $item;
-	}
-	
-	
-	/**
-	 * Validates the structure of a 'bucket' array. Returns a valid item array, with any extraneous
-	 * information stripped out, or FALSE.
-	 *
-	 * @access	private
-	 * @param 	array 			$bucket		The bucket to validate.
-	 * @return 	array|bool
-	 */
-	function _validate_bucket($bucket = array())
-	{
-		if ( ! $bucket OR ! is_array($bucket))
-		{
-			return FALSE;
-		}
-		
-		// Do we have the required information?
-		$required_fields 	= array('bucket_id', 'bucket_items_cache_date', 'bucket_name', 'site_id');
-		$valid_bucket 		= array();
-		$missing_field		= FALSE;
-		
-		foreach ($required_fields AS $field_id)
-		{
-			if ( ! array_key_exists($field_id, $bucket))
-			{
-				$missing_field = TRUE;
-				break;
-			}
-			
-			$valid_bucket[$field_id] = $bucket[$field_id];
-		}
-		
-		return ($missing_field ? FALSE : $valid_bucket);
-	}
-	
-	
-	/**
-	 * Retrieves an item based on the saved field data.
-	 *
-	 * @access	private
-	 * @param	string			$field_data		The saved field data (a full item path, including bucket).
-	 * @return	array|bool
-	 */
-	function _load_item_using_field_data($field_data = '')
-	{
-		global $DB;
-		
-		if ( ! $field_data)
-		{
-			return FALSE;
-		}
-		
-		// Trim the bucket from the start of the field data.
-		if ($bucket_and_path = $this->_split_bucket_and_path_string($field_data))
-		{
-			$db_item = $DB->query("SELECT item_extension, item_is_folder, item_name, item_path, item_size
-				FROM exp_bucketlist_items AS items
-				INNER JOIN exp_bucketlist_buckets AS buckets
-				ON buckets.bucket_id = items.bucket_id
-				WHERE buckets.bucket_name = '" .$DB->escape_str($bucket_and_path['bucket']) ."'
-				AND items.item_path = '" .$DB->escape_str($bucket_and_path['item_path']) ."'
-				LIMIT 1");
-			
-			if ($db_item->num_rows == 1 && $item = $this->_validate_item($db_item->row))
-			{
-				return $item;
-			}
-		}
-		
-		return FALSE;
-	}
-	
-	
-	/**
-	 * Retrieves all the buckets from the database, and filter them against the available buckets.
-	 *
-	 * @access	private
-	 * @param 	mixed 		$filter		An array containing the available buckets, or FALSE to return all.
-	 * @return 	array
-	 */
-	function _load_all_buckets_from_db($filter = FALSE)
-	{
-		global $DB;
-		
-		$sql = "SELECT
-				bucket_id, bucket_items_cache_date, bucket_name, site_id
-			FROM exp_bucketlist_buckets
-			WHERE site_id = '{$this->_site_id}'";
-			
-		$sql .= is_array($filter) ? " AND bucket_name IN('" .implode("', '", $filter) ."')" : '';
-		$sql .= ' ORDER BY bucket_name ASC';
-		
-		$db_buckets = $DB->query($sql);
-			
-		if ($db_buckets->num_rows == 0)
-		{
-			return array();
-		}
-		
-		// Initialise the return array.
-		$buckets = array();
-		
-		foreach ($db_buckets->result AS $db_bucket)
-		{
-			if ($bucket = $this->_validate_bucket($db_bucket))
-			{
-				$buckets[] = $bucket;
-			}
-		}
-		
-		return $buckets;
-	}
-	
-	
-	/**
-	 * Retrieves a bucket from the database, given its name.
-	 *
-	 * @access	private
-	 * @param 	string		$bucket_name		The name of the bucket.
-	 * @return 	array|bool
-	 */
-	function _load_bucket_from_db($bucket_name = '')
-	{
-		global $DB;
-		
-		if ( ! $bucket_name)
-		{
-			return FALSE;
-		}
-		
-		$db_bucket = $DB->query("SELECT
-				bucket_id, bucket_items_cache_date, bucket_name, site_id
-			FROM exp_bucketlist_buckets
-			WHERE bucket_name = '" .$DB->escape_str($bucket_name) ."'
-			AND site_id = '{$this->_site_id}'
-			LIMIT 1");
-			
-		return ($this->_validate_bucket($db_bucket->row));
-	}
-	
 	
 	/**
 	 * Add a bucket item to the database, if it doesn't already exist. If the item was added,
@@ -720,554 +200,58 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	
 	
 	/**
-	 * Retrieve a bucket's contents from the database.
+	 * Duplicate of Fieldframe_Main->_array_ascii_to_entities. Reproduced here, as the
+	 * method is technically private.
 	 *
+	 * @see		http://pixelandtonic.com/fieldframe/
 	 * @access	private
-	 * @param 	string		$bucket_name		The name of the bucket.
-	 * @return 	array
-	 */
-	function _load_bucket_items_from_db($bucket_name = '')
-	{
-		global $DB;
-		
-		// NOTE: DOES NOT check whether the items cache has expired.
-		
-		// Talk sense man.
-		if ( ! $bucket_name OR ( ! $bucket = $this->_load_bucket_from_db($bucket_name)))
-		{
-			return FALSE;
-		}
-		
-		// Load the items from the database.
-		$db_items = $DB->query("SELECT
-				item_id, item_path, item_name, item_size, item_extension, item_is_folder
-			FROM exp_bucketlist_items
-			WHERE bucket_id = '" .$DB->escape_str($bucket['bucket_id']) ."'
-			AND site_id = '{$this->_site_id}'
-			ORDER BY item_name ASC");
-			
-		if ($db_items->num_rows == 0)
-		{
-			return array();
-		}
-		
-		// Parse the data into arrays ('folders' and 'files').
-		$folders = $files = array();
-		
-		foreach ($db_items->result AS $db_item)
-		{
-			$item = $this->_validate_item($db_item);
-			
-			if ($item)
-			{
-				$item['item_is_folder'] == 'y' ? $folders[] = $item : $files[] = $item;
-			}
-		}
-		
-		// Do we have any items?
-		$items = array();
-		
-		if ($folders OR $files)
-		{
-			$items['folders'] 	= $folders;
-			$items['files']		= $files;
-		}
-		
-		// Return the data.
-		return $items;
-	}
-	
-	
-	/**
-	 * Checks whether the stored buckets still exist, and whether any new
-	 * buckets have been created in the interim. Does not check the contents.
-	 *
-	 * @access	private
-	 * @return 	bool
-	 */
-	function _update_buckets_from_s3()
-	{
-		global $DB;
-		
-		// Retrieve all the buckets from Amazon.
-		$s3 = new S3($this->site_settings['access_key_id'], $this->site_settings['secret_access_key'], FALSE);
-		
-		$s3_buckets = @$s3->listBuckets();
-		
-		// Do we have any results?
-		if ( ! $s3_buckets)
-		{
-			return FALSE;
-		}
-		
-		/**
-		 * Delete any obsolete buckets, and their associated items.
-		 */
-		
-		// @todo: data cleansing. Should never be an issue, but still...
-		$valid_bucket_names = "'" .implode("', '", $s3_buckets) ."'";
-		
-		// Retrieve the obsolete buckets.
-		$db_obsolete_buckets = $DB->query("SELECT bucket_id
-			FROM exp_bucketlist_buckets
-			WHERE bucket_name NOT IN({$valid_bucket_names})");
-		
-		if ($db_obsolete_buckets->num_rows > 0)
-		{
-			// Create an array of obsolete bucket IDs.
-			$obsolete_bucket_ids = array();
-			
-			foreach ($db_obsolete_buckets->result AS $db_obb)
-			{
-				$obsolete_bucket_ids[] = $db_obb['bucket_id'];
-			}
-			
-			$obsolete_bucket_ids = "'" .implode("', '", $obsolete_bucket_ids) ."'";
-			
-			// Delete the associated items.
-			$DB->query("DELETE FROM exp_bucketlist_items
-				WHERE bucket_id IN ({$obsolete_bucket_ids})");
-			
-			// Delete the obsolete buckets.
-			$DB->query("DELETE FROM exp_bucketlist_buckets
-				WHERE bucket_id IN ({$obsolete_bucket_ids})");
-		}
-		
-		/**
-		 * Add any missing buckets to the database.
-		 */
-		
-		// Retrieve all the buckets from the database.
-		$existing_buckets = $this->_load_all_buckets_from_db();
-		
-		/**
-		 * We've deleted any obsolete buckets, so if the number
-		 * of existing buckets equals the number of S3 buckets,
-		 * we're golden.
-		 */
-		
-		if (count($existing_buckets) != count($s3_buckets))
-		{
-			// Create an array of the existing bucket names.
-			$existing_bucket_names = array();
-			foreach ($existing_buckets AS $eb)
-			{
-				$existing_bucket_names[] = $eb['bucket_name'];
-			}
-			
-			// Determine the missing items.
-			$missing_bucket_names = array_diff($s3_buckets, $existing_bucket_names);
-			$missing_buckets = array();
-			
-			$old_cache = strtotime('19 February 1973');		// Olden times.
-			
-			foreach ($missing_bucket_names AS $missing)
-			{
-				$missing_buckets[] = "{$this->_site_id}, '{$missing}', {$old_cache}";
-			}
-			
-			// Build the SQL.
-			$sql = "INSERT INTO exp_bucketlist_buckets (
-					site_id, bucket_name, bucket_items_cache_date
-				) VALUES (" .implode('), (', $missing_buckets) .")";
-				
-			$DB->query($sql);
-		}
-		
-		return TRUE;
-	}
-	
-	
-	/**
-	 * Attempts to retrieve a bucket's contents from Amazon, and save them
-	 * to the database.
-	 *
-	 * @access	private
-	 * @param 	string		$bucket_name		The name of the bucket.
-	 * @param 	bool		$force_update		Force an S3 query, regardless of the cache date.
-	 * @return 	bool
-	 */
-	function _update_bucket_items_from_s3($bucket_name = '', $force_update = FALSE)
-	{
-		global $DB;
-		
-		// Is this a valid bucket?
-		if ( ! $bucket_name OR ( ! $bucket = $this->_load_bucket_from_db($bucket_name)))
-		{
-			return FALSE;
-		}
-		
-		// Does this bucket require updating?
-		$cache_expiry_date = $bucket['bucket_items_cache_date'] +intval($this->site_settings['cache_duration']);
-		if ($cache_expiry_date >= time() && $force_update !== TRUE)
-		{
-			return FALSE;
-		}
-		
-		// Make the call to Amazon.
-		$s3 = new S3($this->site_settings['access_key_id'], $this->site_settings['secret_access_key'], FALSE);
-		
-		
-		/**
-		 * @since 1.1.4
-		 * The bucket items deletion, and bucket cache date update need to happen regardless of
-		 * whether the call to Amazon returned any items.
-		 *
-		 * This prevents problems with previously-populated buckets that have since been emptied,
-		 * and return zero items (i.e. FALSE).
-		 */
-		
-		// Delete any existing bucket items from the database.
-		$DB->query("DELETE FROM exp_bucketlist_items
-			WHERE bucket_id = {$bucket['bucket_id']}
-			AND site_id = {$this->_site_id}");
-			
-		// Update the bucket cache date.
-		$DB->query($DB->update_string(
-			'exp_bucketlist_buckets',
-			array('bucket_items_cache_date' => time()),
-			"bucket_id = {$bucket['bucket_id']}"
-		));
-		
-		
-		if ( ! $s3_items = @$s3->getBucket($bucket_name))
-		{
-			return FALSE;
-		}
-		
-		// Parse the data returned from Amazon.
-		$new_items = array();
-		
-		// The basic SQL query.
-		$base_insert_sql = 'INSERT INTO exp_bucketlist_items (
-				bucket_id, item_extension, item_is_folder, item_name, item_path, item_size, site_id
-			) VALUES (%s)';
-		
-		foreach ($s3_items AS $s3_item)
-		{
-			/**
-			 * Every 1500 items, we write to the database. This prevents MySQL max_allowed_packet
-			 * errors when dealing with extremely large buckets.
-			 */
-			
-			if (count($new_items) >= 1500)
-			{
-				$DB->query(sprintf($base_insert_sql, implode('), (', $new_items)));
-				$new_items = array();
-			}
-			
-			if ($item = $this->_parse_item_s3_result($s3_item))
-			{
-				/**
-				 * Paranoia with the string escaping, but better than the alternative. Field list:
-				 * bucket_id, item_extension, item_is_folder, item_name, item_path, item_size, site_id
-				 */
-				
-				$new_items[] = "'" .$DB->escape_str($bucket['bucket_id']) ."'"
-					.", '" .$DB->escape_str($item['item_extension']) ."'"
-					.", '" .$DB->escape_str($item['item_is_folder']) ."'"
-					.", '" .$DB->escape_str($item['item_name']) ."'"
-					.", '" .$DB->escape_str($item['item_path']) ."'"
-					.", '" .$DB->escape_str($item['item_size']) ."'"
-					.", {$this->_site_id}";
-			}
-		}
-		
-		// Stragglers?
-		if (count($new_items) > 0)
-		{
-			$DB->query(sprintf($base_insert_sql, implode('), (', $new_items)));
-		}
-		
-		return TRUE;
-		
-	}
-	
-	
-	/**
-	 * Loads a bucket's contents.
-	 *
-	 * @access	private
-	 * @param 	string		$bucket_name		The name of the bucket.
-	 * @return 	array
-	 */
-	function _load_bucket_items($bucket_name = '')
-	{
-		// Be reasonable.
-		if ( ! $bucket_name OR ( ! $bucket = $this->_load_bucket_from_db($bucket_name)))
-		{
-			return FALSE;
-		}
-		
-		/**
-		 * @since 1.1.2
-		 *
-		 * A few changes:
-		 * - Dispensed with Session cache, as this method is always called via AJAX.
-		 * - Moved S3 updates to the display_field method, so we only ever check the
-		 *	 database now. This fixed a bug whereby bucket items could be duplicated
-		 *	 in the database, due to overlapping AJAX calls.
-		 */
-		
-		return $this->_load_bucket_items_from_db($bucket_name);
-	}
-	
-	
-	/**
-	 * Loads all the 'admin' member groups from the database, and parses them
-	 * into an array. Admin member groups are defined here as an member group
-	 * that can:
-	 * 1. Access the CP and the publish or edit pages; or
-	 * 2. Post to a weblog (which covers SAEF usage)
-	 *
-	 * @access	private
-	 * @return	array
-	 */
-	private function _load_admin_member_groups()
-	{
-		global $DB;
-		
-		$db_cp_groups = $DB->query("SELECT mg.group_id, mg.group_title
-			FROM exp_member_groups AS mg
-			WHERE mg.site_id = '{$this->_site_id}'
-			AND mg.can_access_cp = 'y'
-			AND (mg.can_access_publish = 'y' OR mg.can_access_edit = 'y')
-			ORDER BY mg.group_title ASC");
-			
-		$db_saef_groups = $DB->query("SELECT mg.group_id, mg.group_title
-			FROM exp_member_groups AS mg
-			INNER JOIN exp_weblog_member_groups AS wmg
-			ON wmg.group_id = mg.group_id
-			WHERE mg.site_id = '{$this->_site_id}'
-			AND (mg.can_access_cp <> 'y' OR (mg.can_access_publish <> 'y' AND mg.can_access_edit <> 'y')) 
-			GROUP BY mg.group_id
-			ORDER BY mg.group_title ASC");
-		
-		// Parse the results.
-		$member_groups = array();
-		
-		if ($db_cp_groups->num_rows > 0)
-		{
-			foreach ($db_cp_groups->result AS $db_cp_group)
-			{
-				$member_groups[$db_cp_group['group_id']] = array(
-					'group_id'		=> $db_cp_group['group_id'],
-					'group_title'	=> $db_cp_group['group_title']
-				);
-			}
-		}
-		
-		if ($db_saef_groups->num_rows > 0)
-		{
-			foreach ($db_saef_groups->result AS $db_saef_group)
-			{
-				$member_groups[$db_saef_group['group_id']] = array(
-					'group_id'		=> $db_saef_group['group_id'],
-					'group_title'	=> $db_saef_group['group_title']
-				);
-			}
-		}
-		
-		return $member_groups;
-	}
-	
-	
-	/**
-	 * Splits a 'bucket and item path' string into two separate strings.
-	 *
-	 * IMPORTANT NOTE:
-	 * If the item path is the bucket root (/), the method still expects the
-	 * slash to be included. If it's not, an empty value is returned for both
-	 * the bucket and path.
-	 *
-	 * @access	private
-	 * @param	string		$full_path			The full 'bucket and item path' string.
-	 * @param	bool		$strip_slashes		Strips and forward slashes from the end of the item path.
-	 * @return	array|bool
-	 */
-	function _split_bucket_and_path_string($full_path = '', $strip_slashes = FALSE)
-	{
-		$bucket_and_path = array('bucket' => '', 'item_path' => '');
-		
-		if ( ! $full_path)
-		{
-			return FALSE;
-		}
-		
-		/**
-		 * The following regular expression also contains a little bit
-		 * of validation for the bucket name. It's not 100% strict
-		 * though, as there's no way we should ever be passed a non-
-		 * existent bucket name, never mind an entirely invalid one.
-		 */
-		
-		if (preg_match('/^([0-9a-z]{1}[0-9a-z\.\_\-]{2,254})\/{1}(.*)$/', $full_path, $matches))
-		{
-			if ($matches[1] OR $matches[2])
-			{
-				$bucket_and_path['bucket'] 		= $matches[1];
-				$bucket_and_path['item_path']	= $strip_slashes ? rtrim($matches[2], '/') : $matches[2];
-			}
-		}
-		
-		return $bucket_and_path;
-	}
-	
-	
-	/**
-	 * Forwards the specified file from the $_FILES array to S3
-	 *
-	 * @access	private
-	 * @param	string		$field_id		The ID of the file field.
-	 * @param	string		$bucket_name	The name of the destination bucket.
-	 * @param 	string		$item_path 		The path to the item from the bucket root.
-	 * @return	bool
-	 */
-	function _upload_file_to_s3($field_id = '', $bucket_name = '', $item_path = '')
-	{
-		global $EXT;
-		
-		// Idiot check.
-		if ( ! $field_id OR ! isset($_FILES[$field_id]) OR ! $bucket_name)
-		{
-			return FALSE;
-		}
-		
-		// If we're in demonstration mode, just return TRUE.
-		if ($this->_demo)
-		{
-			return TRUE;
-		}
-		
-		$file = $_FILES[$field_id];
-		
-		// Strip trailing slashes from the end of $item_path, just in case.
-		$item_path = rtrim($item_path, '/');
-			
-		// The destination.
-		$uri = $item_path ? $item_path .'/' .$file['name'] : $file['name'];
-		
-		// Build the upload data array.
-		$upload_data = array(
-			'bucket_name'	=> $bucket_name,
-			'file'			=> $file,
-			'uri'			=> $uri
-		);
-		
-		// Call the bucketlist_s3_upload_start hook.
-		if ($EXT->active_hook('bucketlist_remote_upload_start') === TRUE)
-		{
-			$ext_data = $EXT->call_extension('bucketlist_remote_upload_start', $upload_data, $this->_member_data['member_id']);
-
-			if ($EXT->end_script === TRUE)
-			{
-				return;
-			}
-		}
-			
-		// Retrieve the Amazon account credentials.
-		$access_key = $this->site_settings['access_key_id'];
-		$secret_key = $this->site_settings['secret_access_key'];
-		
-		// Create the S3 instance.
-		$s3 = new S3($access_key, $secret_key, FALSE);
-
-		// Generate the input array for our file.
-		$input = $s3->inputFile($ext_data['file']['tmp_name']);	
-		
-		// Upload the file.
-		return $s3->putObject($input, $ext_data['bucket_name'], $ext_data['uri'], S3::ACL_PUBLIC_READ);
-		
-	}
-	
-	
-	
-	/**
-	 * --------------------------------------------------------------
-	 * USER INTERFACE METHODS
-	 * --------------------------------------------------------------
-	 */
-
-	/**
-	 * Builds the 'root' HTML. That is, the buckets.
-	 *
-	 * @access	private
-	 * @param 	array 		$settings		Field or cell settings.
+	 * @param 	mixed 		$vals		The value to convert.
 	 * @return 	string
 	 */
-	function _build_root_ui($settings = array())
-	{	
-		global $LANG, $SESS;
-		
-		/**
-		 * This method is called from sessions_start, which runs before
-		 * the global $LANG variable is set.
-		 *
-		 * Just in case we ever need to run it at another point, we check
-		 * if the Language class exists, before manually instantiating it.
-		 */
-		
-		if ( ! isset($LANG))
+	private function _array_ascii_to_entities($vals)
+	{
+		if (is_array($vals))
 		{
-			require PATH_CORE .'core.language' .EXT;
-			$LANG = new Language();
-		}
-		
-		$LANG->fetch_language_file($this->_lower_class);
-		
-		// Determine which buckets are available.
-		$group_settings = $this->_get_group_field_settings($this->_member_data['group_id']);
-		
-		$available_buckets = array();
-		foreach ($group_settings['paths'] AS $path_settings)
-		{
-			if ($path_settings['show'] == 'y')
+			foreach ($vals as &$val)
 			{
-				$available_buckets[] = $path_settings['path'];
+				$val = $this->_array_ascii_to_entities($val);
 			}
-		}
-		
-		/**
-		 * Note that we're explicitly loading the buckets from the database.
-		 *
-		 * This is because the display_field method, called when the field is
-		 * first, um, displayed, runs update_buckets_from_s3, to make sure we
-		 * have an up-to-date list of buckets.
-		 *
-		 * REMEMBER:
-		 * The cache date is irrelevant as far as buckets are concerned. Whenever
-		 * the field is display, we check that our list of buckets is still valid.
-		 *
-		 * The bucket items are the things that get cached for the period set by
-		 * the user.
-		 */
-		
-		if ( ! $buckets = $this->_load_all_buckets_from_db($available_buckets))
-		{
-			$html = '<p class="bl-alert">' .$LANG->line('no_buckets') .'</p>';
 		}
 		else
 		{
-			$html = '<ul>';
-		
-			foreach ($buckets AS $bucket)
+			global $REGX;
+			$vals = $REGX->ascii_to_entities($vals);
+		}
+
+		return $vals;
+	}
+	
+	
+	/**
+	 * Duplicate of Fieldframe_Main->_array_entities_to_ascii. Reproduced here, as the
+	 * method is technically private.
+	 *
+	 * @see		http://pixelandtonic.com/fieldframe/
+	 * @access	private
+	 * @param 	mixed 		$vals		The value to convert.
+	 * @return 	string
+	 */
+	private function _array_entities_to_ascii($vals)
+	{
+		if (is_array($vals))
+		{
+			foreach ($vals as &$val)
 			{
-				$html .= '<li class="bl-directory bl-bucket bl-collapsed">';
-				
-				/**
-				 * Note the addition of a forward slash after the bucket name.
-				 * This saves us a lot of hassle, as it now means that we can
-				 * treat paths with and without 'folders' the same way when
-				 * they are returned to us.
-				 */
-				
-				$html .= '<a href="#" rel="' .rawurlencode($bucket['bucket_name'] .'/') .'">' .$bucket['bucket_name'] .'</a></li>';
+				$val = $this->_array_entities_to_ascii($val);
 			}
-		
-			$html .= '</ul>';
+		}
+		else
+		{
+			global $REGX;
+			$vals = $REGX->entities_to_ascii($vals);
 		}
 		
-		return $html;
+		return $vals;
 	}
 	
 	
@@ -1420,6 +404,104 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	
 	
 	/**
+	 * Builds the 'root' HTML. That is, the buckets.
+	 *
+	 * @access	private
+	 * @param 	array 		$settings		Field or cell settings.
+	 * @return 	string
+	 */
+	function _build_root_ui($settings = array())
+	{	
+		global $LANG, $SESS;
+		
+		/**
+		 * This method is called from sessions_start, which runs before
+		 * the global $LANG variable is set.
+		 *
+		 * Just in case we ever need to run it at another point, we check
+		 * if the Language class exists, before manually instantiating it.
+		 */
+		
+		if ( ! isset($LANG))
+		{
+			require PATH_CORE .'core.language' .EXT;
+			$LANG = new Language();
+		}
+		
+		$LANG->fetch_language_file($this->_lower_class);
+		
+		// Determine which buckets are available.
+		$group_settings = $this->_get_group_field_settings($this->_member_data['group_id']);
+		
+		$available_buckets = array();
+		foreach ($group_settings['paths'] AS $path_settings)
+		{
+			if ($path_settings['show'] == 'y')
+			{
+				$available_buckets[] = $path_settings['path'];
+			}
+		}
+		
+		/**
+		 * Note that we're explicitly loading the buckets from the database.
+		 *
+		 * This is because the display_field method, called when the field is
+		 * first, um, displayed, runs update_buckets_from_s3, to make sure we
+		 * have an up-to-date list of buckets.
+		 *
+		 * REMEMBER:
+		 * The cache date is irrelevant as far as buckets are concerned. Whenever
+		 * the field is display, we check that our list of buckets is still valid.
+		 *
+		 * The bucket items are the things that get cached for the period set by
+		 * the user.
+		 */
+		
+		if ( ! $buckets = $this->_load_all_buckets_from_db($available_buckets))
+		{
+			$html = '<p class="bl-alert">' .$LANG->line('no_buckets') .'</p>';
+		}
+		else
+		{
+			$html = '<ul>';
+		
+			foreach ($buckets AS $bucket)
+			{
+				$html .= '<li class="bl-directory bl-bucket bl-collapsed">';
+				
+				/**
+				 * Note the addition of a forward slash after the bucket name.
+				 * This saves us a lot of hassle, as it now means that we can
+				 * treat paths with and without 'folders' the same way when
+				 * they are returned to us.
+				 */
+				
+				$html .= '<a href="#" rel="' .rawurlencode($bucket['bucket_name'] .'/') .'">' .$bucket['bucket_name'] .'</a></li>';
+			}
+		
+			$html .= '</ul>';
+		}
+		
+		return $html;
+	}
+	
+	
+	/**
+	 * Checks that the S3 credentials have been set. Makes not attempt to check their validity.
+	 *
+	 * @access  private
+	 * @return  bool
+	 */
+	function _check_s3_credentials()
+	{
+		return (isset($this->site_settings['access_key_id'])
+			&& $this->site_settings['access_key_id'] !== ''
+			&& isset($this->site_settings['secret_access_key'])
+			&& $this->site_settings['secret_access_key'] !== '');
+	}
+	
+	
+	/**
 	 * Extracts the current member's privileges from the supplied settings.
 	 *
 	 * @access	private
@@ -1465,6 +547,100 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	
 	
 	/**
+	 * Forces an update of the fieldtype. Used during beta testing, when the
+	 * version number updates are not recognised by FieldFrame.
+	 *
+	 * @access	private
+	 * @return	void
+	 */
+	function _force_update()
+	{
+		global $DB, $PREFS;
+		
+		/**
+		 * No messing about. Just blat the lot, and start again with
+		 * a clean database cache.
+		 */
+		
+		$sql[] = 'DROP TABLE IF EXISTS exp_bucketlist_buckets';
+		$sql[] = 'DROP TABLE IF EXISTS exp_bucketlist_files';		// Pre-0.8.0 hangover.
+		$sql[] = 'DROP TABLE IF EXISTS exp_bucketlist_items';
+		$sql[] = 'DROP TABLE IF EXISTS exp_bucketlist_uploads';
+		
+		/**
+		 * @since 1.1.3
+		 * Some older MySQL installations use MyISAM. However, new tables are automatically
+		 * created using INNODB, resulting in problems with foreign keys.
+		 *
+		 * We can either drop the foreign keys, which would be tantamount to admitting defeat,
+		 * or we can determine the engine, and explicitly specify it. We do the latter.
+		 */
+		
+		if (version_compare(mysql_get_server_info(), '5.0.0', '<'))
+		{
+			// We take a punt.
+			$engine = 'MyISAM';
+		}
+		else
+		{
+			$db_engine = $DB->query("SELECT `ENGINE` AS `engine`
+				FROM information_schema.TABLES
+				WHERE TABLE_SCHEMA =  '" .$PREFS->ini('db_name') ."'
+				AND TABLE_NAME = 'exp_sites'
+				LIMIT 1");
+
+			if ($db_engine->num_rows !== 1)
+			{
+				exit('Unable to determine your database engine.');
+			}
+
+			$engine = $db_engine->row['engine'];
+		}
+		
+		$sql[] = "CREATE TABLE IF NOT EXISTS exp_bucketlist_buckets (
+				bucket_id int(10) unsigned NOT NULL auto_increment,
+				site_id int(5) unsigned NOT NULL default 1,
+				bucket_name varchar(255) NOT NULL,
+				bucket_items_cache_date int(10) unsigned NOT NULL default 0,
+				CONSTRAINT pk_buckets PRIMARY KEY(bucket_id),
+				CONSTRAINT fk_bucket_site_id FOREIGN KEY(site_id) REFERENCES exp_sites(site_id),
+				CONSTRAINT uk_site_id_bucket_name UNIQUE (site_id, bucket_name))
+			ENGINE = {$engine}";
+		
+		$sql[] = "CREATE TABLE IF NOT EXISTS exp_bucketlist_items (
+				item_id int(10) unsigned NOT NULL auto_increment,
+				site_id int(5) unsigned NOT NULL default 1,
+				bucket_id int(10) unsigned NOT NULL,
+				item_path varchar(1000) NOT NULL,
+				item_name varchar(255) NOT NULL,
+				item_is_folder char(1) NOT NULL default 'n',
+				item_size int(10) unsigned NOT NULL,
+				item_extension varchar(10) NOT NULL,
+				CONSTRAINT pk_items PRIMARY KEY(item_id),
+				CONSTRAINT fk_item_site_id FOREIGN KEY(site_id) REFERENCES exp_sites(site_id),
+				CONSTRAINT fk_item_bucket_id FOREIGN KEY(bucket_id) REFERENCES exp_bucketlist_buckets(bucket_id))
+			ENGINE = {$engine}";
+			
+		$sql[] = "CREATE TABLE IF NOT EXISTS exp_bucketlist_uploads (
+				upload_id int(10) unsigned NOT NULL auto_increment,
+				site_id int(5) unsigned NOT NULL default 1,
+				member_id int(10) unsigned NOT NULL,
+				bucket_id int(10) unsigned NOT NULL,
+				item_path varchar(1000) NOT NULL,
+				CONSTRAINT pk_uploads PRIMARY KEY(upload_id),
+				CONSTRAINT fk_upload_site_id FOREIGN KEY(site_id) REFERENCES exp_sites(site_id),
+				CONSTRAINT fk_upload_member_id FOREIGN KEY(member_id) REFERENCES exp_members(member_id),
+				CONSTRAINT fk_upload_bucket_id FOREIGN KEY(bucket_id) REFERENCES exp_bucketlist_buckets(bucket_id))
+			ENGINE = {$engine}";
+		
+		foreach ($sql AS $query)
+		{
+			$DB->query($query);
+		}
+	}
+	
+	
+	/**
 	 * Returns the default member group bucket or folder settings.
 	 *
 	 * @access	private
@@ -1477,6 +653,290 @@ class Bucketlist extends Fieldframe_Fieldtype {
 			'allow_upload'	=> 'y',
 			'show'			=> 'y'
 		);
+	}
+	
+	
+	/**
+	 * Extracts the field settings for the specified member group from
+	 * the $this->_saved_field_settings array.
+	 *
+	 * @access	private
+	 * @param	string		$group_id		The member group ID.
+	 * @return	array
+	 */
+	private function _get_group_field_settings($group_id = '')
+	{
+		// A basic shell, so other methods can rely on the paths key existing.
+		$group_settings = array('paths' => array());
+		
+		if ( ! $group_id
+			OR ! $this->_saved_field_settings
+			OR ! isset($this->_saved_field_settings['member_groups'][$group_id]))
+		{
+			return $group_settings;
+		}
+		
+		foreach ($this->_saved_field_settings['member_groups'][$group_id]['paths'] AS $path_settings)
+		{
+			/**
+			 * The paths array becomes key => value, to make it easier to check for the existence
+			 * of a path with array_key_exists.
+			 */
+			
+			$group_settings['paths'][$path_settings['path']] = array(
+				'all_files'		=> $path_settings['all_files'],
+				'allow_upload'	=> $path_settings['allow_upload'],
+				'path'			=> $path_settings['path'],
+				'show'			=> $path_settings['show']
+			);
+		}
+		
+		return $group_settings;
+	}
+	
+	
+	/**
+	 * Checks whether the specified item exists on the S3 server.
+	 *
+	 * @access	private
+	 * @param	string		$item_name		The full item path and name, including the bucket.
+	 * @return	bool
+	 */
+	function _item_exists_on_s3($item_name = '')
+	{
+		// Clearly not, muppet.
+		if ( ! $item_name)
+		{
+			return FALSE;
+		}
+		
+		// Separate out the bucket name.
+		$bucket_and_path = $this->_split_bucket_and_path_string($item_name);
+		
+		if ( ! $bucket_and_path['bucket'])
+		{
+			return FALSE;
+		}
+		
+		// Make the call.
+		$s3 = new S3($this->site_settings['access_key_id'], $this->site_settings['secret_access_key'], FALSE);
+		return @$s3->getObjectInfo($bucket_and_path['bucket'], $bucket_and_path['item_path'], FALSE);
+		
+	}
+	
+	
+	/**
+	 * Loads all the 'admin' member groups from the database, and parses them
+	 * into an array. Admin member groups are defined here as an member group
+	 * that can:
+	 * 1. Access the CP and the publish or edit pages; or
+	 * 2. Post to a weblog (which covers SAEF usage)
+	 *
+	 * @access	private
+	 * @return	array
+	 */
+	private function _load_admin_member_groups()
+	{
+		global $DB;
+		
+		$db_cp_groups = $DB->query("SELECT mg.group_id, mg.group_title
+			FROM exp_member_groups AS mg
+			WHERE mg.site_id = '{$this->_site_id}'
+			AND mg.can_access_cp = 'y'
+			AND (mg.can_access_publish = 'y' OR mg.can_access_edit = 'y')
+			ORDER BY mg.group_title ASC");
+			
+		$db_saef_groups = $DB->query("SELECT mg.group_id, mg.group_title
+			FROM exp_member_groups AS mg
+			INNER JOIN exp_weblog_member_groups AS wmg
+			ON wmg.group_id = mg.group_id
+			WHERE mg.site_id = '{$this->_site_id}'
+			AND (mg.can_access_cp <> 'y' OR (mg.can_access_publish <> 'y' AND mg.can_access_edit <> 'y')) 
+			GROUP BY mg.group_id
+			ORDER BY mg.group_title ASC");
+		
+		// Parse the results.
+		$member_groups = array();
+		
+		if ($db_cp_groups->num_rows > 0)
+		{
+			foreach ($db_cp_groups->result AS $db_cp_group)
+			{
+				$member_groups[$db_cp_group['group_id']] = array(
+					'group_id'		=> $db_cp_group['group_id'],
+					'group_title'	=> $db_cp_group['group_title']
+				);
+			}
+		}
+		
+		if ($db_saef_groups->num_rows > 0)
+		{
+			foreach ($db_saef_groups->result AS $db_saef_group)
+			{
+				$member_groups[$db_saef_group['group_id']] = array(
+					'group_id'		=> $db_saef_group['group_id'],
+					'group_title'	=> $db_saef_group['group_title']
+				);
+			}
+		}
+		
+		return $member_groups;
+	}
+	
+	
+	/**
+	 * Retrieves all the buckets from the database, and filter them against the available buckets.
+	 *
+	 * @access	private
+	 * @param 	mixed 		$filter		An array containing the available buckets, or FALSE to return all.
+	 * @return 	array
+	 */
+	function _load_all_buckets_from_db($filter = FALSE)
+	{
+		global $DB;
+		
+		$sql = "SELECT
+				bucket_id, bucket_items_cache_date, bucket_name, site_id
+			FROM exp_bucketlist_buckets
+			WHERE site_id = '{$this->_site_id}'";
+			
+		$sql .= is_array($filter) ? " AND bucket_name IN('" .implode("', '", $filter) ."')" : '';
+		$sql .= ' ORDER BY bucket_name ASC';
+		
+		$db_buckets = $DB->query($sql);
+			
+		if ($db_buckets->num_rows == 0)
+		{
+			return array();
+		}
+		
+		// Initialise the return array.
+		$buckets = array();
+		
+		foreach ($db_buckets->result AS $db_bucket)
+		{
+			if ($bucket = $this->_validate_bucket($db_bucket))
+			{
+				$buckets[] = $bucket;
+			}
+		}
+		
+		return $buckets;
+	}
+	
+	
+	/**
+	 * Retrieves a bucket from the database, given its name.
+	 *
+	 * @access	private
+	 * @param 	string		$bucket_name		The name of the bucket.
+	 * @return 	array|bool
+	 */
+	function _load_bucket_from_db($bucket_name = '')
+	{
+		global $DB;
+		
+		if ( ! $bucket_name)
+		{
+			return FALSE;
+		}
+		
+		$db_bucket = $DB->query("SELECT
+				bucket_id, bucket_items_cache_date, bucket_name, site_id
+			FROM exp_bucketlist_buckets
+			WHERE bucket_name = '" .$DB->escape_str($bucket_name) ."'
+			AND site_id = '{$this->_site_id}'
+			LIMIT 1");
+			
+		return ($this->_validate_bucket($db_bucket->row));
+	}
+	
+	
+	/**
+	 * Loads a bucket's contents.
+	 *
+	 * @access	private
+	 * @param 	string		$bucket_name		The name of the bucket.
+	 * @return 	array
+	 */
+	function _load_bucket_items($bucket_name = '')
+	{
+		// Be reasonable.
+		if ( ! $bucket_name OR ( ! $bucket = $this->_load_bucket_from_db($bucket_name)))
+		{
+			return FALSE;
+		}
+		
+		/**
+		 * @since 1.1.2
+		 *
+		 * A few changes:
+		 * - Dispensed with Session cache, as this method is always called via AJAX.
+		 * - Moved S3 updates to the display_field method, so we only ever check the
+		 *	 database now. This fixed a bug whereby bucket items could be duplicated
+		 *	 in the database, due to overlapping AJAX calls.
+		 */
+		
+		return $this->_load_bucket_items_from_db($bucket_name);
+	}
+	
+	
+	/**
+	 * Retrieve a bucket's contents from the database.
+	 *
+	 * @access	private
+	 * @param 	string		$bucket_name		The name of the bucket.
+	 * @return 	array
+	 */
+	function _load_bucket_items_from_db($bucket_name = '')
+	{
+		global $DB;
+		
+		// NOTE: DOES NOT check whether the items cache has expired.
+		
+		// Talk sense man.
+		if ( ! $bucket_name OR ( ! $bucket = $this->_load_bucket_from_db($bucket_name)))
+		{
+			return FALSE;
+		}
+		
+		// Load the items from the database.
+		$db_items = $DB->query("SELECT
+				item_id, item_path, item_name, item_size, item_extension, item_is_folder
+			FROM exp_bucketlist_items
+			WHERE bucket_id = '" .$DB->escape_str($bucket['bucket_id']) ."'
+			AND site_id = '{$this->_site_id}'
+			ORDER BY item_name ASC");
+			
+		if ($db_items->num_rows == 0)
+		{
+			return array();
+		}
+		
+		// Parse the data into arrays ('folders' and 'files').
+		$folders = $files = array();
+		
+		foreach ($db_items->result AS $db_item)
+		{
+			$item = $this->_validate_item($db_item);
+			
+			if ($item)
+			{
+				$item['item_is_folder'] == 'y' ? $folders[] = $item : $files[] = $item;
+			}
+		}
+		
+		// Do we have any items?
+		$items = array();
+		
+		if ($folders OR $files)
+		{
+			$items['folders'] 	= $folders;
+			$items['files']		= $files;
+		}
+		
+		// Return the data.
+		return $items;
 	}
 	
 	
@@ -1528,6 +988,117 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		}
 		
 		return $settings;
+	}
+	
+	
+	/**
+	 * Retrieves an item based on the saved field data.
+	 *
+	 * @access	private
+	 * @param	string			$field_data		The saved field data (a full item path, including bucket).
+	 * @return	array|bool
+	 */
+	function _load_item_using_field_data($field_data = '')
+	{
+		global $DB;
+		
+		if ( ! $field_data)
+		{
+			return FALSE;
+		}
+		
+		// Trim the bucket from the start of the field data.
+		if ($bucket_and_path = $this->_split_bucket_and_path_string($field_data))
+		{
+			$db_item = $DB->query("SELECT item_extension, item_is_folder, item_name, item_path, item_size
+				FROM exp_bucketlist_items AS items
+				INNER JOIN exp_bucketlist_buckets AS buckets
+				ON buckets.bucket_id = items.bucket_id
+				WHERE buckets.bucket_name = '" .$DB->escape_str($bucket_and_path['bucket']) ."'
+				AND items.item_path = '" .$DB->escape_str($bucket_and_path['item_path']) ."'
+				LIMIT 1");
+			
+			if ($db_item->num_rows == 1 && $item = $this->_validate_item($db_item->row))
+			{
+				return $item;
+			}
+		}
+		
+		return FALSE;
+	}
+	
+	
+	/**
+	 * Retrieves the member data. Called from sessions_start.
+	 *
+	 * @access	private
+	 * @return	array
+	 */
+	private function _load_member_data()
+	{
+		global $DB, $IN, $SESS;
+		
+		if ($this->_member_data)
+		{
+			return $this->_member_data;
+		}
+		
+		$member_data = array(
+			'group_id' => '0',
+			'member_id' => '0'
+		);
+		
+		if (isset($SESS->userdata['member_id']) && isset($SESS->userdata['group_id']))
+		{
+			$member_data = $SESS->userdata;
+		}
+		else
+		{
+			$ip 	= $DB->escape_str($IN->IP);
+			$agent	= $DB->escape_str(substr($IN->AGENT, 0, 50));
+		
+			/**
+			 * Retrieve the Session ID, either from a cookie,
+			 * or from GET data.
+			 */
+		
+			if ( ! $session_id = $IN->GBL('sessionid', 'COOKIE'))
+			{
+				if ( ! $session_id = $IN->GBL('S', 'GET'))
+				{
+					if ($IN->SID != '')
+					{
+						$session_id = $IN->SID;
+					}
+				}
+			}
+		
+			// Retrieve the member ID.
+			if ($session_id)
+			{
+				$db_member = $DB->query("SELECT
+						m.member_id,
+						m.group_id
+					FROM exp_sessions AS s
+					INNER JOIN exp_members AS m
+					ON m.member_id = s.member_id
+					WHERE s.session_id = '" .$DB->escape_str($session_id) ."'
+					AND s.ip_address = '{$ip}'
+					AND s.user_agent = '{$agent}'
+					AND s.site_id = '{$this->_site_id}'"
+				);
+				
+				if ($db_member->num_rows == 1)
+				{
+					$member_data = array(
+						'group_id'	=> $db_member->row['group_id'],
+						'member_id'	=> $db_member->row['member_id']
+					);
+				}
+			}
+		}
+		
+		return $member_data;
 	}
 	
 	
@@ -1613,13 +1184,13 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	function _output_upload_response($message_data = array())
 	{
 		global $LANG, $PREFS;
-		
+
 		// Fine, be like that, see what I care.
 		if ( ! is_array($message_data))
 		{
 			$message_data = array();
 		}
-		
+
 		// Ever the optimist.
 		$default_data = array(
 			'status'		=>	'failure',
@@ -1627,9 +1198,9 @@ class Bucketlist extends Fieldframe_Fieldtype {
 			'upload_id'		=> '',
 			'list_item'		=> ''
 		);
-			
+
 		$message_data = array_merge($default_data, $message_data);
-		
+
 		// Tidy see.
 		$message_data['message'] = htmlspecialchars($message_data['message'], ENT_COMPAT, 'UTF-8');
 
@@ -1657,6 +1228,53 @@ _HTML_;
 
 		// Output the return document.
 		$this->_output_ajax_response($html);
+	}
+	
+	
+	/**
+	 * Parses a single Amazon S3 item, representing a single item of content in a bucket.
+	 *
+	 * @access	private
+	 * @param	array		$s3_item	The S3 item to parse.
+	 * @return	array
+	 */
+	function _parse_item_s3_result($s3_item = array())
+	{
+		// Steady butt.
+		if ( ! $s3_item OR ! is_array($s3_item))
+		{
+			return array();
+		}
+		
+		// Do we have the required information?
+		$required_fields 	= array('name', 'time', 'size', 'hash');
+		$item 				= array();
+		$missing_field		= FALSE;
+		
+		foreach ($required_fields AS $field_id)
+		{
+			if ( ! array_key_exists($field_id, $s3_item) OR (is_string($s3_item[$field_id]) && $s3_item[$field_id] == ''))
+			{
+				$missing_field = TRUE;
+				break;
+			}
+		}
+		
+		if ($missing_field)
+		{
+			return array();
+		}
+		
+		// Extract the information we require.
+		$item = array(
+			'item_extension'	=> pathinfo($s3_item['name'], PATHINFO_EXTENSION),
+			'item_is_folder'	=> (substr($s3_item['name'], -1) == '/') ? 'y' : 'n',
+			'item_name'			=> pathinfo($s3_item['name'], PATHINFO_BASENAME),
+			'item_path'			=> $s3_item['name'],
+			'item_size'			=> intval($s3_item['size'])
+		);
+		
+		return $item;
 	}
 	
 	
@@ -1793,95 +1411,470 @@ _HTML_;
 	
 	
 	/**
-	 * Forces an update of the fieldtype. Used during beta testing, when the
-	 * version number updates are not recognised by FieldFrame.
+	 * Duplicate of the Fieldframe_Main->_serialize(). Reproduced here, as the method
+	 * is technically private.
+	 *
+	 * @see 	http://pixelandtonic.com/fieldframe/
+	 * @access	private
+	 * @param 	array 		$vals		The array to serialise.
+	 * @return 	string
+	 */
+	private function _serialize($vals = array())
+	{
+		global $PREFS;
+
+		if ($PREFS->ini('auto_convert_high_ascii') == 'y')
+		{
+			$vals = $this->_array_ascii_to_entities($vals);
+		}
+
+     	return addslashes(serialize($vals));
+	}
+	
+	
+	/**
+	 * Splits a 'bucket and item path' string into two separate strings.
+	 *
+	 * IMPORTANT NOTE:
+	 * If the item path is the bucket root (/), the method still expects the
+	 * slash to be included. If it's not, an empty value is returned for both
+	 * the bucket and path.
 	 *
 	 * @access	private
-	 * @return	void
+	 * @param	string		$full_path			The full 'bucket and item path' string.
+	 * @param	bool		$strip_slashes		Strips and forward slashes from the end of the item path.
+	 * @return	array|bool
 	 */
-	function _force_update()
+	function _split_bucket_and_path_string($full_path = '', $strip_slashes = FALSE)
 	{
-		global $DB, $PREFS;
+		$bucket_and_path = array('bucket' => '', 'item_path' => '');
 		
-		/**
-		 * No messing about. Just blat the lot, and start again with
-		 * a clean database cache.
-		 */
-		
-		$sql[] = 'DROP TABLE IF EXISTS exp_bucketlist_buckets';
-		$sql[] = 'DROP TABLE IF EXISTS exp_bucketlist_files';		// Pre-0.8.0 hangover.
-		$sql[] = 'DROP TABLE IF EXISTS exp_bucketlist_items';
-		$sql[] = 'DROP TABLE IF EXISTS exp_bucketlist_uploads';
-		
-		/**
-		 * @since 1.1.3
-		 * Some older MySQL installations use MyISAM. However, new tables are automatically
-		 * created using INNODB, resulting in problems with foreign keys.
-		 *
-		 * We can either drop the foreign keys, which would be tantamount to admitting defeat,
-		 * or we can determine the engine, and explicitly specify it. We do the latter.
-		 */
-		
-		if (version_compare(mysql_get_server_info(), '5.0.0', '<'))
+		if ( ! $full_path)
 		{
-			// We take a punt.
-			$engine = 'MyISAM';
+			return FALSE;
+		}
+		
+		/**
+		 * The following regular expression also contains a little bit
+		 * of validation for the bucket name. It's not 100% strict
+		 * though, as there's no way we should ever be passed a non-
+		 * existent bucket name, never mind an entirely invalid one.
+		 */
+		
+		if (preg_match('/^([0-9a-z]{1}[0-9a-z\.\_\-]{2,254})\/{1}(.*)$/', $full_path, $matches))
+		{
+			if ($matches[1] OR $matches[2])
+			{
+				$bucket_and_path['bucket'] 		= $matches[1];
+				$bucket_and_path['item_path']	= $strip_slashes ? rtrim($matches[2], '/') : $matches[2];
+			}
+		}
+		
+		return $bucket_and_path;
+	}
+	
+	
+	/**
+	 * Duplicate of Fieldframe_Main->_unserialize(). Reproduced here, as the method
+	 * is technically private.
+	 *
+	 * @see		http://pixelandtonic.com/fieldframe/
+	 * @access	private
+	 * @param 	string 		$vals		The string to unserialise.
+	 * @param 	bool		$convert	Convert high ASCII values, if the PREF is set to 'y'?
+	 * @return 	array
+	 */
+	private function _unserialize($vals, $convert = TRUE)
+	{
+		global $PREFS, $REGX;
+		
+		if (($tmp_vals = @unserialize($vals)) !== FALSE)
+		{
+			$vals = $REGX->array_stripslashes($tmp_vals);
+			
+			if ($convert && $PREFS->ini('auto_convert_high_ascii') == 'y')
+			{
+				$vals = $this->_array_entities_to_ascii($vals);
+			}
+		}
+		
+		return $vals;
+	}
+	
+	
+	/**
+	 * Attempts to retrieve a bucket's contents from Amazon, and save them
+	 * to the database.
+	 *
+	 * @access	private
+	 * @param 	string		$bucket_name		The name of the bucket.
+	 * @param 	bool		$force_update		Force an S3 query, regardless of the cache date.
+	 * @return 	bool
+	 */
+	function _update_bucket_items_from_s3($bucket_name = '', $force_update = FALSE)
+	{
+		global $DB;
+		
+		// Is this a valid bucket?
+		if ( ! $bucket_name OR ( ! $bucket = $this->_load_bucket_from_db($bucket_name)))
+		{
+			return FALSE;
+		}
+		
+		// Does this bucket require updating?
+		$cache_expiry_date = $bucket['bucket_items_cache_date'] +intval($this->site_settings['cache_duration']);
+		if ($cache_expiry_date >= time() && $force_update !== TRUE)
+		{
+			return FALSE;
+		}
+		
+		// Make the call to Amazon.
+		$s3 = new S3($this->site_settings['access_key_id'], $this->site_settings['secret_access_key'], FALSE);
+		
+		
+		/**
+		 * @since 1.1.4
+		 * The bucket items deletion, and bucket cache date update need to happen regardless of
+		 * whether the call to Amazon returned any items.
+		 *
+		 * This prevents problems with previously-populated buckets that have since been emptied,
+		 * and return zero items (i.e. FALSE).
+		 */
+		
+		// Delete any existing bucket items from the database.
+		$DB->query("DELETE FROM exp_bucketlist_items
+			WHERE bucket_id = {$bucket['bucket_id']}
+			AND site_id = {$this->_site_id}");
+			
+		// Update the bucket cache date.
+		$DB->query($DB->update_string(
+			'exp_bucketlist_buckets',
+			array('bucket_items_cache_date' => time()),
+			"bucket_id = {$bucket['bucket_id']}"
+		));
+		
+		
+		if ( ! $s3_items = @$s3->getBucket($bucket_name))
+		{
+			return FALSE;
+		}
+		
+		// Parse the data returned from Amazon.
+		$new_items = array();
+		
+		// The basic SQL query.
+		$base_insert_sql = 'INSERT INTO exp_bucketlist_items (
+				bucket_id, item_extension, item_is_folder, item_name, item_path, item_size, site_id
+			) VALUES (%s)';
+		
+		foreach ($s3_items AS $s3_item)
+		{
+			/**
+			 * Every 1500 items, we write to the database. This prevents MySQL max_allowed_packet
+			 * errors when dealing with extremely large buckets.
+			 */
+			
+			if (count($new_items) >= 1500)
+			{
+				$DB->query(sprintf($base_insert_sql, implode('), (', $new_items)));
+				$new_items = array();
+			}
+			
+			if ($item = $this->_parse_item_s3_result($s3_item))
+			{
+				/**
+				 * Paranoia with the string escaping, but better than the alternative. Field list:
+				 * bucket_id, item_extension, item_is_folder, item_name, item_path, item_size, site_id
+				 */
+				
+				$new_items[] = "'" .$DB->escape_str($bucket['bucket_id']) ."'"
+					.", '" .$DB->escape_str($item['item_extension']) ."'"
+					.", '" .$DB->escape_str($item['item_is_folder']) ."'"
+					.", '" .$DB->escape_str($item['item_name']) ."'"
+					.", '" .$DB->escape_str($item['item_path']) ."'"
+					.", '" .$DB->escape_str($item['item_size']) ."'"
+					.", {$this->_site_id}";
+			}
+		}
+		
+		// Stragglers?
+		if (count($new_items) > 0)
+		{
+			$DB->query(sprintf($base_insert_sql, implode('), (', $new_items)));
+		}
+		
+		return TRUE;
+		
+	}
+	
+	
+	/**
+	 * Checks whether the stored buckets still exist, and whether any new
+	 * buckets have been created in the interim. Does not check the contents.
+	 *
+	 * @access	private
+	 * @return 	bool
+	 */
+	function _update_buckets_from_s3()
+	{
+		global $DB;
+		
+		// Retrieve all the buckets from Amazon.
+		$s3 = new S3($this->site_settings['access_key_id'], $this->site_settings['secret_access_key'], FALSE);
+		
+		$s3_buckets = @$s3->listBuckets();
+		
+		// Do we have any results?
+		if ( ! $s3_buckets)
+		{
+			return FALSE;
+		}
+		
+		/**
+		 * Delete any obsolete buckets, and their associated items.
+		 */
+		
+		// @todo: data cleansing. Should never be an issue, but still...
+		$valid_bucket_names = "'" .implode("', '", $s3_buckets) ."'";
+		
+		// Retrieve the obsolete buckets.
+		$db_obsolete_buckets = $DB->query("SELECT bucket_id
+			FROM exp_bucketlist_buckets
+			WHERE bucket_name NOT IN({$valid_bucket_names})");
+		
+		if ($db_obsolete_buckets->num_rows > 0)
+		{
+			// Create an array of obsolete bucket IDs.
+			$obsolete_bucket_ids = array();
+			
+			foreach ($db_obsolete_buckets->result AS $db_obb)
+			{
+				$obsolete_bucket_ids[] = $db_obb['bucket_id'];
+			}
+			
+			$obsolete_bucket_ids = "'" .implode("', '", $obsolete_bucket_ids) ."'";
+			
+			// Delete the associated items.
+			$DB->query("DELETE FROM exp_bucketlist_items
+				WHERE bucket_id IN ({$obsolete_bucket_ids})");
+			
+			// Delete the obsolete buckets.
+			$DB->query("DELETE FROM exp_bucketlist_buckets
+				WHERE bucket_id IN ({$obsolete_bucket_ids})");
+		}
+		
+		/**
+		 * Add any missing buckets to the database.
+		 */
+		
+		// Retrieve all the buckets from the database.
+		$existing_buckets = $this->_load_all_buckets_from_db();
+		
+		/**
+		 * We've deleted any obsolete buckets, so if the number
+		 * of existing buckets equals the number of S3 buckets,
+		 * we're golden.
+		 */
+		
+		if (count($existing_buckets) != count($s3_buckets))
+		{
+			// Create an array of the existing bucket names.
+			$existing_bucket_names = array();
+			foreach ($existing_buckets AS $eb)
+			{
+				$existing_bucket_names[] = $eb['bucket_name'];
+			}
+			
+			// Determine the missing items.
+			$missing_bucket_names = array_diff($s3_buckets, $existing_bucket_names);
+			$missing_buckets = array();
+			
+			$old_cache = strtotime('19 February 1973');		// Olden times.
+			
+			foreach ($missing_bucket_names AS $missing)
+			{
+				$missing_buckets[] = "{$this->_site_id}, '{$missing}', {$old_cache}";
+			}
+			
+			// Build the SQL.
+			$sql = "INSERT INTO exp_bucketlist_buckets (
+					site_id, bucket_name, bucket_items_cache_date
+				) VALUES (" .implode('), (', $missing_buckets) .")";
+				
+			$DB->query($sql);
+		}
+		
+		return TRUE;
+	}
+	
+	
+	/**
+	 * Forwards the specified file from the $_FILES array to S3
+	 *
+	 * @access	private
+	 * @param	string		$field_id		The ID of the file field.
+	 * @param	string		$bucket_name	The name of the destination bucket.
+	 * @param 	string		$item_path 		The path to the item from the bucket root.
+	 * @return	bool
+	 */
+	function _upload_file_to_s3($field_id = '', $bucket_name = '', $item_path = '')
+	{
+		global $EXT;
+		
+		// Idiot check.
+		if ( ! $field_id OR ! isset($_FILES[$field_id]) OR ! $bucket_name)
+		{
+			return FALSE;
+		}
+		
+		// If we're in demonstration mode, just return TRUE.
+		if ($this->_demo)
+		{
+			return TRUE;
+		}
+		
+		$file = $_FILES[$field_id];
+		
+		// Strip trailing slashes from the end of $item_path, just in case.
+		$item_path = rtrim($item_path, '/');
+			
+		// The destination.
+		$uri = $item_path ? $item_path .'/' .$file['name'] : $file['name'];
+		
+		// Build the upload data array.
+		$upload_data = array(
+			'bucket_name'	=> $bucket_name,
+			'file'			=> $file,
+			'uri'			=> $uri
+		);
+		
+		// Call the bucketlist_s3_upload_start hook.
+		if ($EXT->active_hook('bucketlist_remote_upload_start') === TRUE)
+		{
+			$ext_data = $EXT->call_extension('bucketlist_remote_upload_start', $upload_data, $this->_member_data['member_id']);
+
+			if ($EXT->end_script === TRUE)
+			{
+				return;
+			}
+		}
+			
+		// Retrieve the Amazon account credentials.
+		$access_key = $this->site_settings['access_key_id'];
+		$secret_key = $this->site_settings['secret_access_key'];
+		
+		// Create the S3 instance.
+		$s3 = new S3($access_key, $secret_key, FALSE);
+
+		// Generate the input array for our file.
+		$input = $s3->inputFile($ext_data['file']['tmp_name']);	
+		
+		// Upload the file.
+		return $s3->putObject($input, $ext_data['bucket_name'], $ext_data['uri'], S3::ACL_PUBLIC_READ);
+		
+	}
+	
+	
+	/**
+	 * Validates the structure of a 'bucket' array. Returns a valid item array, with any extraneous
+	 * information stripped out, or FALSE.
+	 *
+	 * @access	private
+	 * @param 	array 			$bucket		The bucket to validate.
+	 * @return 	array|bool
+	 */
+	function _validate_bucket($bucket = array())
+	{
+		if ( ! $bucket OR ! is_array($bucket))
+		{
+			return FALSE;
+		}
+		
+		// Do we have the required information?
+		$required_fields 	= array('bucket_id', 'bucket_items_cache_date', 'bucket_name', 'site_id');
+		$valid_bucket 		= array();
+		$missing_field		= FALSE;
+		
+		foreach ($required_fields AS $field_id)
+		{
+			if ( ! array_key_exists($field_id, $bucket))
+			{
+				$missing_field = TRUE;
+				break;
+			}
+			
+			$valid_bucket[$field_id] = $bucket[$field_id];
+		}
+		
+		return ($missing_field ? FALSE : $valid_bucket);
+	}
+	
+	
+	/**
+	 * Validates the structure of an 'item' array. Returns a valid item array, with any extraneous
+	 * information stripped out, or FALSE.
+	 *
+	 * @access	private
+	 * @param 	array 			$item		The item to validate.
+	 * @return 	array|bool
+	 */
+	function _validate_item($item = array())
+	{
+		if ( ! $item OR ! is_array($item))
+		{
+			return FALSE;
+		}
+		
+		$default_item = array(
+			'item_extension'	=> '',
+			'item_is_folder'	=> '',
+			'item_name'			=> '',
+			'item_path'			=> '',
+			'item_size'			=> ''
+		);
+		
+		$item = array_merge($default_item, $item);
+		
+		/**
+		 * Item extension is optional in this first check, as folders don't have one.
+		 */
+		
+		$required_fields 	= array('item_is_folder', 'item_name', 'item_path', 'item_size');
+		$valid_item 		= array();
+		$missing_field		= FALSE;
+		
+		foreach ($required_fields AS $field_id)
+		{
+			if ($field_id != 'item_size' && ( ! is_string($item[$field_id]) OR $item[$field_id] == ''))
+			{
+				$missing_field = TRUE;
+				break;
+			}
+			
+			$valid_item[$field_id] = $item[$field_id];
+		}
+		
+		// One last check. Files need extension.
+		if (strtolower($valid_item['item_is_folder']) != 'y' && ( ! is_string($item['item_extension']) OR $item['item_extension'] == ''))
+		{
+			$missing_field = TRUE;
 		}
 		else
 		{
-			$db_engine = $DB->query("SELECT `ENGINE` AS `engine`
-				FROM information_schema.TABLES
-				WHERE TABLE_SCHEMA =  '" .$PREFS->ini('db_name') ."'
-				AND TABLE_NAME = 'exp_sites'
-				LIMIT 1");
-
-			if ($db_engine->num_rows !== 1)
-			{
-				exit('Unable to determine your database engine.');
-			}
-
-			$engine = $db_engine->row['engine'];
+			$valid_item['item_extension'] = strtolower($item['item_extension']);
 		}
 		
-		$sql[] = "CREATE TABLE IF NOT EXISTS exp_bucketlist_buckets (
-				bucket_id int(10) unsigned NOT NULL auto_increment,
-				site_id int(5) unsigned NOT NULL default 1,
-				bucket_name varchar(255) NOT NULL,
-				bucket_items_cache_date int(10) unsigned NOT NULL default 0,
-				CONSTRAINT pk_buckets PRIMARY KEY(bucket_id),
-				CONSTRAINT fk_bucket_site_id FOREIGN KEY(site_id) REFERENCES exp_sites(site_id),
-				CONSTRAINT uk_site_id_bucket_name UNIQUE (site_id, bucket_name))
-			ENGINE = {$engine}";
-		
-		$sql[] = "CREATE TABLE IF NOT EXISTS exp_bucketlist_items (
-				item_id int(10) unsigned NOT NULL auto_increment,
-				site_id int(5) unsigned NOT NULL default 1,
-				bucket_id int(10) unsigned NOT NULL,
-				item_path varchar(1000) NOT NULL,
-				item_name varchar(255) NOT NULL,
-				item_is_folder char(1) NOT NULL default 'n',
-				item_size int(10) unsigned NOT NULL,
-				item_extension varchar(10) NOT NULL,
-				CONSTRAINT pk_items PRIMARY KEY(item_id),
-				CONSTRAINT fk_item_site_id FOREIGN KEY(site_id) REFERENCES exp_sites(site_id),
-				CONSTRAINT fk_item_bucket_id FOREIGN KEY(bucket_id) REFERENCES exp_bucketlist_buckets(bucket_id))
-			ENGINE = {$engine}";
-			
-		$sql[] = "CREATE TABLE IF NOT EXISTS exp_bucketlist_uploads (
-				upload_id int(10) unsigned NOT NULL auto_increment,
-				site_id int(5) unsigned NOT NULL default 1,
-				member_id int(10) unsigned NOT NULL,
-				bucket_id int(10) unsigned NOT NULL,
-				item_path varchar(1000) NOT NULL,
-				CONSTRAINT pk_uploads PRIMARY KEY(upload_id),
-				CONSTRAINT fk_upload_site_id FOREIGN KEY(site_id) REFERENCES exp_sites(site_id),
-				CONSTRAINT fk_upload_member_id FOREIGN KEY(member_id) REFERENCES exp_members(member_id),
-				CONSTRAINT fk_upload_bucket_id FOREIGN KEY(bucket_id) REFERENCES exp_bucketlist_buckets(bucket_id))
-			ENGINE = {$engine}";
-		
-		foreach ($sql AS $query)
+		if ($missing_field)
 		{
-			$DB->query($query);
+			return FALSE;
+		}
+		else
+		{
+			// Bit of cleaning up, and we'll be done.
+			$valid_item['item_is_folder'] 	= strtolower($valid_item['item_is_folder']);
+			$valid_item['item_size']		= intval($valid_item['item_size']);
+			
+			return $valid_item;
 		}
 	}
 	
