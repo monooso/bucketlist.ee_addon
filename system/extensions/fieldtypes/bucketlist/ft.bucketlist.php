@@ -53,7 +53,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 */
 	public $info = array(
 		'name'				=> 'BucketList',
-		'version'			=> '1.2.0b1',
+		'version'			=> '1.2.0b4',
 		'desc'				=> 'Seamlessly integrate Amazon S3 with your ExpressionEngine site.',
 		'docs_url'			=> 'http://experienceinternet.co.uk/bucketlist/',
 		'versions_xml_url'	=> 'http://experienceinternet.co.uk/addon-versions.xml'
@@ -491,6 +491,62 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		}
 		
 		return $html;
+	}
+	
+	
+	/**
+	 * Builds the pre-1.2 update settings array for a single field or FF Matrix cell.
+	 *
+	 * @access	private
+	 * @param	array		$current_settings		The unserialised settings, pulled from the database.
+	 * @return	array
+	 */
+	private function _build_update_settings($current_settings = array())
+	{
+		$new_settings = array('member_groups' => array());
+		
+		// Determine the site-wide "allow upload" setting.
+		$allow_upload = array_key_exists('allow_upload', $this->site_settings)
+			? $this->site_settings['allow_upload']
+			: 'y';
+			
+		// Retrieve all the applicable member groups.
+		if ( ! $this->_admin_member_groups)
+		{
+			$this->_admin_member_groups = $this->_load_admin_member_groups();
+		}
+		
+		// Retrieve all the buckets.
+		$all_buckets = $this->_load_all_buckets_from_db();
+		
+		// Which buckets are available for this field?
+		$available_buckets = isset($current_settings['available_buckets']) && is_array($current_settings['available_buckets'])
+			? $current_settings['available_buckets']
+			: array();
+		
+		// Loop through all the member groups.
+		foreach ($this->_admin_member_groups AS $member_group)
+		{
+			$member_group_paths = array();
+			$new_settings['member_groups'][$member_group['group_id']] = array('paths' => array());
+			
+			// Loop through all the buckets.
+			foreach ($all_buckets AS $bucket)
+			{
+				$path_settings = array(
+					'all_files'		=> 'y',
+					'allow_upload'	=> $allow_upload,
+					'path'			=> $bucket['bucket_name'],
+					'show'			=> in_array($bucket['bucket_name'], $available_buckets) ? 'y' : 'n'
+				);
+				
+				$member_group_paths[] = $path_settings;
+			}
+			
+			$new_settings['member_groups'][$member_group['group_id']]['paths'] = $member_group_paths;
+		}
+		
+		return $new_settings;
 	}
 	
 	
@@ -2611,7 +2667,7 @@ _HTML_;
 					
 					$DB->query($DB->update_string(
 						'exp_weblog_fields',
-						array('ff_settings' => $field_settings),
+						array('ff_settings' => $this->_serialize($field_settings)),
 						"field_id = '{$db_field['field_id']}'" 
 					));
 				}
@@ -2653,59 +2709,6 @@ _HTML_;
 		}
 		
 	} /* end of update */
-	
-	
-	/**
-	 * Builds the pre-1.2 update settings array for a single field or FF Matrix cell.
-	 *
-	 * @access	private
-	 * @param	array		$current_settings		The unserialised settings, pulled from the database.
-	 * @return	array
-	 */
-	private function _build_update_settings($current_settings = array())
-	{
-		$new_settings = array('member_groups' => array());
-		
-		// Determine the site-wide "allow upload" setting.
-		$allow_upload = array_key_exists('allow_upload', $this->site_settings)
-			? $this->site_settings['allow_upload']
-			: 'y';
-			
-		// Retrieve all the applicable member groups.
-		if ( ! $this->_admin_member_groups)
-		{
-			$this->_admin_member_groups = $this->_load_admin_member_groups();
-		}
-		
-		// Retrieve all the buckets.
-		$all_buckets = $this->_load_all_buckets_from_db();
-		
-		// Which buckets are available for this field?
-		$available_buckets = isset($current_settings['available_buckets']) && is_array($current_settings['available_buckets'])
-			? $current_settings['available_buckets']
-			: array();
-		
-		// Loop through all the member groups.
-		foreach ($this->_admin_member_groups AS $member_group)
-		{
-			$new_settings['member_groups'][$member_group['group_id']] = array('paths' => array());
-			
-			// Loop through all the buckets.
-			foreach ($all_buckets AS $bucket)
-			{
-				$path_settings = array(
-					'all_files'		=> 'y',
-					'allow_upload'	=> $allow_upload,
-					'path'			=> $bucket['bucket_name'],
-					'show'			=> in_array($bucket['bucket_name'], $available_buckets) ? 'y' : 'n'
-				);
-			}
-			
-			$new_settings['member_groups'][$member_group['group_id']]['paths'][] = $path_settings;
-		}
-		
-		return $new_settings;
-	}
 
 }
 
