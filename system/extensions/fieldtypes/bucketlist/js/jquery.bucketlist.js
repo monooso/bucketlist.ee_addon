@@ -146,12 +146,6 @@ $.fn.bucketlist = function(options) {
 			// Add the file field.
 			$('<input name="file" type="file">').appendTo($form).bind('change', fileChange);
 			
-			// Add the hidden 'path' and 'field_id' fields.
-			fieldId = $root.closest('.bl-wrapper').find('> :hidden').attr('id');
-			
-			$form.append('<input id="path" name="path" type="hidden" value="' + path + '">');
-			$form.append('<input id="field_id" name="field_id" type="hidden" value="' + fieldId + '">');
-			
 			// Apend the form to the div.
 			$uploadLink.parent().append($form);	
 			
@@ -364,6 +358,9 @@ $.fn.bucketlist = function(options) {
 			var $file = $(e.target);
 			var $form = $file.parent('form');
 			
+			var fieldId = $file.closest('.bl-wrapper').find('> :hidden').attr('id');
+			var path = $file.closest('.bl-directory').find('> a:first-child').attr('rel');
+			
 			// Generate a new upload ID.
 			var uploadId = Math.round(Math.random() * new Date().getTime());
 			
@@ -376,10 +373,12 @@ $.fn.bucketlist = function(options) {
 			 * being interpreted as a file upload request in IE.
 			 */
 			
-			$form.append('<input id="addon_id" name="addon_id" type="hidden" value="bucketlist">');
-			$form.append('<input id="ajax" name="ajax" type="hidden" value="y">');
-			$form.append('<input id="request" name="request" type="hidden" value="upload">');
-			$form.append('<input id="upload_id" name="upload_id" type="hidden" value="' + uploadId + '">');
+			$form.append('<input name="addon_id" type="hidden" value="bucketlist">');
+			$form.append('<input name="ajax" type="hidden" value="y">');
+			$form.append('<input name="request" type="hidden" value="upload">');
+			$form.append('<input name="upload_id" type="hidden" value="' + uploadId + '">');
+			$form.append('<input name="field_id" type="hidden" value="' + fieldId + '">');
+			$form.append('<input name="path" type="hidden" value="' + path + '">');
 			
 			// Create a new iframe for the upload.
 			var iframeId = 'bl-iframe-' + uploadId;
@@ -401,10 +400,7 @@ $.fn.bucketlist = function(options) {
 				localOptions.onUploadStart({fileName : $file.val(), uploadId : uploadId});
 				
 				// Delete the hidden form fields to keep IE happy.
-				$form.find('#addon_id').remove();
-				$form.find('#ajax').remove();
-				$form.find('#request').remove();
-				$form.find('#upload_id').remove();
+				$form.find(':hidden').remove();
 				
 				/**
 				 * TRICKY:
@@ -604,7 +600,6 @@ $.fn.bucketlist = function(options) {
 				function(htmlFragment) {
 					
 					// Remove the loading animation.
-					$li.find('.bl-start').html('');
 					$li.removeClass('bl-wait').append(htmlFragment);
 					
 					// Add the click handlers to all branch links.
