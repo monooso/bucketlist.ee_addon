@@ -158,7 +158,7 @@ $.fn.bucketlist = function(options) {
 
 			/**
 			 * Sneakiness, to keep the file element's "Browse" button underneath the mouse
-			 * pointer whenever the user mouses-over the .bucketload container.
+			 * pointer whenever the user mouses-over the .bl-upload-form container.
 			 *
 			 * The ridiculous hoops we still have to jump through to get anything halfway
 			 * decent on the web make me weep.
