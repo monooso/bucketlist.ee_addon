@@ -140,6 +140,14 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 * @var 	string
 	 */
 	private $_site_id = '';
+	
+	/**
+	 * Files just-uploaded to S3.
+	 *
+	 * @access	private
+	 * @var 	array
+	 */
+	private $_uploads = array();
 
 
 	/**
@@ -1438,59 +1446,81 @@ _HTML_;
 			return FALSE;
 		}
 		
-		// Shortcut to the uploaded file (which we now know exists).
-		$file = $_FILES['file'];
-		
-		// All good so far.
+		$list_item = '';
 		$status = 'success';
-		$message = $LANG->line('upload_success') .$file['name'];
+		$messages = array();
 		
-		// Construct the URI.
-		$uri = $bucket_and_path['item_path'] ? $bucket_and_path['item_path'] .'/' .$file['name'] : $file['name'];
-		
-		// Extract some file information.
-		$item_info = array(
-			'item_extension' 	=> pathinfo($file['name'], PATHINFO_EXTENSION),
-			'item_is_folder'	=> 'n',
-			'item_name' 		=> $file['name'],
-			'item_path' 		=> $uri,
-			'item_size' 		=> $file['size']
-		);
-		
-		
-		/**
-		 * Add our item to the database.
-		 *
-		 * @since 1.2	: we no longer check the result of this operation, and just
-		 *				  return details of the list item.
-		 */
-		
-		$this->_add_bucket_item_to_db($item_info, $bucket_and_path['bucket']);
-		
-		// Create the HTML for the new list item.
-		$list_item = '<li class="bl-ext-' .strtolower($item_info['item_extension']) .' bl-file">
-			<a href="#" rel="' .rawurlencode($bucket_and_path['bucket'] .'/'
-			.$item_info['item_path']) .'">' .$item_info['item_name'] .'</a></li>';
-		
-		// Record the member ID of the user that uploaded this file.
-		if (($bucket = $this->_load_bucket_from_db($bucket_and_path['bucket']))
-			&& ($this->_member_data['member_id']))
+		// As a result of the _upload_to_s3 method, there may be multiple files to process now.
+		foreach ($this->_uploads AS $upload)
 		{
-			$DB->query($DB->insert_string(
-				'exp_bucketlist_uploads',
-				array(
-					'bucket_id'	=> $DB->escape_str($bucket['bucket_id']),
-					'item_path'	=> $uri,
-					'member_id'	=> $this->_member_data['member_id'],
-					'site_id'	=> $this->_site_id
-				)
-			));
+			// Construct the URI.
+			$uri = $upload['path']
+				? $upload['path'] .'/' .$upload['file']['name']
+				: $upload['file']['name'];
+		
+			// Extract some file information.
+			$item_info = array(
+				'item_extension' 	=> pathinfo($upload['file']['name'], PATHINFO_EXTENSION),
+				'item_is_folder'	=> 'n',
+				'item_name' 		=> $upload['file']['name'],
+				'item_path' 		=> $uri,
+				'item_size' 		=> $upload['file']['size']
+			);
+		
+		
+			/**
+			 * Add our item to the database.
+			 *
+			 * @since 1.2 : we no longer check the result of this operation, and just
+			 *				return details of the list item.
+			 */
+		
+			$this->_add_bucket_item_to_db($item_info, $upload['bucket']);
+		
+			// Record the member ID of the user that uploaded this file.
+			if (($bucket = $this->_load_bucket_from_db($upload['bucket']))
+				&& ($this->_member_data['member_id']))
+			{
+				$DB->query($DB->insert_string(
+					'exp_bucketlist_uploads',
+					array(
+						'bucket_id'	=> $DB->escape_str($bucket['bucket_id']),
+						'item_path'	=> $uri,
+						'member_id'	=> $this->_member_data['member_id'],
+						'site_id'	=> $this->_site_id
+					)
+				));
+			}
+			
+			/**
+			 * The `bucketlist_remote_upload_start` hook gives a third-party the opportunity
+			 * to change whatever he wants, including the bucket and path.
+			 *
+			 * This is fine for *additional* files (such as auto-generated thumbnails placed
+			 * in a sub-directory), but a real pain if the original file has been relocated.
+			 *
+			 * The best we can do is check whether the file belongs in the original bucket
+			 * and path, before adding it to the list.
+			 *
+			 * @todo : sort out your bloody naming conventions, you slack bastard.
+			 */
+			
+			if ($bucket_and_path['bucket'] == $upload['bucket']
+				&& $bucket_and_path['item_path'] == $upload['path'])
+			{
+				$list_item .= '<li class="bl-ext-' .strtolower($item_info['item_extension']) .' bl-file">
+					<a href="#" rel="' .rawurlencode($bucket_and_path['bucket'] .'/'
+					.$item_info['item_path']) .'">' .$item_info['item_name'] .'</a></li>';
+					
+				// On display a success message for items in the current path, to avoid confusion.
+				$messages[] = $upload['file']['name'];
+			}
 		}
 		
 		// Output the return document.
 		$this->_output_upload_response(array(
 			'status'		=> $status,
-			'message'		=> $message,
+			'message'		=> $LANG->line('upload_success') .' ' .implode(', ', $messages),
 			'upload_id'		=> $upload_id,
 			'list_item'		=> $list_item
 		));
@@ -1808,6 +1838,8 @@ _HTML_;
 	{
 		global $EXT;
 		
+		$this->_uploads = array();
+		
 		// Idiot check.
 		if ( ! $field_id OR ! isset($_FILES[$field_id]) OR ! $bucket_name)
 		{
@@ -1820,20 +1852,24 @@ _HTML_;
 			return TRUE;
 		}
 		
-		// Strip trailing slashes from the end of $item_path, just in case.
-		$item_path = rtrim($item_path, '/');
+		/**
+		 * Build the upload data array. Note that we each item as an array so
+		 * any hooks have the option of creating new files, based on this one, for
+		 * upload. Thumbnail images is a good example of this in practise.
+		 */
 		
-		// Build the upload data array.
-		$upload_data = array(
-			'bucket_name'	=> $bucket_name,
-			'file'			=> $_FILES[$field_id],
-			'path'			=> $item_path
+		$uploads = array(
+			array(
+				'bucket'	=> $bucket_name,
+				'file'		=> $_FILES[$field_id],
+				'path'		=> rtrim($item_path, '/')
+			)
 		);
 		
 		// Call the bucketlist_s3_upload_start hook.
 		if ($EXT->active_hook('bucketlist_remote_upload_start') === TRUE)
 		{
-			$upload_data = $EXT->call_extension('bucketlist_remote_upload_start', $upload_data, $this->_member_data['member_id']);
+			$uploads = $EXT->call_extension('bucketlist_remote_upload_start', $uploads, $this->_member_data['member_id']);
 
 			if ($EXT->end_script === TRUE)
 			{
@@ -1841,32 +1877,33 @@ _HTML_;
 			}
 		}
 		
-		/**
-		 * More tidying-up, in case some fool messed things up in the hook.
-		 */
-		
-		$upload_data['path'] = rtrim($upload_data['path'], '/');
-		
-		$upload_data['uri'] = $upload_data['path']
-			? $upload_data['path'] .'/' .$upload_data['file']['name']
-			: $upload_data['file']['name'];
-			
 		// Retrieve the Amazon account credentials.
 		$access_key = $this->site_settings['access_key_id'];
 		$secret_key = $this->site_settings['secret_access_key'];
 		
 		// Create the S3 instance.
 		$s3 = new S3($access_key, $secret_key, FALSE);
-
-		// Generate the input array for our file.
-		$input = $s3->inputFile($upload_data['file']['tmp_name']);
 		
-		// Update the $_FILES array, in case any of the hooks modified the file data.
-		$_FILES[$field_id] = $upload_data['file'];
+		// Loop through the uploads.
+		$success = TRUE;
 		
-		// Upload the file.
-		return $s3->putObject($input, $upload_data['bucket_name'], $upload_data['uri'], S3::ACL_PUBLIC_READ);
+		foreach ($uploads AS $upload)
+		{
+			$upload['path'] = trim($upload['path'], '/');
+			
+			$uri = $upload['path']
+				? $upload['path'] .'/' .$upload['file']['name']
+				: $upload['file']['name'];
+				
+			// Generate the input array for our file.
+			$input = $s3->inputFile($upload['file']['tmp_name']);
+			
+			// We don't stop if things go pear shaped.
+			$success = $success && $s3->putObject($input, $upload['bucket'], $uri, S3::ACL_PUBLIC_READ);
+		}
 		
+		$this->_uploads = $uploads;
+		return $success;
 	}
 	
 	
