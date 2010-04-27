@@ -1820,19 +1820,14 @@ _HTML_;
 			return TRUE;
 		}
 		
-		$file = $_FILES[$field_id];
-		
 		// Strip trailing slashes from the end of $item_path, just in case.
 		$item_path = rtrim($item_path, '/');
-			
-		// The destination.
-		$uri = $item_path ? $item_path .'/' .$file['name'] : $file['name'];
 		
 		// Build the upload data array.
 		$upload_data = array(
 			'bucket_name'	=> $bucket_name,
-			'file'			=> $file,
-			'uri'			=> $uri
+			'file'			=> $_FILES[$field_id],
+			'path'			=> $item_path
 		);
 		
 		// Call the bucketlist_s3_upload_start hook.
@@ -1842,9 +1837,19 @@ _HTML_;
 
 			if ($EXT->end_script === TRUE)
 			{
-				return;
+				return TRUE;
 			}
 		}
+		
+		/**
+		 * More tidying-up, in case some fool messed things up in the hook.
+		 */
+		
+		$upload_data['path'] = rtrim($upload_data['path'], '/');
+		
+		$upload_data['uri'] = $upload_data['path']
+			? $upload_data['path'] .'/' .$upload_data['file']['name']
+			: $upload_data['file']['name'];
 			
 		// Retrieve the Amazon account credentials.
 		$access_key = $this->site_settings['access_key_id'];
@@ -1854,7 +1859,10 @@ _HTML_;
 		$s3 = new S3($access_key, $secret_key, FALSE);
 
 		// Generate the input array for our file.
-		$input = $s3->inputFile($upload_data['file']['tmp_name']);	
+		$input = $s3->inputFile($upload_data['file']['tmp_name']);
+		
+		// Update the $_FILES array, in case any of the hooks modified the file data.
+		$_FILES[$field_id] = $upload_data['file'];
 		
 		// Upload the file.
 		return $s3->putObject($input, $upload_data['bucket_name'], $upload_data['uri'], S3::ACL_PUBLIC_READ);

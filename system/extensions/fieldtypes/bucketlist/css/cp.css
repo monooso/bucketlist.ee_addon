@@ -138,25 +138,25 @@ html > body .bl-upload-form {*position : relative;}
  * FF MATRIX
  * ------------------------------------------------------------ */
 
-.ff-ft td.bucketlist {
+.ff_matrix td.bucketlist {
 background : transparent url(../img/finder-bg.gif) repeat 0 0;
 padding : 0 !important;
 width : 25%;
 }
 
-.ff-ft td.bucketlist .bl-wrapper {
+.ff_matrix td.bucketlist .bl-wrapper {
 background : none;
 border : none;
 margin-bottom : 0;
 }
 
-.ff-ft td.bucketlist .bl-wrapper a {
+.ff_matrix td.bucketlist .bl-wrapper a {
 color : rgb(51, 51, 51);
 font-size : 11px;
 line-height : 20px;
 }
 
-.ff-ft td.bucketlist .bl-selected > a {color : rgb(255, 255, 255);}
+.ff_matrix td.bucketlist .bl-selected > a {color : rgb(255, 255, 255);}
 
 
 /* --------------------------------------------------------------
