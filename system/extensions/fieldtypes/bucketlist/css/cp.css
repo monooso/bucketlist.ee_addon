@@ -57,8 +57,6 @@ padding : 0;
 
 .bl-wrapper li {margin-bottom : 0;}
 
-html > body .bl-wrapper li {*zoom : 1;}		/* IE7 fix */
-
 .bl-wrapper li a {
 background-position : 6px 1px;
 background-repeat : no-repeat;
@@ -74,6 +72,9 @@ background-color : rgb(56, 117, 215);
 color : rgb(255, 255, 255);
 text-shadow : 0 1px 0 rgba(0, 0, 0, 0.35);
 }
+
+/* IE7 fix */
+html > body .bl-wrapper li {*zoom : 1;}
 
 
 /* =bl-upload
@@ -104,8 +105,6 @@ overflow : hidden;
 width : 100%;
 }
 
-html > body .bl-upload-form {*position : relative;}	/* IE7 overflow fix */
-
 .bl-upload-form form {
 margin : 0;
 padding : 0;
@@ -129,6 +128,9 @@ position : absolute;
 top : 0;
 z-index : 1;
 }
+
+/* IE7 fix */
+html > body .bl-upload-form {*position : relative;}
 
 
 
@@ -199,7 +201,7 @@ td.bucketlist .bl-selected > a {color : rgb(255, 255, 255);}
 .bl-ext-bat > a, .bl-ext-com > a,
 .bl-ext-exe > a {background-image : url(../img/icons/file-application.png);}
 
-.bl-ext-fla > a,	.bl-ext-swf > a {background-image : url(../img/icons/file-flash.png);}
+.bl-ext-fla > a, .bl-ext-swf > a {background-image : url(../img/icons/file-flash.png);}
 
 .bl-ext-js > a, .bl-ext-pl > a,
 .bl-ext-py > a, .bl-ext-sql > a {background-image : url(../img/icons/file-script.png);}
@@ -285,8 +287,6 @@ visibility : hidden;
 content : ".";
 }
 
-html > body #bl-status ul {*zoom : 1;}	/* IE7 :after fix */
-
 /* Ditch the rgba border colours to keep IE7 happy. And then ditched the rgba background-color too. */
 #bl-status li {
 -moz-border-radius : 3px;
@@ -316,6 +316,9 @@ color : rgb(153, 0, 0);
 background-image : url(../img/icons/exclamation-hard.png);
 font-weight : bold;
 }
+
+/* IE7 fix */
+html > body #bl-status ul {*zoom : 1;}
 
 
 
@@ -372,7 +375,7 @@ position : relative;
 }
 
 /* The buckets are not currently clickable. */
-.bl-settings li span {
+.bl-settings li > span {
 background : transparent url(../img/icons/setting-bucket-closed.png) no-repeat 6px 50%;
 color : rgb(51, 51, 51);
 display : block;
@@ -499,11 +502,11 @@ margin : 0 0 0 7px;
 padding : 0;
 }
 
+/* position : relative inherited. */
 .bl-instructions li {
 border-top : 1px solid rgb(240, 240, 240);
 color : rgb(153, 153, 153);
 padding : 5px 6px 5px 22px;
-position : relative;
 }
 
 .bl-instructions li img {
@@ -513,7 +516,9 @@ position : absolute;
 top : 4px;
 }
 
-html > body .bl-instructions li img {*clip : rect(0 16px 16px 0);}		/* IE7 fix */
+/* IE7 fix */
+html > body .bl-instructions li img {*clip : rect(0 16px 16px 0);}
+
 
 /* =bl-ffmatrix
  -------------------------------------------------------------*/
@@ -538,4 +543,5 @@ clip : rect(16px, 16px, 32px, 0);
 top : -12px;
 }
 
-html > body .bl-ffmatrix .bl-instructions li img {*clip : rect(16px 16px 32px 0);}		/* IE7 fix */
+/* IE7 fix */
+html > body .bl-ffmatrix .bl-instructions li img {*clip : rect(16px 16px 32px 0);}
