@@ -220,12 +220,22 @@ jQuery(document).ready(function($) {
 	 */
 	
 	$('.bl-instructions div a').live('click', function(e) {
-		$(this)
-			.toggleClass('bl-open')
-			.closest('div')
-			.find('ul')
-			.slideToggle('slow');
-			
+		
+		// IE7 is so useless it can't even handle the slideToggle.
+		if (document.all && navigator.appVersion.indexOf('MSIE 7.') != -1) {
+			$(this)
+				.toggleClass('bl-open')
+				.closest('div')
+				.find('ul')
+				.toggle();
+		} else {
+			$(this)
+				.toggleClass('bl-open')
+				.closest('div')
+				.find('ul')
+				.slideToggle('slow');
+		}
+		
 		return false;
 	});
 	

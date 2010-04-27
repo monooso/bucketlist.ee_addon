@@ -488,6 +488,8 @@ display : block;
 padding : 3px 6px 3px 18px;
 }
 
+.bl-instructions div a:focus {outline : none;}
+
 .bl-instructions div a.bl-open {background-position : 6px -14px;}
 
 .bl-instructions ul {
@@ -511,6 +513,8 @@ position : absolute;
 top : 4px;
 }
 
+html > body .bl-instructions li img {*clip : rect(0 16px 16px 0);}		/* IE7 fix */
+
 /* =bl-ffmatrix
  -------------------------------------------------------------*/
 .bl-ffmatrix .bl-instructions,
@@ -533,3 +537,5 @@ padding : 0 0 0 12px;
 clip : rect(16px, 16px, 32px, 0);
 top : -12px;
 }
+
+html > body .bl-ffmatrix .bl-instructions li img {*clip : rect(16px 16px 32px 0);}		/* IE7 fix */
