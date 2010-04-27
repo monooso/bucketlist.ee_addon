@@ -2148,7 +2148,7 @@ _HTML_;
 		$this->_saved_field_settings = $field_settings;
 		$this->_member_data = $SESS->userdata;
 		
-		$html = '<div class="bl-settings ' .($is_cell ? 'bl-ffmatrix' : '') .'">';
+		$html = '<div class="bl-settings ' .($is_cell ? 'bl-ffmatrix-settings' : '') .'">';
 		
 		// Update the buckets cache from S3.
 		$this->_update_buckets_from_s3();
