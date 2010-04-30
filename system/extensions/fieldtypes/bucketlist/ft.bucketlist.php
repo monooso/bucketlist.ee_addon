@@ -2428,6 +2428,29 @@ _HTML_;
 	
 	
 	/**
+	 * Outputs the file extension.
+	 *
+	 * @access	public
+	 * @param	array		$params				Array of tag parameters as key / value pairs.
+	 * @param	string		$tagdata			Content between the opening and closing tags (not used).
+	 * @param	string		$field_data			The field data.
+	 * @param	array		$field_settings		The field settings.
+	 * @return	string
+	 */
+	public function file_extension($params, $tagdata, $field_data, $field_settings)
+	{
+		$out = '';
+		
+		if ($item = $this->_load_item_using_field_data($field_data))
+		{
+			$out = $item['item_extension'];
+		}
+		
+		return $out;
+	}
+	
+	
+	/**
 	 * Outputs the file name.
 	 *
 	 * @access	public
