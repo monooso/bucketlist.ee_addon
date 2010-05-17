@@ -148,6 +148,14 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 * @var 	array
 	 */
 	private $_uploads = array();
+	
+	/**
+	 * Is Matrix 2 installed?
+	 *
+	 * @access	private
+	 * @var 	bool
+	 */
+	private $_has_matrix_2 = FALSE;
 
 
 	/**
@@ -168,7 +176,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 * @param 	string		$bucket_name	The bucket to which to add the items.
 	 * @return	int|bool
 	 */
-	function _add_bucket_item_to_db($item = array(), $bucket_name = '')
+	private function _add_bucket_item_to_db($item = array(), $bucket_name = '')
 	{
 		global $DB;
 		
@@ -279,7 +287,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 * @param	string		$field_id		The BucketList field ID.
 	 * @return	string
 	 */
-	function _build_branch_ui($tree_path = '', $field_id = '')
+	private function _build_branch_ui($tree_path = '', $field_id = '')
 	{
 		global $LANG;
 		
@@ -426,7 +434,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 * @param 	array 		$settings		Field or cell settings.
 	 * @return 	string
 	 */
-	function _build_root_ui($settings = array())
+	private function _build_root_ui($settings = array())
 	{	
 		global $LANG, $SESS;
 		
@@ -564,7 +572,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 * @access  private
 	 * @return  bool
 	 */
-	function _check_s3_credentials()
+	private function _check_s3_credentials()
 	{
 		return (isset($this->site_settings['access_key_id'])
 			&& $this->site_settings['access_key_id'] !== ''
@@ -625,7 +633,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 * @access	private
 	 * @return	void
 	 */
-	function _force_update()
+	private function _force_update()
 	{
 		global $DB, $PREFS;
 		
@@ -768,13 +776,43 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	
 	
 	/**
+	 * Returns the Matrix version.
+	 *
+	 * @access	private
+	 * @return	string
+	 */
+	private function _get_matrix_version()
+	{
+		global $DB;
+		
+		$version = 0;
+		
+		$db_version = $DB->query("SELECT class, version
+			FROM exp_ff_fieldtypes
+			WHERE class IN('ff_matrix', 'matrix')");
+			
+		if ($db_version->num_rows > 0)
+		{
+			foreach ($db_version->result AS $dbv)
+			{
+				$$dbv['class'] = $dbv['version'];
+			}
+			
+			$version = isset($matrix) ? $matrix : $ff_matrix;
+		}
+		
+		return $version;
+	}
+	
+	
+	/**
 	 * Checks whether the specified item exists on the S3 server.
 	 *
 	 * @access	private
 	 * @param	string		$item_name		The full item path and name, including the bucket.
 	 * @return	bool
 	 */
-	function _item_exists_on_s3($item_name = '')
+	private function _item_exists_on_s3($item_name = '')
 	{
 		// Clearly not, muppet.
 		if ( ! $item_name)
@@ -864,7 +902,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 * @param 	mixed 		$filter		An array containing the available buckets, or FALSE to return all.
 	 * @return 	array
 	 */
-	function _load_all_buckets_from_db($filter = FALSE)
+	private function _load_all_buckets_from_db($filter = FALSE)
 	{
 		global $DB;
 		
@@ -905,7 +943,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 * @param 	string		$bucket_name		The name of the bucket.
 	 * @return 	array|bool
 	 */
-	function _load_bucket_from_db($bucket_name = '')
+	private function _load_bucket_from_db($bucket_name = '')
 	{
 		global $DB;
 		
@@ -932,7 +970,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 * @param 	string		$bucket_name		The name of the bucket.
 	 * @return 	array
 	 */
-	function _load_bucket_items($bucket_name = '')
+	private function _load_bucket_items($bucket_name = '')
 	{
 		// Be reasonable.
 		if ( ! $bucket_name OR ( ! $bucket = $this->_load_bucket_from_db($bucket_name)))
@@ -961,7 +999,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 * @param 	string		$bucket_name		The name of the bucket.
 	 * @return 	array
 	 */
-	function _load_bucket_items_from_db($bucket_name = '')
+	private function _load_bucket_items_from_db($bucket_name = '')
 	{
 		global $DB;
 		
@@ -1071,7 +1109,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 * @param	string			$field_data		The saved field data (a full item path, including bucket).
 	 * @return	array|bool
 	 */
-	function _load_item_using_field_data($field_data = '')
+	private function _load_item_using_field_data($field_data = '')
 	{
 		global $DB;
 		
@@ -1246,7 +1284,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 * @param	string		$html		The HTML to output.
 	 * @return	void
 	 */
-	function _output_ajax_response($html = '')
+	private function _output_ajax_response($html = '')
 	{
 		global $PREFS;
 		
@@ -1276,7 +1314,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 * @param	string		$message_data	Message data: status, message, upload_id, list_item.
 	 * @return	string
 	 */
-	function _output_upload_response($message_data = array())
+	private function _output_upload_response($message_data = array())
 	{
 		global $LANG, $PREFS;
 
@@ -1333,7 +1371,7 @@ _HTML_;
 	 * @param	array		$s3_item	The S3 item to parse.
 	 * @return	array
 	 */
-	function _parse_item_s3_result($s3_item = array())
+	private function _parse_item_s3_result($s3_item = array())
 	{
 		// Steady butt.
 		if ( ! $s3_item OR ! is_array($s3_item))
@@ -1380,7 +1418,7 @@ _HTML_;
 	 * @access	private
 	 * @return	void
 	 */
-	function _process_upload()
+	private function _process_upload()
 	{
 		global $DB, $IN, $LANG, $SESS;
 		
@@ -1562,7 +1600,7 @@ _HTML_;
 	 * @param	bool		$strip_slashes		Strips and forward slashes from the end of the item path.
 	 * @return	array|bool
 	 */
-	function _split_bucket_and_path_string($full_path = '', $strip_slashes = FALSE)
+	private function _split_bucket_and_path_string($full_path = '', $strip_slashes = FALSE)
 	{
 		$bucket_and_path = array('bucket' => '', 'item_path' => '');
 		
@@ -1628,7 +1666,7 @@ _HTML_;
 	 * @param 	bool		$force_update		Force an S3 query, regardless of the cache date.
 	 * @return 	bool
 	 */
-	function _update_bucket_items_from_s3($bucket_name = '', $force_update = FALSE)
+	private function _update_bucket_items_from_s3($bucket_name = '', $force_update = FALSE)
 	{
 		global $DB;
 		
@@ -1732,7 +1770,7 @@ _HTML_;
 	 * @access	private
 	 * @return 	bool
 	 */
-	function _update_buckets_from_s3()
+	private function _update_buckets_from_s3()
 	{
 		global $DB;
 		
@@ -1834,7 +1872,7 @@ _HTML_;
 	 * @param 	string		$item_path 		The path to the item from the bucket root.
 	 * @return	bool
 	 */
-	function _upload_file_to_s3($field_id = '', $bucket_name = '', $item_path = '')
+	private function _upload_file_to_s3($field_id = '', $bucket_name = '', $item_path = '')
 	{
 		global $EXT;
 		
@@ -1915,7 +1953,7 @@ _HTML_;
 	 * @param 	array 			$bucket		The bucket to validate.
 	 * @return 	array|bool
 	 */
-	function _validate_bucket($bucket = array())
+	private function _validate_bucket($bucket = array())
 	{
 		if ( ! $bucket OR ! is_array($bucket))
 		{
@@ -1950,7 +1988,7 @@ _HTML_;
 	 * @param 	array 			$item		The item to validate.
 	 * @return 	array|bool
 	 */
-	function _validate_item($item = array())
+	private function _validate_item($item = array())
 	{
 		if ( ! $item OR ! is_array($item))
 		{
@@ -2031,7 +2069,7 @@ _HTML_;
 		$this->_class 		= get_class($this);
 		$this->_lower_class = strtolower($this->_class);
 		$this->_namespace	= 'sl';
-		
+		$this->_has_matrix_2 = $DB->table_exists('exp_matrix_cols');
 		
 		/**
 		 * If this is a beta version, force the update method to run
@@ -2193,7 +2231,17 @@ _HTML_;
 		$this->_saved_field_settings = $field_settings;
 		$this->_member_data = $SESS->userdata;
 		
-		$html = '<div class="bl-settings ' .($is_cell ? 'bl-ffmatrix-settings' : '') .'">';
+		// Include the necessary JavaScript and CSS.
+		$this->include_js('js/cp.js?' .$this->info['version']);
+		$this->include_js('js/jquery.bucketlist.js?' .$this->info['version']);
+		$this->include_css('css/cp.css?' .$this->info['version']);
+		
+		$wrapper_class = 'bl-settings';
+		$wrapper_class .= $is_cell
+			? $this->_has_matrix_2 ? ' bl-matrix-settings' : ' bl-ff-matrix-settings'
+			: '';
+		
+		$html = '<div class="' .$wrapper_class .'">';
 		
 		// Update the buckets cache from S3.
 		$this->_update_buckets_from_s3();
@@ -2627,21 +2675,18 @@ _HTML_;
 	{
 		global $DB, $REGX;
 		
-		$this->_force_update();
-		
-		// Refreshes the buckets list.
-		$this->_update_buckets_from_s3();
-		
 		/**
-		 * The BucketList fields and cells information is used in a couple of
-		 * the upgrade scripts below. Rather than repeating it for each one,
-		 * we do it once here.
+		 * @todo: move these inside the update conditional?
 		 */
 		
-		if ($from && $from < '1.2')
+		$this->_force_update();
+		$this->_update_buckets_from_s3();
+		
+		
+		if ($from && $from < '1.2' && ($existing_bucketlist_fields OR $existing_matrices))
 		{
-			$existing_bucketlist_fields = $existing_bucketlist_matrices = FALSE;
-
+			$old_fields = $old_matrices = FALSE;
+			
 			// Determine the BucketList fieldtype ID.
 			$db_bucketlist_ft = $DB->query("SELECT fieldtype_id
 				FROM exp_ff_fieldtypes
@@ -2651,7 +2696,7 @@ _HTML_;
 			// Determine the FF Matrix fieldtype ID.
 			$db_matrix_ft = $DB->query("SELECT fieldtype_id
 				FROM exp_ff_fieldtypes
-				WHERE class = 'ff_matrix'
+				WHERE class = '" .($this->_has_matrix_2 ? 'matrix' : 'ff_matrix') ."'
 				LIMIT 1");
 
 			if ($db_bucketlist_ft->num_rows === 1)
@@ -2661,7 +2706,7 @@ _HTML_;
 					FROM exp_weblog_fields
 					WHERE field_type = 'ftype_id_" .$db_bucketlist_ft->row['fieldtype_id'] ."'");
 
-				$existing_bucketlist_fields = ($db_fields->num_rows > 0);
+				$old_fields = ($db_fields->num_rows > 0);
 			}
 
 			// Retrieve all the BucketList cells.
@@ -2670,19 +2715,18 @@ _HTML_;
 				$db_matrices = $DB->query("SELECT field_id, ff_settings
 					FROM exp_weblog_fields
 					WHERE field_type = 'ftype_id_" .$db_matrix_ft->row['fieldtype_id'] ."'");
-
-				$existing_bucketlist_matrices = ($db_matrices->num_rows > 0);
+				
+				$old_matrices = ($db_matrices->num_rows > 0);
 			}
-		}
-		
-		
-		/**
-		 * Upgrading from pre-1.1
-		 */
-		
-		if ($from && $from < '1.1' && ($existing_bucketlist_fields OR $existing_bucketlist_matrices))
-		{
-			// Construct the 'available_buckets' array.
+			
+			
+			
+			/**
+			 * If we're upgrading from pre-1.1 we need an array of all the available buckets.
+			 * We create this array regardless of the old version, for use as a fallback in
+			 * the case of missing data.
+			 */
+			
 			$buckets = $this->_load_all_buckets_from_db();
 			$field_buckets = array();
 
@@ -2691,115 +2735,142 @@ _HTML_;
 				$field_buckets[] = $bucket['bucket_name'];
 			}
 			
-			$field_settings = $this->_serialize(array('available_buckets' => $field_buckets));
 			
-			// Update the fields.
-			if ($existing_bucketlist_fields)
+			/**
+			 * --------------------------------------------
+			 * Update the BucketList fields.
+			 * --------------------------------------------
+			 */
+			
+			if ($old_fields)
 			{
 				foreach ($db_fields->result AS $db_field)
 				{
+					/**
+					 * If this is pre-1.1, there are no settings, so we just make all
+					 * the buckets available.
+					 */
+					
+					$current_settings = $from > '1.1'
+						? $this->_build_update_settings($this->_unserialize($db_field['ff_settings']))
+						: array('available_buckets' => $field_buckets);
+					
 					$DB->query($DB->update_string(
 						'exp_weblog_fields',
-						array('ff_settings' => $field_settings),
+						array('ff_settings' => $this->_serialize($current_settings)),
 						"field_id = '{$db_field['field_id']}'" 
 					));
 				}
 			}
+			
+			
+			/**
+			 * --------------------------------------------
+			 * Update the Matrix / FF Matrix fields.
+			 * --------------------------------------------
+			 */
+			
+			if ($old_matrices)
+			{
+				foreach ($db_matrices->result AS $db_matrix)
+				{
+					$matrix_settings = $this->_unserialize($db_matrix['ff_settings']);
+					$update_matrix = FALSE;
+					
+					
+					/**
+					 * This is where things get a little tricky, thanks to Matrix 2.
+					 * Brandon completely changed the way information is stored, moving
+					 * it to separate tables. The field settings for Matrix 2 only
+					 * contain the maximum number of rows, and the column IDs.
+					 *
+					 * The column type and column settings are stored in exp_matrix_cols.
+					 */
+					
+					
+					if (($this->_has_matrix_2 && ! isset($matrix_settings['col_ids']))
+						OR ( ! $this->_has_matrix_2 && ! isset($matrix_settings['cols'])))
+					{
+						continue;
+					}
+					
+					
+					// Matrix 2.x
+					if ($this->_has_matrix_2)
+					{
+						$db_matrix_cols = $DB->query("SELECT col_id, field_id, col_type, col_settings
+							FROM exp_matrix_cols
+							WHERE col_id IN({$matrix_settings['cols_id']})
+							AND col_type = '{$this->_lower_class}'");
+						
+						if ($db_martix_cols->num_rows > 0)
+						{
+							foreach ($db_matrix_cols->result AS $db_matrix_col)
+							{
+								/**
+								 * If this is pre-1.1, there are no settings, so we just make all
+								 * the buckets available.
+								 */
+								
+								$current_settings = $from > '1.1'
+									? $this->_unserialize(base64_decode($db_matrix_col['col_settings']))
+									: array('available_buckets' => $field_buckets);
+								
+								$matrix_settings = $this->_build_update_settings($current_settings);
+								
+								/**
+								 * If there are a lot of Matrices, with a lot of columns, we could be
+								 * making a shitload of database calls here. On the other hand, this
+								 * is a one-time operation, so let's not worry about performance unless
+								 * it becomes an issue.
+								 */
+								
+								$DB->query($DB->update_string(
+									'exp_matrix_cols',
+									array('col_settings' => base64_encode($this->_serialize($matrix_settings))),
+									"col_id = '{$db_matrix_col['col_id']}"
+								));
+							}
+						}
+					}
+					
+					// FF Matrix 1.x
+					if ( ! $this->_has_matrix_2)
+					{
+						foreach ($matrix_settings['cols'] AS $col_key => $col_val)
+						{
+							if (isset($col_val['type']) && $col_val['type'] == $this->_lower_class)
+							{
+								/**
+								 * If this is pre-1.1, there are no settings, so we just make all
+								 * the buckets available.
+								 */
+								
+								$current_settings = ($from > '1.1' && isset($col_val['settings']))
+									? $col_val['settings']
+									: array('available_buckets' => $field_buckets);
+								
+								$matrix_settings['cols'][$col_key] = $this->_build_update_settings($current_settings);
+								$update_matrix = TRUE;
+							}
+						}
+						
+						if ($update_matrix)
+						{
+							$DB->query($DB->update_string(
+								'exp_weblog_fields',
+								array('ff_settings' => $this->_serialize($matrix_settings)),
+								"field_id = '{$db_matrix['field_id']}"
+							));
+						}
+					}
+					
+				} /* End of $db_matrices->result loop */
 				
-			// Update the matrices.
-			if ($existing_bucketlist_matrices)
-			{
-				foreach($db_matrices->result AS $db_matrix)
-				{
-					$update_matrix = FALSE;
-					$matrix_settings = $this->_unserialize($db_matrix['ff_settings']);
-					
-					// Update all the BucketList cell types.
-					if ( ! isset($matrix_settings['cols']))
-					{
-						continue;
-					}
-					
-					foreach ($matrix_settings['cols'] AS $col_key => $col_val)
-					{
-						if (isset($col_val['type']) && $col_val['type'] == $this->_lower_class)
-						{
-							$update_matrix = TRUE;
-							$col_val['settings'] = array('available_buckets' => $field_buckets);
-							$matrix_settings['cols'][$col_key] = $col_val;
-						}
-					}
-					
-					if ($update_matrix)
-					{
-						$DB->query($DB->update_string(
-							'exp_weblog_fields',
-							array('ff_settings' => $this->_serialize($matrix_settings)),
-							"field_id = '{$db_matrix['field_id']}'" 
-						));
-					}
-				}
-			}
+			} /* End of $existing_matrices conditional */
 		}
 		
-		
-		/**
-		 * Upgrading from pre-1.2
-		 */
-		
-		if ($from && $from < '1.2' && ($existing_bucketlist_fields OR $existing_bucketlist_matrices))
-		{
-			// Loop through the fields.
-			if ($existing_bucketlist_fields)
-			{
-				foreach ($db_fields->result AS $db_field)
-				{
-					$field_settings = $this->_build_update_settings($this->_unserialize($db_field['ff_settings']));
-					
-					$DB->query($DB->update_string(
-						'exp_weblog_fields',
-						array('ff_settings' => $this->_serialize($field_settings)),
-						"field_id = '{$db_field['field_id']}'" 
-					));
-				}
-			}
-			
-			// Loop through the matrices.
-			if ($existing_bucketlist_matrices)
-			{
-				foreach($db_matrices->result AS $db_matrix)
-				{
-					$update_matrix = FALSE;
-					$matrix_settings = $this->_unserialize($db_matrix['ff_settings']);
-					
-					if ( ! isset($matrix_settings['cols']))
-					{
-						continue;
-					}
-					
-					foreach ($matrix_settings['cols'] AS $col_key => $col_val)
-					{
-						if (isset($col_val['type']) && $col_val['type'] == $this->_lower_class)
-						{
-							$update_matrix = TRUE;
-							$col_val['settings'] = $this->_build_update_settings($col_val['settings']);
-							$matrix_settings['cols'][$col_key] = $col_val;
-						}
-					}
-					
-					if ($update_matrix)
-					{
-						$DB->query($DB->update_string(
-							'exp_weblog_fields',
-							array('ff_settings' => $this->_serialize($matrix_settings)),
-							"field_id = '{$db_matrix['field_id']}'" 
-						));
-					}
-				}
-			}
-		}
-		
-	} /* end of update */
+	} /* End of update */
 
 }
 

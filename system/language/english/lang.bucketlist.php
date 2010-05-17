@@ -60,7 +60,7 @@ $L = array(
 
 'instructions_key_show'			=> 'Show or hide the bucket.',
 'instructions_key_upload'		=> 'Allow or disallow uploads.',
-'instructions_key_all_files'	=> 'Show all files, or only those files previously uploaded by the member.',
+'instructions_key_all_files'	=> 'Show all files. If disabled, each member will only see those files he has previously uploaded using BucketList.',
 
 // Uploading.
 'upload_failure'	=> 'Upload failed.',

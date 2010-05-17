@@ -8,7 +8,7 @@
  */
 
 jQuery(document).ready(function($) {
-	
+
 	// Is the downloads status bar visible?
 	statusActive = false;
 
@@ -182,20 +182,13 @@ jQuery(document).ready(function($) {
 		$(this).bucketlist({initialFile : $(this).find(':hidden').val()});
 	});
 	
-	// Initialise matrix file trees.
-	if (typeof $.fn.ffMatrix != 'undefined') {
+	// FF Matrix 1.x
+	if (typeof Matrix == 'undefined' && typeof $.fn.ffMatrix != 'undefined') {
 		
 		/**
-		 * Initialise matrix file trees. Also handles new table cells as
-		 * they are created.
-		 *
-		 * This is the only way of doing this at present, but by Brandon's
-		 * own admission it's a trifle flakey, and has a habit of running
-		 * twice.
-		 *
-		 * I tried checking for the presence of the BucketList file tree,
-		 * but that wasn't working. Setting a class 'flag' on the td
-		 * works fine though.
+		 * FF Matrix's onDisplayCell method is a bit flakey, and has a habit
+		 * of running twice. Setting a class 'flag' on the td is the best
+		 * solution I've found.
 		 *
 		 * Of course, we're screwed if FF Matrix ever fails to trigger
 		 * this method.
@@ -211,6 +204,29 @@ jQuery(document).ready(function($) {
 			}
 		}
 	}
+	
+	// Matrix 2.x
+	if (typeof Matrix != 'undefined') {
+		
+		/**
+		 * The display event doesn't fire when the page is loaded, so we
+		 * need to manually initialise any pre-loaded BucketList fieldtypes.
+		 */
+		
+		$('td.matrix > .bl-wrapper').each(function() {
+			$(this).bucketlist({initialFile : $(this).find(':hidden').val()});
+		});
+		
+		// Now bind the event for all cells created on-the-fly.
+		Matrix.bind('bucketlist', 'display', function(cell) {
+			console.log(cell.field);
+			
+			$(cell.dom.$td).find('.bl-wrapper').each(function() {
+				$(this).bucketlist({initialFile : $(this).find(':hidden').val()});
+			});
+		});
+	}
+	
 	
 	
 	/**

@@ -77,6 +77,22 @@ text-shadow : 0 1px 0 rgba(0, 0, 0, 0.35);
 html > body .bl-wrapper li {*zoom : 1;}
 
 
+/* =matrix
+ -------------------------------------------------------------*/
+.matrix .bl-wrapper {
+border : none;
+margin-bottom : 0;
+}
+
+.matrix .bl-wrapper a {
+color : rgb(51, 51, 51);
+font-size : 11px;
+line-height : 20px;
+}
+
+.matrix .bl-selected > a {color : rgb(255, 255, 255);}
+
+
 /* =bl-upload
  -------------------------------------------------------------*/
 .bl-upload {
@@ -131,32 +147,6 @@ z-index : 1;
 
 /* IE7 fix */
 html > body .bl-upload-form {*position : relative;}
-
-
-
-/* --------------------------------------------------------------
- * FF MATRIX
- * ------------------------------------------------------------ */
-
-.ff_matrix td.bucketlist {
-background : transparent url(../img/finder-bg.gif) repeat 0 0;
-padding : 0 !important;
-width : 25%;
-}
-
-.ff_matrix td.bucketlist .bl-wrapper {
-background : none;
-border : none;
-margin-bottom : 0;
-}
-
-.ff_matrix td.bucketlist .bl-wrapper a {
-color : rgb(51, 51, 51);
-font-size : 11px;
-line-height : 20px;
-}
-
-.ff_matrix td.bucketlist .bl-selected > a {color : rgb(255, 255, 255);}
 
 
 /* --------------------------------------------------------------
@@ -418,51 +408,6 @@ right : 50px;
 }
 
 
-/* =bl-ffmatrix
- -------------------------------------------------------------*/
-.bl-ffmatrix-settings {min-width : 400px;}
-
-.bl-ffmatrix-settings table {border : none;}
-
-.bl-ffmatrix-settings tbody {
-border-left : 1px solid rgb(29, 35, 38);
-border-right : 1px solid rgb(29, 35, 38);
-}
-
-.bl-ffmatrix-settings th,
-.bl-ffmatrix-settings td,
-.bl-ffmatrix-settings td + td {border-color : rgb(29, 35, 38);}
-
-.bl-ffmatrix-settings thead th {
-background-color : rgb(61, 68, 71);
-border-top-color : rgb(86, 93, 96);
-color : rgb(153, 153, 153);
-text-shadow : 0 -1px 0 rgba(0, 0, 0, 0.85);
-}
-
-.bl-ffmatrix-settings th,
-.bl-ffmatrix-settings td {background : rgb(44, 50, 53);}
-
-.bl-ffmatrix-settings .odd th,
-.bl-ffmatrix-settings .odd td {background : rgb(34, 40, 43);}
-
-.bl-ffmatrix-settings .bl-wrapper,
-.bl-ffmatrix-settings .odd .bl-wrapper {background-image : none;}
-
-.bl-ffmatrix-settings li span {color : rgb(153, 153, 153);}
-
-.bl-ffmatrix-settings li > a {background-position : 3px -16px;}
-
-.bl-ffmatrix-settings .bl-disabled a,
-.bl-ffmatrix-settings a.bl-disabled {background-position : -27px -16px !important;}
-
-.bl-ffmatrix-settings .bl-disabled span {color : rgb(70, 70, 70);}
-
-.bl-ffmatrix-settings .bl-wrapper::-webkit-scrollbar-thumb {background-color : rgb(61, 68, 71);}
-
-.bl-ffmatrix-settings .bl-wrapper::-webkit-scrollbar-thumb:hover {background-color : rgb(86, 93, 96);}
-
-
 /* --------------------------------------------------------------
  * INSTRUCTIONS
  * ------------------------------------------------------------ */
@@ -520,28 +465,95 @@ top : 4px;
 html > body .bl-instructions li img {*clip : rect(0 16px 16px 0);}
 
 
-/* =bl-ffmatrix
+/* --------------------------------------------------------------
+ * LEGACY FF MATRIX STYLES
+ * ------------------------------------------------------------ */
+
+.ff_matrix td.bucketlist {
+background : transparent url(../img/finder-bg.gif) repeat 0 0;
+padding : 0 !important;
+width : 25%;
+}
+
+.ff_matrix td.bucketlist .bl-wrapper {
+background : none;
+border : none;
+margin-bottom : 0;
+}
+
+.ff_matrix td.bucketlist .bl-wrapper a {
+color : rgb(51, 51, 51);
+font-size : 11px;
+line-height : 20px;
+}
+
+.ff_matrix td.bucketlist .bl-selected > a {color : rgb(255, 255, 255);}
+
+
+/* =settings
  -------------------------------------------------------------*/
-.bl-ffmatrix-settings .bl-instructions,
-.bl-ffmatrix-settings .bl-instructions p {color : rgb(150, 150, 150);}
+.bl-ff-matrix-settings {min-width : 400px;}
 
-.bl-ffmatrix-settings .bl-instructions h3 {color : rgb(153, 153, 153);}
+.bl-ff-matrix-settings table {border : none;}
 
-.bl-ffmatrix-settings .bl-instructions div {border : none;}
+.bl-ff-matrix-settings tbody {
+border-left : 1px solid rgb(29, 35, 38);
+border-right : 1px solid rgb(29, 35, 38);
+}
 
-.bl-ffmatrix-settings .bl-instructions div a {
+.bl-ff-matrix-settings th,
+.bl-ff-matrix-settings td,
+.bl-ff-matrix-settings td + td {border-color : rgb(29, 35, 38);}
+
+.bl-ff-matrix-settings thead th {
+background-color : rgb(61, 68, 71);
+border-top-color : rgb(86, 93, 96);
+color : rgb(153, 153, 153);
+text-shadow : 0 -1px 0 rgba(0, 0, 0, 0.85);
+}
+
+.bl-ff-matrix-settings th,
+.bl-ff-matrix-settings td {background : rgb(44, 50, 53);}
+
+.bl-ff-matrix-settings .odd th,
+.bl-ff-matrix-settings .odd td {background : rgb(34, 40, 43);}
+
+.bl-ff-matrix-settings .bl-wrapper,
+.bl-ff-matrix-settings .odd .bl-wrapper {background-image : none;}
+
+.bl-ff-matrix-settings li span {color : rgb(153, 153, 153);}
+
+.bl-ff-matrix-settings li > a {background-position : 3px -16px;}
+
+.bl-ff-matrix-settings .bl-disabled a,
+.bl-ff-matrix-settings a.bl-disabled {background-position : -27px -16px !important;}
+
+.bl-ff-matrix-settings .bl-disabled span {color : rgb(70, 70, 70);}
+
+.bl-ff-matrix-settings .bl-wrapper::-webkit-scrollbar-thumb {background-color : rgb(61, 68, 71);}
+
+.bl-ff-matrix-settings .bl-wrapper::-webkit-scrollbar-thumb:hover {background-color : rgb(86, 93, 96);}
+
+.bl-ff-matrix-settings .bl-instructions,
+.bl-ff-matrix-settings .bl-instructions p {color : rgb(150, 150, 150);}
+
+.bl-ff-matrix-settings .bl-instructions h3 {color : rgb(153, 153, 153);}
+
+.bl-ff-matrix-settings .bl-instructions div {border : none;}
+
+.bl-ff-matrix-settings .bl-instructions div a {
 background-position : 0 -36px;
 padding : 0 0 0 12px;
 }
 
-.bl-ffmatrix-settings .bl-instructions div a.bl-open {background-position : 0 -56px;}
+.bl-ff-matrix-settings .bl-instructions div a.bl-open {background-position : 0 -56px;}
 
-.bl-ffmatrix-settings .bl-instructions li {border-color : rgb(61, 68, 71);}
+.bl-ff-matrix-settings .bl-instructions li {border-color : rgb(61, 68, 71);}
 
-.bl-ffmatrix-settings .bl-instructions li img {
+.bl-ff-matrix-settings .bl-instructions li img {
 clip : rect(16px, 16px, 32px, 0);
 top : -12px;
 }
 
 /* IE7 fix */
-html > body .bl-ffmatrix-settings .bl-instructions li img {*clip : rect(16px 16px 32px 0);}
+html > body .bl-ff-matrix-settings .bl-instructions li img {*clip : rect(16px 16px 32px 0);}
