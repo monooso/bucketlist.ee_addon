@@ -2835,7 +2835,7 @@ _HTML_;
 					{
 						$db_matrix_cols = $DB->query("SELECT col_id, field_id, col_type, col_settings
 							FROM exp_matrix_cols
-							WHERE col_id IN({$matrix_settings['cols_id']})
+							WHERE col_id IN('" .implode("', '", $matrix_settings['col_ids']) ."')
 							AND col_type = '{$this->_lower_class}'");
 						
 						if ($db_martix_cols->num_rows > 0)
