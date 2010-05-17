@@ -1089,39 +1089,40 @@ class Bucketlist extends Fieldframe_Fieldtype {
 			{
 				$settings = $this->_unserialize($db_settings->row['ff_settings']);
 				
-				// Matrix 2.
-				if ($this->_has_matrix_2)
+				// FF Matrix / Matrix.
+				if ($col_id !== '')
 				{
-					if ($col_id !== '' && isset($settings['col_ids'])
-						&& in_array($col_id, $settings['col_ids']))
+					if ( ! $this->_has_matrix_2)
 					{
-						$settings = $this->_load_matrix_column_settings($field_id, $col_id);
-						
-						$db_matrix_settings = $DB->query("SELECT col_settings
-							FROM exp_matrix_cols
-							WHERE col_id = '{$col_id}'
-							AND col_type = '{$this->_lower_class}'
-							AND field_id = '{$field_id}'
-							LIMIT 1");
-							
-						if ($db_matrix_settings->num_rows !== 1)
+						// FF Matrix 1.x
+						if (isset($settings['cols'][$col_id]['settings']))
 						{
-							$settings = $this->_get_default_path_settings();
-						}
-						else
-						{
-							$settings = $this->_unserialize(base64_decode($db_matrix_settings->row['col_settings']));
+							$settings = $settings['cols'][$col_id]['settings'];
 						}
 					}
-				}
-				
-				// FF Matrix 1.x.
-				if ( ! $this->_has_matrix_2)
-				{
-					if ($row_id !== '' && $col_id !== ''
-						&& isset($settings['cols'][$col_id]['settings']))
+					else
 					{
-						$settings = $settings['cols'][$col_id]['settings'];
+						// Matrix 2.
+						if (isset($settings['col_ids']) && in_array($col_id, $settings['col_ids']))
+						{
+							$settings = $this->_load_matrix_column_settings($field_id, $col_id);
+
+							$db_matrix_settings = $DB->query("SELECT col_settings
+								FROM exp_matrix_cols
+								WHERE col_id = '{$col_id}'
+								AND col_type = '{$this->_lower_class}'
+								AND field_id = '{$field_id}'
+								LIMIT 1");
+
+							if ($db_matrix_settings->num_rows !== 1)
+							{
+								$settings = $this->_get_default_path_settings();
+							}
+							else
+							{
+								$settings = $this->_unserialize(base64_decode($db_matrix_settings->row['col_settings']));
+							}
+						}
 					}
 				}
 			}
@@ -2702,7 +2703,7 @@ _HTML_;
 	 */
 	public function update($from = FALSE)
 	{
-		global $DB, $REGX;
+		global $DB, $LANG, $REGX;
 		
 		/**
 		 * @todo: move these inside the update conditional?
@@ -2749,19 +2750,22 @@ _HTML_;
 			}
 			
 			
-			
-			/**
-			 * If we're upgrading from pre-1.1 we need an array of all the available buckets.
-			 * We create this array regardless of the old version, for use as a fallback in
-			 * the case of missing data.
-			 */
-			
-			$buckets = $this->_load_all_buckets_from_db();
-			$field_buckets = array();
-
-			foreach ($buckets AS $bucket)
+			// Do we have work to do?
+			if ($old_fields OR $old_matrices)
 			{
-				$field_buckets[] = $bucket['bucket_name'];
+				/**
+				 * If we're upgrading from pre-1.1 we need an array of all the available buckets.
+				 * We create this array regardless of the old version, for use as a fallback in
+				 * the case of missing data.
+				 */
+
+				$buckets = $this->_load_all_buckets_from_db();
+				$field_buckets = array();
+
+				foreach ($buckets AS $bucket)
+				{
+					$field_buckets[] = $bucket['bucket_name'];
+				}
 			}
 			
 			
@@ -2781,12 +2785,14 @@ _HTML_;
 					 */
 					
 					$current_settings = $from > '1.1'
-						? $this->_build_update_settings($this->_unserialize($db_field['ff_settings']))
+						? $this->_unserialize($db_field['ff_settings'])
 						: array('available_buckets' => $field_buckets);
+						
+					$field_settings = $this->_build_update_settings($current_settings);
 					
 					$DB->query($DB->update_string(
 						'exp_weblog_fields',
-						array('ff_settings' => $this->_serialize($current_settings)),
+						array('ff_settings' => $this->_serialize($field_settings)),
 						"field_id = '{$db_field['field_id']}'" 
 					));
 				}
