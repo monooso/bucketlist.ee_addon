@@ -2863,7 +2863,7 @@ _HTML_;
 								$DB->query($DB->update_string(
 									'exp_matrix_cols',
 									array('col_settings' => base64_encode($this->_serialize($matrix_settings))),
-									"col_id = '{$db_matrix_col['col_id']}"
+									"col_id = '{$db_matrix_col['col_id']}'"
 								));
 							}
 						}
@@ -2895,7 +2895,7 @@ _HTML_;
 							$DB->query($DB->update_string(
 								'exp_weblog_fields',
 								array('ff_settings' => $this->_serialize($matrix_settings)),
-								"field_id = '{$db_matrix['field_id']}"
+								"field_id = '{$db_matrix['field_id']}'"
 							));
 						}
 					}
