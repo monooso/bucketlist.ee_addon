@@ -9,7 +9,7 @@ if ( ! defined('EXT'))
  * Seamlessly integrate Amazon S3 with your ExpressionEngine website.
  *
  * @package   	BucketList
- * @version   	1.2.0b4
+ * @version   	1.2.0b6
  * @author    	Stephen Lewis <addons@experienceinternet.co.uk>
  * @copyright 	Copyright (c) 2009-2010, Stephen Lewis
  * @link      	http://experienceinternet.co.uk/bucketlist/
@@ -53,7 +53,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 */
 	public $info = array(
 		'name'				=> 'BucketList',
-		'version'			=> '1.2.0b4',
+		'version'			=> '1.2.0b6',
 		'desc'				=> 'Seamlessly integrate Amazon S3 with your ExpressionEngine site.',
 		'docs_url'			=> 'http://experienceinternet.co.uk/bucketlist/',
 		'versions_xml_url'	=> 'http://experienceinternet.co.uk/addon-versions.xml'
@@ -1089,11 +1089,40 @@ class Bucketlist extends Fieldframe_Fieldtype {
 			{
 				$settings = $this->_unserialize($db_settings->row['ff_settings']);
 				
-				// If this is a cell, extract the cell settings.
-				if ($row_id !== '' && $col_id !== ''
-					&& isset($settings['cols'][$col_id]['settings']))
+				// Matrix 2.
+				if ($this->_has_matrix_2)
 				{
-					$settings = $settings['cols'][$col_id]['settings'];
+					if ($col_id !== '' && isset($settings['col_ids'])
+						&& in_array($col_id, $settings['col_ids']))
+					{
+						$settings = $this->_load_matrix_column_settings($field_id, $col_id);
+						
+						$db_matrix_settings = $DB->query("SELECT col_settings
+							FROM exp_matrix_cols
+							WHERE col_id = '{$col_id}'
+							AND col_type = '{$this->_lower_class}'
+							AND field_id = '{$field_id}'
+							LIMIT 1");
+							
+						if ($db_matrix_settings->num_rows !== 1)
+						{
+							$settings = $this->_get_default_path_settings();
+						}
+						else
+						{
+							$settings = $this->_unserialize(base64_decode($db_matrix_settings->row['col_settings']));
+						}
+					}
+				}
+				
+				// FF Matrix 1.x.
+				if ( ! $this->_has_matrix_2)
+				{
+					if ($row_id !== '' && $col_id !== ''
+						&& isset($settings['cols'][$col_id]['settings']))
+					{
+						$settings = $settings['cols'][$col_id]['settings'];
+					}
 				}
 			}
 		}
@@ -2709,7 +2738,7 @@ _HTML_;
 				$old_fields = ($db_fields->num_rows > 0);
 			}
 
-			// Retrieve all the BucketList cells.
+			// Retrieve all the Matrix fields.
 			if ($db_matrix_ft->num_rows === 1)
 			{
 				$db_matrices = $DB->query("SELECT field_id, ff_settings
