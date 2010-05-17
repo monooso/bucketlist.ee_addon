@@ -2713,7 +2713,7 @@ _HTML_;
 		$this->_update_buckets_from_s3();
 		
 		
-		if ($from && $from < '1.2' && ($existing_bucketlist_fields OR $existing_matrices))
+		if ($from && $from < '1.2')
 		{
 			$old_fields = $old_matrices = FALSE;
 			
