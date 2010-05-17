@@ -691,7 +691,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 				item_id int(10) unsigned NOT NULL auto_increment,
 				site_id int(5) unsigned NOT NULL default 1,
 				bucket_id int(10) unsigned NOT NULL,
-				item_path varchar(1000) NOT NULL,
+				item_path text NOT NULL,
 				item_name varchar(255) NOT NULL,
 				item_is_folder char(1) NOT NULL default 'n',
 				item_size int(10) unsigned NOT NULL,
