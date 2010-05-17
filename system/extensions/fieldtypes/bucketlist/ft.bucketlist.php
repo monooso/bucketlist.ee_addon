@@ -2885,7 +2885,7 @@ _HTML_;
 									? $col_val['settings']
 									: array('available_buckets' => $field_buckets);
 								
-								$matrix_settings['cols'][$col_key] = $this->_build_update_settings($current_settings);
+								$matrix_settings['cols'][$col_key]['settings'] = $this->_build_update_settings($current_settings);
 								$update_matrix = TRUE;
 							}
 						}
