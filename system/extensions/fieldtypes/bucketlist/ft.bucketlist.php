@@ -2769,7 +2769,7 @@ _HTML_;
 						"field_id = '{$db_field['field_id']}'" 
 					));
 				}
-			} // End of BucketList fields update.
+			}
 			
 			
 			/**
@@ -2784,7 +2784,7 @@ _HTML_;
 					FROM exp_matrix_cols
 					WHERE col_type = '{$this->_lower_class}'");
 				
-				if ($db_martix_cols->num_rows > 0)
+				if ($db_matrix_cols->num_rows > 0)
 				{
 					foreach ($db_matrix_cols->result AS $db_matrix_col)
 					{
