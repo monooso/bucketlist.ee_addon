@@ -1120,7 +1120,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 							}
 							else
 							{
-								$settings = $this->_unserialize(base64_decode($db_matrix_settings->row['col_settings']));
+								$settings = $this->_unserialize($db_matrix_settings->row['col_settings'], TRUE, TRUE);
 							}
 						}
 					}
@@ -1596,18 +1596,25 @@ _HTML_;
 	
 	
 	/**
-	 * Duplicate of the Fieldframe_Main->_serialize(). Reproduced here, as the method
-	 * is technically private.
+	 * Serializes data. FF Matrix / Matrix store data differently, so we have to do yet more
+	 * branching here.
 	 *
-	 * @see 	http://pixelandtonic.com/fieldframe/
 	 * @access	private
 	 * @param 	array 		$vals		The array to serialise.
+	 * @param 	bool		$matrix		Is this for use in an FF Matrix / Matrix field?
 	 * @return 	string
 	 */
-	private function _serialize($vals = array())
+	private function _serialize($vals = array(), $matrix = FALSE)
 	{
 		global $PREFS;
-
+		
+		// Deal with Matrix 2 first.
+		if ($matrix === TRUE && $this->_has_matrix_2)
+		{
+			return base64_encode(serialize($vals));
+		}
+		
+		// Everything else.
 		if ($PREFS->ini('auto_convert_high_ascii') == 'y')
 		{
 			$vals = $this->_array_ascii_to_entities($vals);
@@ -1660,19 +1667,26 @@ _HTML_;
 	
 	
 	/**
-	 * Duplicate of Fieldframe_Main->_unserialize(). Reproduced here, as the method
-	 * is technically private.
+	 * Unserializes data. FF Matrix / Matrix store data differently, so we have to do yet more
+	 * branching here.
 	 *
-	 * @see		http://pixelandtonic.com/fieldframe/
 	 * @access	private
 	 * @param 	string 		$vals		The string to unserialise.
 	 * @param 	bool		$convert	Convert high ASCII values, if the PREF is set to 'y'?
+	 * @param	bool		$matrix		Is this data from an FF Matrix / Matrix field?
 	 * @return 	array
 	 */
-	private function _unserialize($vals, $convert = TRUE)
+	private function _unserialize($vals, $convert = TRUE, $matrix = FALSE)
 	{
 		global $PREFS, $REGX;
 		
+		// Deal with Matrix 2 first.
+		if ($matrix === TRUE && $this->_has_matrix_2)
+		{
+			return unserialize(base64_decode($vals));
+		}
+		
+		// Everything else.
 		if (($tmp_vals = @unserialize($vals)) !== FALSE)
 		{
 			$vals = $REGX->array_stripslashes($tmp_vals);
@@ -2794,7 +2808,7 @@ _HTML_;
 						 */
 						
 						$current_settings = $from > '1.1'
-							? $this->_unserialize(base64_decode($db_matrix_col['col_settings']))
+							? $this->_unserialize($db_matrix_col['col_settings'], TRUE, TRUE)
 							: array('available_buckets' => $field_buckets);
 						
 						$matrix_settings = $this->_build_update_settings($current_settings);
@@ -2808,7 +2822,7 @@ _HTML_;
 						
 						$DB->query($DB->update_string(
 							'exp_matrix_cols',
-							array('col_settings' => base64_encode($this->_serialize($matrix_settings))),
+							array('col_settings' => $this->_serialize($matrix_settings, TRUE)),
 							"col_id = '{$db_matrix_col['col_id']}'"
 						));
 					}
