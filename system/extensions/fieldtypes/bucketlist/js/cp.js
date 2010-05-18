@@ -219,8 +219,6 @@ jQuery(document).ready(function($) {
 		
 		// Now bind the event for all cells created on-the-fly.
 		Matrix.bind('bucketlist', 'display', function(cell) {
-			console.log(cell.field);
-			
 			$(cell.dom.$td).find('.bl-wrapper').each(function() {
 				$(this).bucketlist({initialFile : $(this).find(':hidden').val()});
 			});

@@ -1069,7 +1069,15 @@ class Bucketlist extends Fieldframe_Fieldtype {
 		$row_id		= '';
 		$cell_id 	= '';
 		
-		if (preg_match('/field_id_([0-9]+)(\[([0-9]+)\]\[([0-9]+)\])?/i', $full_field_id, $matches))
+		/**
+		 * @since 1.2 : RegularExpression rewritten to accommodate the following:
+		 *
+		 * - standard field ID				: field_id_1
+		 * - FF Matrix 1.x cell ID format	: field_id_1[2][3]
+		 * - Matrix 2.x cell ID format		: field_id_1[row_new_2][col_id_3] OR field_id_1[row_id_2][col_id_3]
+		 */
+		
+		if (preg_match('/field_id_([0-9]+)(\[[^0-9]*([0-9]+)\]\[[^0-9]*([0-9]+)\])?/i', $full_field_id, $matches))
 		{
 			$field_id 	= $matches[1];
 			$row_id		= isset($matches[3]) ? $matches[3] : '';
@@ -1105,8 +1113,6 @@ class Bucketlist extends Fieldframe_Fieldtype {
 						// Matrix 2.
 						if (isset($settings['col_ids']) && in_array($col_id, $settings['col_ids']))
 						{
-							$settings = $this->_load_matrix_column_settings($field_id, $col_id);
-
 							$db_matrix_settings = $DB->query("SELECT col_settings
 								FROM exp_matrix_cols
 								WHERE col_id = '{$col_id}'
