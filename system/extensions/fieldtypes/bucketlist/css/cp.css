@@ -182,7 +182,7 @@ html > body .bl-upload-form {*position : relative;}
 .bl-ext-bmp > a, .bl-ext-gif > a,
 .bl-ext-jpg > a, .bl-ext-jpeg > a,
 .bl-ext-pcx > a, .bl-ext-png > a,
-.bl-ext-tif > a, .bl-ext-tiff {background-image : url(../img/icons/file-image.png);}
+.bl-ext-tif > a, .bl-ext-tiff > a {background-image : url(../img/icons/file-image.png);}
 
 .bl-ext-aiff > a, .bl-ext-m4a > a,
 .bl-ext-m4p > a, .bl-ext-mp3 > a,
