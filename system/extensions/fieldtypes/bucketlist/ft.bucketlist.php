@@ -2715,57 +2715,18 @@ _HTML_;
 		
 		if ($from && $from < '1.2')
 		{
-			$old_fields = $old_matrices = FALSE;
-			
-			// Determine the BucketList fieldtype ID.
-			$db_bucketlist_ft = $DB->query("SELECT fieldtype_id
-				FROM exp_ff_fieldtypes
-				WHERE class = '{$this->_lower_class}'
-				LIMIT 1");
+			/**
+			 * If we're upgrading from pre-1.1 we need an array of all the available buckets.
+			 * We create this array regardless of the old version, for use as a fallback in
+			 * the case of missing data.
+			 */
 
-			// Determine the FF Matrix fieldtype ID.
-			$db_matrix_ft = $DB->query("SELECT fieldtype_id
-				FROM exp_ff_fieldtypes
-				WHERE class = '" .($this->_has_matrix_2 ? 'matrix' : 'ff_matrix') ."'
-				LIMIT 1");
+			$buckets = $this->_load_all_buckets_from_db();
+			$field_buckets = array();
 
-			if ($db_bucketlist_ft->num_rows === 1)
+			foreach ($buckets AS $bucket)
 			{
-				// Retrieve all the BucketList fields.
-				$db_fields = $DB->query("SELECT field_id, ff_settings
-					FROM exp_weblog_fields
-					WHERE field_type = 'ftype_id_" .$db_bucketlist_ft->row['fieldtype_id'] ."'");
-
-				$old_fields = ($db_fields->num_rows > 0);
-			}
-
-			// Retrieve all the Matrix fields.
-			if ($db_matrix_ft->num_rows === 1)
-			{
-				$db_matrices = $DB->query("SELECT field_id, ff_settings
-					FROM exp_weblog_fields
-					WHERE field_type = 'ftype_id_" .$db_matrix_ft->row['fieldtype_id'] ."'");
-				
-				$old_matrices = ($db_matrices->num_rows > 0);
-			}
-			
-			
-			// Do we have work to do?
-			if ($old_fields OR $old_matrices)
-			{
-				/**
-				 * If we're upgrading from pre-1.1 we need an array of all the available buckets.
-				 * We create this array regardless of the old version, for use as a fallback in
-				 * the case of missing data.
-				 */
-
-				$buckets = $this->_load_all_buckets_from_db();
-				$field_buckets = array();
-
-				foreach ($buckets AS $bucket)
-				{
-					$field_buckets[] = $bucket['bucket_name'];
-				}
+				$field_buckets[] = $bucket['bucket_name'];
 			}
 			
 			
@@ -2775,8 +2736,20 @@ _HTML_;
 			 * --------------------------------------------
 			 */
 			
-			if ($old_fields)
+			// Determine the BucketList fieldtype ID.
+			$db_bucketlist_ft = $DB->query("SELECT fieldtype_id
+				FROM exp_ff_fieldtypes
+				WHERE class = '{$this->_lower_class}'
+				LIMIT 1");
+
+			if ($db_bucketlist_ft->num_rows === 1)
 			{
+				// Retrieve all the BucketList fields.
+				$db_fields = $DB->query("SELECT field_id, ff_settings
+					FROM exp_weblog_fields
+					WHERE field_type = 'ftype_id_" .$db_bucketlist_ft->row['fieldtype_id'] ."'");
+				
+				
 				foreach ($db_fields->result AS $db_field)
 				{
 					/**
@@ -2796,82 +2769,85 @@ _HTML_;
 						"field_id = '{$db_field['field_id']}'" 
 					));
 				}
+			} // End of BucketList fields update.
+			
+			
+			/**
+			 * --------------------------------------------
+			 * Update the Matrix 2.x fields.
+			 * --------------------------------------------
+			 */
+			
+			if ($this->_has_matrix_2)
+			{
+				$db_matrix_cols = $DB->query("SELECT col_id, col_settings
+					FROM exp_matrix_cols
+					WHERE col_type = '{$this->_lower_class}'");
+				
+				if ($db_martix_cols->num_rows > 0)
+				{
+					foreach ($db_matrix_cols->result AS $db_matrix_col)
+					{
+						/**
+						 * If this is pre-1.1, there are no settings, so we just make all
+						 * the buckets available.
+						 */
+						
+						$current_settings = $from > '1.1'
+							? $this->_unserialize(base64_decode($db_matrix_col['col_settings']))
+							: array('available_buckets' => $field_buckets);
+						
+						$matrix_settings = $this->_build_update_settings($current_settings);
+						
+						/**
+						 * If there are a lot of Matrices, with a lot of columns, we could be
+						 * making a shitload of database calls here. On the other hand, this
+						 * is a one-time operation, so let's not worry about performance unless
+						 * it becomes an issue.
+						 */
+						
+						$DB->query($DB->update_string(
+							'exp_matrix_cols',
+							array('col_settings' => base64_encode($this->_serialize($matrix_settings))),
+							"col_id = '{$db_matrix_col['col_id']}'"
+						));
+					}
+				}
 			}
 			
 			
 			/**
 			 * --------------------------------------------
-			 * Update the Matrix / FF Matrix fields.
+			 * Update the FF Matrix 1.x fields.
 			 * --------------------------------------------
 			 */
 			
-			if ($old_matrices)
+			if ( ! $this->_has_matrix_2)
 			{
-				foreach ($db_matrices->result AS $db_matrix)
+				// Determine the FF Matrix fieldtype ID.
+				$db_matrix_ft = $DB->query("SELECT fieldtype_id
+					FROM exp_ff_fieldtypes
+					WHERE class = 'ff_matrix'
+					LIMIT 1");
+					
+				// Retrieve all the FF Matrix fields.
+				if ($db_matrix_ft->num_rows === 1)
 				{
-					$matrix_settings = $this->_unserialize($db_matrix['ff_settings']);
-					$update_matrix = FALSE;
+					$db_matrices = $DB->query("SELECT field_id, ff_settings
+						FROM exp_weblog_fields
+						WHERE field_type = 'ftype_id_" .$db_matrix_ft->row['fieldtype_id'] ."'");
 					
-					
-					/**
-					 * This is where things get a little tricky, thanks to Matrix 2.
-					 * Brandon completely changed the way information is stored, moving
-					 * it to separate tables. The field settings for Matrix 2 only
-					 * contain the maximum number of rows, and the column IDs.
-					 *
-					 * The column type and column settings are stored in exp_matrix_cols.
-					 */
-					
-					
-					if (($this->_has_matrix_2 && ! isset($matrix_settings['col_ids']))
-						OR ( ! $this->_has_matrix_2 && ! isset($matrix_settings['cols'])))
+					foreach ($db_matrices->result AS $db_matrix)
 					{
-						continue;
-					}
-					
-					
-					// Matrix 2.x
-					if ($this->_has_matrix_2)
-					{
-						$db_matrix_cols = $DB->query("SELECT col_id, field_id, col_type, col_settings
-							FROM exp_matrix_cols
-							WHERE col_id IN('" .implode("', '", $matrix_settings['col_ids']) ."')
-							AND col_type = '{$this->_lower_class}'");
+						$matrix_settings = $this->_unserialize($db_matrix['ff_settings']);
+						$update_matrix = FALSE;
 						
-						if ($db_martix_cols->num_rows > 0)
+						if ( ! isset($matrix_settings['cols']))
 						{
-							foreach ($db_matrix_cols->result AS $db_matrix_col)
-							{
-								/**
-								 * If this is pre-1.1, there are no settings, so we just make all
-								 * the buckets available.
-								 */
-								
-								$current_settings = $from > '1.1'
-									? $this->_unserialize(base64_decode($db_matrix_col['col_settings']))
-									: array('available_buckets' => $field_buckets);
-								
-								$matrix_settings = $this->_build_update_settings($current_settings);
-								
-								/**
-								 * If there are a lot of Matrices, with a lot of columns, we could be
-								 * making a shitload of database calls here. On the other hand, this
-								 * is a one-time operation, so let's not worry about performance unless
-								 * it becomes an issue.
-								 */
-								
-								$DB->query($DB->update_string(
-									'exp_matrix_cols',
-									array('col_settings' => base64_encode($this->_serialize($matrix_settings))),
-									"col_id = '{$db_matrix_col['col_id']}'"
-								));
-							}
+							continue;
 						}
-					}
-					
-					// FF Matrix 1.x
-					if ( ! $this->_has_matrix_2)
-					{
+						
+						// Loop through the FF Matrix columns.
 						foreach ($matrix_settings['cols'] AS $col_key => $col_val)
 						{
 							if (isset($col_val['type']) && $col_val['type'] == $this->_lower_class)
@@ -2880,16 +2856,16 @@ _HTML_;
 								 * If this is pre-1.1, there are no settings, so we just make all
 								 * the buckets available.
 								 */
-								
+
 								$current_settings = ($from > '1.1' && isset($col_val['settings']))
 									? $col_val['settings']
 									: array('available_buckets' => $field_buckets);
-								
+
 								$matrix_settings['cols'][$col_key]['settings'] = $this->_build_update_settings($current_settings);
 								$update_matrix = TRUE;
 							}
 						}
-						
+
 						if ($update_matrix)
 						{
 							$DB->query($DB->update_string(
@@ -2898,14 +2874,14 @@ _HTML_;
 								"field_id = '{$db_matrix['field_id']}'"
 							));
 						}
-					}
-					
-				} /* End of $db_matrices->result loop */
-				
-			} /* End of $existing_matrices conditional */
-		}
+						
+					} /* End of $db_matrices->result loop */
+				}
+			} /* End of FF Matrix 1.x upgrade script */
+			
+		} /* End of $from conditional */
 		
-	} /* End of update */
+	} /* End of $this->update */
 
 }
 
