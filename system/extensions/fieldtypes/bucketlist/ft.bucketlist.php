@@ -9,7 +9,7 @@ if ( ! defined('EXT'))
  * Seamlessly integrate Amazon S3 with your ExpressionEngine website.
  *
  * @package   	BucketList
- * @version   	1.2.0
+ * @version   	1.2.1
  * @author    	Stephen Lewis <addons@experienceinternet.co.uk>
  * @copyright 	Copyright (c) 2009-2010, Stephen Lewis
  * @link      	http://experienceinternet.co.uk/bucketlist/
@@ -53,7 +53,7 @@ class Bucketlist extends Fieldframe_Fieldtype {
 	 */
 	public $info = array(
 		'name'				=> 'BucketList',
-		'version'			=> '1.2.0',
+		'version'			=> '1.2.1',
 		'desc'				=> 'Seamlessly integrate Amazon S3 with your ExpressionEngine site.',
 		'docs_url'			=> 'http://experienceinternet.co.uk/bucketlist/',
 		'versions_xml_url'	=> 'http://experienceinternet.co.uk/addon-versions.xml'
@@ -1113,11 +1113,26 @@ class Bucketlist extends Fieldframe_Fieldtype {
 						// Matrix 2.
 						if (isset($settings['col_ids']) && in_array($col_id, $settings['col_ids']))
 						{
+							/**
+							 * @since 1.2.1
+							 * For reasons unknown, the Field ID is occasionally blank. This seems like
+							 * a Matrix bug to me, and I've contacted Brandon. In the interim, we can
+							 * get away with just the column ID, as that's the table index anyway.
+							 *
+							
+								$db_matrix_settings = $DB->query("SELECT col_settings
+									FROM exp_matrix_cols
+									WHERE col_id = '{$col_id}'
+									AND col_type = '{$this->_lower_class}'
+									AND field_id = '{$field_id}'
+									LIMIT 1");
+							 
+							 */
+							
 							$db_matrix_settings = $DB->query("SELECT col_settings
 								FROM exp_matrix_cols
 								WHERE col_id = '{$col_id}'
 								AND col_type = '{$this->_lower_class}'
-								AND field_id = '{$field_id}'
 								LIMIT 1");
 
 							if ($db_matrix_settings->num_rows !== 1)
