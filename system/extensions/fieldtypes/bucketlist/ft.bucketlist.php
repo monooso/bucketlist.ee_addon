@@ -1674,7 +1674,7 @@ _HTML_;
 		 * existent bucket name, never mind an entirely invalid one.
 		 */
 		
-		if (preg_match('/^([0-9a-z]{1}[0-9a-z\.\_\-]{2,254})\/{1}(.*)$/', $full_path, $matches))
+		if (preg_match('/^([0-9a-z]{1}[0-9a-z\.\_\-]{2,254})\/{1}(.*)$/i', $full_path, $matches))
 		{
 			if ($matches[1] OR $matches[2])
 			{
