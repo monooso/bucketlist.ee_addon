@@ -270,7 +270,7 @@ jQuery(document).ready(function($) {
 		}
 
 		if (targetId) {
-			$target = $this.parent('li').find('input[name$=' +targetId +']');
+			$target = $this.parent('li').find('input[name$="' +targetId +'"]');
 			$target.val($target.val() == 'y' ? 'n' : 'y');
 
 			$target.val() == 'y'
